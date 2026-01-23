@@ -1,4 +1,4 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.artifact;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;

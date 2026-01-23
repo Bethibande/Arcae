@@ -1,6 +1,6 @@
 package com.bethibande.repository.repository;
 
-import com.bethibande.repository.jpa.Repository;
+import com.bethibande.repository.jpa.repository.Repository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

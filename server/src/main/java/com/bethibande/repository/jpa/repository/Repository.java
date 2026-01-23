@@ -1,4 +1,4 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.repository;
 
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;

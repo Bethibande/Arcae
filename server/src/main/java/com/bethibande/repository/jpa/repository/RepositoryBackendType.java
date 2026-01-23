@@ -1,4 +1,4 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.repository;
 
 public enum RepositoryBackendType {
 

@@ -1,8 +1,8 @@
 package com.bethibande.repository.repository.impl;
 
-import com.bethibande.repository.jpa.Artifact;
-import com.bethibande.repository.jpa.ArtifactVersion;
-import com.bethibande.repository.jpa.Repository;
+import com.bethibande.repository.jpa.artifact.Artifact;
+import com.bethibande.repository.jpa.artifact.ArtifactVersion;
+import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.ArtifactDescriptor;
 import com.bethibande.repository.repository.IRepository;
 import com.bethibande.repository.repository.backend.IRepositoryBackend;

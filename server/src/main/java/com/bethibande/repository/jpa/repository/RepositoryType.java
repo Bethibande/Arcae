@@ -1,4 +1,4 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.repository.repository.IRepository;
 import com.bethibande.repository.repository.IRepositoryFactory;

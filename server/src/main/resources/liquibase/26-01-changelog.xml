@@ -7,19 +7,19 @@
         objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
 
     <changeSet id="1769103270386-1"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="RepositoryBackend_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769103270386-2"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="Repository_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769103270386-3"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="Repository">
             <column name="id"
                     type="BIGINT">
@@ -44,7 +44,7 @@
         </createTable>
     </changeSet>
     <changeSet id="1769103270386-4"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="RepositoryBackend">
             <column name="id"
                     type="BIGINT">
@@ -65,19 +65,19 @@
         </createTable>
     </changeSet>
     <changeSet id="1769103270386-5"
-               author="maxbb">
+               author="bethibande">
         <addUniqueConstraint columnNames="name"
                              constraintName="uc_repository_name"
                              tableName="Repository"/>
     </changeSet>
     <changeSet id="1769103270386-6"
-               author="maxbb">
+               author="bethibande">
         <addUniqueConstraint columnNames="name"
                              constraintName="uc_repositorybackend_name"
                              tableName="RepositoryBackend"/>
     </changeSet>
     <changeSet id="1769103270386-7"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="backend_id"
                                  baseTableName="Repository"
                                  constraintName="FK_REPOSITORY_ON_BACKEND"
@@ -86,19 +86,19 @@
     </changeSet>
 
     <changeSet id="1769158198470-1"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="ArtifactVersion_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769158198470-2"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="Artifact_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769158198470-3"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="Artifact">
             <column name="id"
                     type="BIGINT">
@@ -121,7 +121,7 @@
         </createTable>
     </changeSet>
     <changeSet id="1769158198470-4"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="ArtifactVersion">
             <column name="id"
                     type="BIGINT">
@@ -140,25 +140,25 @@
         </createTable>
     </changeSet>
     <changeSet id="1769158198470-5"
-               author="maxbb">
+               author="bethibande">
         <addUniqueConstraint columnNames="artifactId"
                              constraintName="uc_artifact_artifactid"
                              tableName="Artifact"/>
     </changeSet>
     <changeSet id="1769158198470-6"
-               author="maxbb">
+               author="bethibande">
         <addUniqueConstraint columnNames="groupId"
                              constraintName="uc_artifact_groupid"
                              tableName="Artifact"/>
     </changeSet>
     <changeSet id="1769158198470-7"
-               author="maxbb">
+               author="bethibande">
         <addUniqueConstraint columnNames="version"
                              constraintName="uc_artifactversion_version"
                              tableName="ArtifactVersion"/>
     </changeSet>
     <changeSet id="1769158198470-8"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="artifact_id"
                                  baseTableName="ArtifactVersion"
                                  constraintName="FK_ARTIFACTVERSION_ON_ARTIFACT"
@@ -166,7 +166,7 @@
                                  referencedTableName="Artifact"/>
     </changeSet>
     <changeSet id="1769158198470-9"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="repository_id"
                                  baseTableName="Artifact"
                                  constraintName="FK_ARTIFACT_ON_REPOSITORY"
@@ -175,7 +175,7 @@
     </changeSet>
 
     <changeSet id="1769159501511-1"
-               author="maxbb">
+               author="bethibande">
         <addColumn tableName="ArtifactVersion">
             <column name="created"
                     type="DATETIME"/>
@@ -184,14 +184,55 @@
         </addColumn>
     </changeSet>
     <changeSet id="1769159501511-2"
-               author="maxbb">
+               author="bethibande">
         <addNotNullConstraint columnName="created"
                               tableName="ArtifactVersion"/>
     </changeSet>
     <changeSet id="1769159501511-4"
-               author="maxbb">
+               author="bethibande">
         <addNotNullConstraint columnName="updated"
                               tableName="ArtifactVersion"/>
     </changeSet>
 
+    <changeSet id="1769180285832-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="Users_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1769180285832-2"
+               author="bethibande">
+        <createTable tableName="Users">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_users"/>
+            </column>
+            <column name="name"
+                    type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email"
+                    type="varchar(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="password"
+                    type="VARCHAR(255)"/>
+            <column name="roles"
+                    type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769180285832-3"
+               author="bethibande">
+        <addUniqueConstraint columnNames="email"
+                             constraintName="uc_users_email"
+                             tableName="Users"/>
+    </changeSet>
+    <changeSet id="1769180285832-4"
+               author="bethibande">
+        <addUniqueConstraint columnNames="name"
+                             constraintName="uc_users_name"
+                             tableName="Users"/>
+    </changeSet>
 </databaseChangeLog>

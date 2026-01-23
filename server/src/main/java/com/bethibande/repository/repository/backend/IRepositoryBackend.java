@@ -1,6 +1,6 @@
 package com.bethibande.repository.repository.backend;
 
-import com.bethibande.repository.jpa.RepositoryBackend;
+import com.bethibande.repository.jpa.repository.RepositoryBackend;
 import com.bethibande.repository.repository.ArtifactDescriptor;
 
 import java.util.Optional;

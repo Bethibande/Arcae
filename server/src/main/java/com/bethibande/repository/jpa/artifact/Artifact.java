@@ -1,5 +1,6 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.artifact;
 
+import com.bethibande.repository.jpa.repository.Repository;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import org.hibernate.search.engine.backend.types.Sortable;

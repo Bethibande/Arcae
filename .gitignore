@@ -1,9 +1,12 @@
 .gradle
 **/build/
+**/node_moduls/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 .kotlin
+
+server/src/main/webui/src/generated
 
 ### IntelliJ IDEA ###
 .idea

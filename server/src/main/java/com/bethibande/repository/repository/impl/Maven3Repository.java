@@ -64,7 +64,7 @@ public class Maven3Repository implements IRepository {
         final String fileName = pathSegments[pathSegments.length - 1];
 
         if (fileName.endsWith(POM_FILE_EXTENSION)) {
-            if (contentLength < MAX_POM_FILE_SIZE_BYTES) {
+            if (contentLength > MAX_POM_FILE_SIZE_BYTES) {
                 throw new BadRequestException("POM is too large, max allowed is " + MAX_POM_FILE_SIZE_BYTES);
             }
             final byte[] data = readAll(stream, (int) contentLength);

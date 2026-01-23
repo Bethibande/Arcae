@@ -39,6 +39,7 @@ dependencies {
     implementation("com.bethibande.process:annotations:1.5")
     annotationProcessor("com.bethibande.process:processor:1.5")
 
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.0")
     implementation("io.quarkus:quarkus-rest-client-jackson")
     implementation("io.quarkus:quarkus-hibernate-search-orm-elasticsearch")
 }

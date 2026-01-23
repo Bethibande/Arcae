@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.bethibande.finance"
-version = "unspecified"
+version = "1.0"
 
 repositories {
     mavenCentral()

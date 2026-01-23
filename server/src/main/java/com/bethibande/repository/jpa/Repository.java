@@ -1,12 +1,19 @@
 package com.bethibande.repository.jpa;
 
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Type;
+import org.hibernate.search.engine.backend.types.Sortable;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 
 @Entity
-public class Repository extends PanacheEntity {
+public class Repository extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue
+    @GenericField(sortable = Sortable.YES)
+    public Long id;
 
     @Column(length = 64, nullable = false, unique = true)
     public String name;

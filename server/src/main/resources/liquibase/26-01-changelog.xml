@@ -85,4 +85,113 @@
                                  referencedTableName="RepositoryBackend"/>
     </changeSet>
 
+    <changeSet id="1769158198470-1"
+               author="maxbb">
+        <createSequence incrementBy="50"
+                        sequenceName="ArtifactVersion_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1769158198470-2"
+               author="maxbb">
+        <createSequence incrementBy="50"
+                        sequenceName="Artifact_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1769158198470-3"
+               author="maxbb">
+        <createTable tableName="Artifact">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_artifact"/>
+            </column>
+            <column name="repository_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="groupId"
+                    type="varchar(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="artifactId"
+                    type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769158198470-4"
+               author="maxbb">
+        <createTable tableName="ArtifactVersion">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_artifactversion"/>
+            </column>
+            <column name="artifact_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version"
+                    type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769158198470-5"
+               author="maxbb">
+        <addUniqueConstraint columnNames="artifactId"
+                             constraintName="uc_artifact_artifactid"
+                             tableName="Artifact"/>
+    </changeSet>
+    <changeSet id="1769158198470-6"
+               author="maxbb">
+        <addUniqueConstraint columnNames="groupId"
+                             constraintName="uc_artifact_groupid"
+                             tableName="Artifact"/>
+    </changeSet>
+    <changeSet id="1769158198470-7"
+               author="maxbb">
+        <addUniqueConstraint columnNames="version"
+                             constraintName="uc_artifactversion_version"
+                             tableName="ArtifactVersion"/>
+    </changeSet>
+    <changeSet id="1769158198470-8"
+               author="maxbb">
+        <addForeignKeyConstraint baseColumnNames="artifact_id"
+                                 baseTableName="ArtifactVersion"
+                                 constraintName="FK_ARTIFACTVERSION_ON_ARTIFACT"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Artifact"/>
+    </changeSet>
+    <changeSet id="1769158198470-9"
+               author="maxbb">
+        <addForeignKeyConstraint baseColumnNames="repository_id"
+                                 baseTableName="Artifact"
+                                 constraintName="FK_ARTIFACT_ON_REPOSITORY"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Repository"/>
+    </changeSet>
+
+    <changeSet id="1769159501511-1"
+               author="maxbb">
+        <addColumn tableName="ArtifactVersion">
+            <column name="created"
+                    type="DATETIME"/>
+            <column name="updated"
+                    type="DATETIME"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1769159501511-2"
+               author="maxbb">
+        <addNotNullConstraint columnName="created"
+                              tableName="ArtifactVersion"/>
+    </changeSet>
+    <changeSet id="1769159501511-4"
+               author="maxbb">
+        <addNotNullConstraint columnName="updated"
+                              tableName="ArtifactVersion"/>
+    </changeSet>
+
 </databaseChangeLog>

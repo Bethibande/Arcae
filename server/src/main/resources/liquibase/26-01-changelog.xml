@@ -200,8 +200,19 @@
                         sequenceName="Users_seq"
                         startValue="1"/>
     </changeSet>
-    <changeSet id="1769180285832-2"
-               author="bethibande">
+    <changeSet id="1769245544460-2"
+               author="maxbb">
+        <createTable tableName="User_roles">
+            <column name="User_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="roles"
+                    type="varchar(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769245544460-3"
+               author="maxbb">
         <createTable tableName="Users">
             <column name="id"
                     type="BIGINT">
@@ -218,10 +229,18 @@
                 <constraints nullable="false"/>
             </column>
             <column name="password"
-                    type="VARCHAR(255)"/>
-            <column name="roles"
-                    type="VARCHAR(255)"/>
+                    type="varchar(512)">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
+    </changeSet>
+    <changeSet id="1769245544460-6"
+               author="maxbb">
+        <addForeignKeyConstraint baseColumnNames="User_id"
+                                 baseTableName="User_roles"
+                                 constraintName="fk_user_roles_on_user"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
     </changeSet>
     <changeSet id="1769180285832-3"
                author="bethibande">

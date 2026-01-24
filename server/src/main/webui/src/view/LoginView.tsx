@@ -10,6 +10,7 @@ import {z} from "zod";
 import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import i18next from "i18next";
+import {getLastPath} from "@/lib/path-restore.ts";
 
 export const LoginViewTranslationsEN = {
     "login": "Login",
@@ -44,7 +45,7 @@ export default function LoginView() {
         login(data.username, data.password).then(({user, error}) => {
             if (user) {
                 toast.success(t("welcome", {user: user}), {position: "top-center"})
-                navigate("/")
+                navigate(getLastPath())
             }
             if (error) {
                 if (error.status === 401) {

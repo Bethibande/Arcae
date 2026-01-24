@@ -8,6 +8,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "Users")
+@EntityDTO(excludeProperties = "id")
 @EntityDTO(excludeProperties = "password")
 public class User extends PanacheEntity {
 
@@ -17,11 +18,12 @@ public class User extends PanacheEntity {
     @Column(nullable = false, unique = true, columnDefinition = "varchar(512)")
     public String email;
 
-    @Column
+    @Column(nullable = false, columnDefinition = "varchar(512)")
     public String password;
 
-    @Column
     @Enumerated(EnumType.STRING)
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Column(columnDefinition = "varchar(255)")
     public Set<UserRole> roles;
 
 }

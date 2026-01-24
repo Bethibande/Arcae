@@ -3,6 +3,7 @@ import {Outlet, useNavigate} from "react-router";
 import {useViewConfig} from "@/lib/view-config.tsx";
 import {useAuth} from "@/lib/auth.tsx";
 import {AppSidebar} from "@/components/navigation/app-sidebar.tsx";
+import {recordPath} from "@/lib/path-restore.ts";
 
 function MainLayoutToolbar() {
     const {viewConfig} = useViewConfig();
@@ -22,6 +23,8 @@ export default function MainLayout() {
     if (!user && !pending) {
         navigate("/login");
     }
+
+    recordPath()
 
     return (
         <SidebarProvider>

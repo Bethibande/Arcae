@@ -5,6 +5,8 @@ import MainLayout from "@/view/layouts/MainLayout.tsx";
 import LoginView from "@/view/LoginView.tsx";
 import {ViewConfigProvider} from "@/lib/view-config.tsx";
 import {AuthProvider} from "@/lib/auth.tsx";
+import {SetupUserView} from "@/view/setup/SetupUser.tsx";
+import {ThemeButton} from "@/components/theme-button.tsx";
 
 function App() {
     const primaryRoutes: RouteObject[] = []
@@ -12,6 +14,10 @@ function App() {
         {
             path: "/login",
             Component: LoginView
+        },
+        {
+            path: "/setup",
+            Component: SetupUserView
         }
     ]
 
@@ -28,6 +34,7 @@ function App() {
 
     return (
         <div className={"bg-muted w-full h-full flex"}>
+            <ThemeButton/>
             <ViewConfigProvider>
                 <AuthProvider>
                     <RouterProvider router={router}>

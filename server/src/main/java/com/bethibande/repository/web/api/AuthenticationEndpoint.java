@@ -52,7 +52,7 @@ public class AuthenticationEndpoint {
     @PermitAll
     @Path("/login")
     public Response login(final Credentials credentials) {
-        final User user = User.find("name", credentials.username).firstResult();
+        final User user = User.find("name = ?1", credentials.username).firstResult();
 
         String hashToCompare;
         boolean userExists;
@@ -83,7 +83,6 @@ public class AuthenticationEndpoint {
         final String token = Jwt.issuer(issuer)
                 .upn(user.name)
                 .groups(roles)
-                .claim(Claims.email, user.email)
                 .expiresIn(duration)
                 .sign();
 

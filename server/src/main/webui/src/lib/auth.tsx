@@ -17,7 +17,7 @@ async function login(username: string, password: string): Promise<LoginResult> {
             }
         });
 
-        const user = (await response.raw.json()) as UserDTOWithoutPassword;
+        const user = response as UserDTOWithoutPassword;
         console.log("Logged in as " + user.name)
         return {user};
     } catch (e) {
@@ -25,6 +25,7 @@ async function login(username: string, password: string): Promise<LoginResult> {
             console.error('Login failed:', e.response.status);
             return {user: undefined, error: e.response};
         }
+        console.log("Unexpected error: ", e);
         return {user: undefined, error: undefined};
     }
 }

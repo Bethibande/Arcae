@@ -11,7 +11,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem
 } from "../ui/sidebar.tsx";
-import {Cash, ChevronDown, ClipboardData, Database, Sliders} from "react-bootstrap-icons";
+import {ChevronDown, ClipboardData, Sliders} from "react-bootstrap-icons";
 import {NavLink} from "react-router";
 import {cn} from "@/lib/utils.ts";
 import UserItem from "./user-item.tsx";
@@ -53,7 +53,7 @@ function toGroup(item: NavItem, user?: UserDTOWithoutPassword): ReactNode | unde
 function toBasicItem(item: NavItem): ReactNode {
     return (
         <SidebarMenuItem key={item.text}>
-            <SidebarMenuButton className={"cursor-pointer transition-colors group-[.active]:bg-primary group-[.active]:text-primary-foreground"} asChild>
+            <SidebarMenuButton className={"cursor-pointer transition-colors group-[.active]:font-semibold group-[.active]:bg-primary/10 group-[.active]:text-primary"} asChild>
                 <div className={"flex items-center gap-2 select-none py-5 p-4"}>
                     {item.icon}
                     {item.text}
@@ -97,43 +97,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const primary: NavItem[] = [
         {
             icon: <ClipboardData/>,
-            text: "Dashboard",
+            text: "Repositories",
             href: "/"
         },
     ];
     const secondary: NavItem[] = [
-        {
-            icon: <Cash/>,
-            text: "Transactions",
-            children: [
-                {
-                    text: "Payments",
-                    href: "/payments"
-                },
-                {
-                    text: "Recurring payments",
-                    href: "/recurring"
-                }
-            ]
-        },
-        {
-            icon: <Database/>,
-            text: "Organization",
-            children: [
-                {
-                    text: "Wallets",
-                    href: "/wallets"
-                },
-                {
-                    text: "Assets",
-                    href: "/assets"
-                },
-                {
-                    text: "Partners",
-                    href: "/partners"
-                },
-            ]
-        },
         {
             icon: <Sliders/>,
             text: "Administration",
@@ -142,6 +110,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {
                     text: "Users",
                     href: "/admin/users",
+                },
+                {
+                    text: "Tokens",
+                    href: "/admin/tokens",
                 },
                 {
                     text: "Jobs",
@@ -159,7 +131,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
         <Sidebar collapsible="offcanvas" {...props}>
             <SidebarHeader>
-                <h1>Repository</h1>
+                <h1 className={"m-1.5"}>Repository</h1>
             </SidebarHeader>
             <Separator className={"mt-[-1px]"}/>
             <SidebarHeader>

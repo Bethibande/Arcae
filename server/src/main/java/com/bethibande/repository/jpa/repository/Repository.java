@@ -1,5 +1,6 @@
 package com.bethibande.repository.jpa.repository;
 
+import com.bethibande.process.annotation.EntityDTO;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
@@ -8,6 +9,9 @@ import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 
 @Entity
+@EntityDTO
+@EntityDTO(excludeProperties = "id")
+@EntityDTO(excludeProperties = "backend")
 public class Repository extends PanacheEntityBase {
 
     @Id

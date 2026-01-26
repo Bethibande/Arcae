@@ -7,9 +7,15 @@ import {ViewConfigProvider} from "@/lib/view-config.tsx";
 import {AuthProvider} from "@/lib/auth.tsx";
 import {SetupUserView} from "@/view/setup/SetupUser.tsx";
 import {ThemeButton} from "@/components/theme-button.tsx";
+import {DefaultView} from "@/view/overview/DefaultView.tsx";
 
 function App() {
-    const primaryRoutes: RouteObject[] = []
+    const primaryRoutes: RouteObject[] = [
+        {
+            path: "/",
+            Component: DefaultView
+        }
+    ]
     const secondaryRoutes: RouteObject[] = [
         {
             path: "/login",

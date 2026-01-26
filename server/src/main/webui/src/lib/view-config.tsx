@@ -2,6 +2,7 @@ import {createContext, type ReactNode, useContext, useState} from "react";
 
 export interface ViewConfig {
     toolbar: ReactNode;
+    sidebarVisible?: boolean;
 }
 
 export interface ViewConfigContextType {
@@ -11,7 +12,7 @@ export interface ViewConfigContextType {
 
 export const ViewConfigContext = createContext<ViewConfigContextType | undefined>(undefined);
 export const ViewConfigProvider = ({children}: { children: ReactNode }) => {
-    const [viewConfig, setViewConfig] = useState<ViewConfig>({toolbar: null});
+    const [viewConfig, setViewConfig] = useState<ViewConfig>({toolbar: null, sidebarVisible: false});
 
     return (
         <ViewConfigContext.Provider value={{viewConfig, setViewConfig}}>

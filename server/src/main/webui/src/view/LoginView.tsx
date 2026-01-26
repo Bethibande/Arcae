@@ -43,8 +43,9 @@ export default function LoginView() {
 
     function onSubmit(data: z.infer<typeof formSchema>) {
         login(data.username, data.password).then(({user, error}) => {
+            console.log(user, error)
             if (user) {
-                toast.success(t("welcome", {user: user}), {position: "top-center"})
+                toast.success(t("welcome", {user: user.name}), {position: "top-center"})
                 navigate(getLastPath())
             }
             if (error) {

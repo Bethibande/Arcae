@@ -1,5 +1,6 @@
 package com.bethibande.repository.jpa.repository;
 
+import com.bethibande.process.annotation.EntityDTO;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
@@ -9,6 +10,8 @@ import jakarta.persistence.Enumerated;
 import org.hibernate.annotations.Type;
 
 @Entity
+@EntityDTO
+@EntityDTO(excludeProperties = "id")
 public class RepositoryBackend extends PanacheEntity {
 
     @Column(unique = true, nullable = false)

@@ -15,7 +15,7 @@ export function ThemeButton() {
     return (
         <Button variant={"ghost"}
                 size={"icon"}
-                className={"absolute top-4 right-4"}
+                className={"absolute bottom-3 right-3"}
                 onClick={toggle}>
             {isDark ? <Sun/> : <Moon/>}
         </Button>

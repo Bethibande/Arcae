@@ -1,93 +1,82 @@
 package com.bethibande.repository.repository.backend;
 
-import com.bethibande.repository.jpa.repository.RepositoryBackend;
-import com.bethibande.repository.repository.ArtifactDescriptor;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.bethibande.repository.repository.S3Config;
+import com.bethibande.repository.repository.StreamHandle;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.net.URI;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
-public class S3Backend implements IRepositoryBackend {
+public class S3Backend implements RepositoryBackend {
 
-    protected final RepositoryBackend info;
-    protected final S3BackendConfig config;
+    private final S3Config config;
+    private final S3Client client;
 
-    protected final S3Client client;
-
-    public S3Backend(final RepositoryBackend info, final ObjectMapper objectMapper) throws JsonProcessingException {
-        this.info = info;
-        this.config = objectMapper.readValue(info.settings, S3BackendConfig.class);
-
+    public S3Backend(final S3Config config) {
+        this.config = config;
         this.client = S3Client.builder()
-                .region(Region.of(this.config.region()))
-                .endpointOverride(URI.create(this.config.host()))
+                .endpointOverride(URI.create(config.url()))
+                .region(Region.of(config.region()))
+                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(config.accessKey(), config.secretKey())))
                 .forcePathStyle(true)
-                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(this.config.accessKey(), this.config.secretKey())))
                 .build();
     }
 
     @Override
-    public RepositoryBackend getBackendInfo() {
-        return info;
-    }
-
-    @Override
-    public CompletableFuture<Void> put(final ArtifactDescriptor descriptor) {
+    public void put(final String path, final StreamHandle handle) {
         final PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(this.config.bucket())
-                .contentType(descriptor.contentType())
-                .contentLength(descriptor.contentLength())
-                .key(descriptor.path())
+                .contentType(handle.contentType())
+                .contentLength(handle.contentLength())
+                .key(path)
                 .build();
 
-        final RequestBody body = RequestBody.fromInputStream(descriptor.stream(), descriptor.contentLength());
+        final RequestBody body = RequestBody.fromInputStream(handle.stream(), handle.contentLength());
 
+        this.client.putObject(request, body);
+    }
+
+    @Override
+    public boolean head(final String path) {
         try {
-            this.client.putObject(request, body);
-            return CompletableFuture.completedFuture(null);
-        } catch (final Throwable th) {
-            return CompletableFuture.failedFuture(th);
+            final HeadObjectRequest request = HeadObjectRequest.builder()
+                    .bucket(this.config.bucket())
+                    .key(path)
+                    .build();
+            this.client.headObject(request);
+            return true;
+        } catch (final NoSuchKeyException ex) {
+            return false;
         }
     }
 
     @Override
-    public Optional<ArtifactDescriptor> get(final String path) {
+    public StreamHandle get(final String path) {
         final GetObjectRequest request = GetObjectRequest.builder()
                 .bucket(this.config.bucket())
                 .key(path)
                 .build();
 
         try {
-            final ResponseInputStream<GetObjectResponse> stream = this.client.getObject(request);
-            final GetObjectResponse response = stream.response();
+            final ResponseBytes<GetObjectResponse> response = this.client.getObjectAsBytes(request);
 
-            return Optional.of(new ArtifactDescriptor(
-                    path,
-                    response.contentLength(),
-                    response.contentType(),
-                    stream
-            ));
-        } catch (final NoSuchKeyException _) {
-            return Optional.empty();
+            return new StreamHandle(
+                    response.asInputStream(),
+                    response.response().contentType(),
+                    response.response().contentLength()
+            );
+        } catch (final NoSuchKeyException ex) {
+            return null;
         }
     }
 
     @Override
     public void delete(final String path) {
-        final DeleteObjectRequest request = DeleteObjectRequest.builder()
-                .bucket(this.config.bucket())
-                .key(path)
-                .build();
-
-        this.client.deleteObject(request);
+        this.client.deleteObject(b -> b.bucket(this.config.bucket()).key(path));
     }
 }

@@ -1,6 +1,7 @@
 package com.bethibande.repository.jpa.artifact;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.panache.common.Sort;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
@@ -12,6 +13,13 @@ import java.time.Instant;
 @Entity
 @Indexed
 public class ArtifactVersion extends PanacheEntity {
+
+    public static Instant findMaxUpdated(final long repositoryId) {
+        return ArtifactVersion.<ArtifactVersion>find("artifact.repository.id = ?1", Sort.descending("updated"), repositoryId)
+                .firstResultOptional()
+                .map(av -> av.updated)
+                .orElse(null);
+    }
 
     @ManyToOne(optional = false)
     @IndexedEmbedded(includePaths = "id")

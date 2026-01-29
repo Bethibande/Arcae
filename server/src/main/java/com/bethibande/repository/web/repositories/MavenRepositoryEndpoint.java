@@ -1,22 +1,18 @@
 package com.bethibande.repository.web.repositories;
 
-import com.bethibande.repository.repository.ArtifactDescriptor;
-import com.bethibande.repository.repository.IRepository;
-import com.bethibande.repository.repository.RepositoryManager;
-import com.bethibande.repository.repository.impl.Maven3Repository;
-import io.smallrye.mutiny.Uni;
+import com.bethibande.repository.jpa.repository.PackageManager;
+import com.bethibande.repository.jpa.repository.RepositoryManager;
+import com.bethibande.repository.repository.StreamHandle;
+import com.bethibande.repository.repository.maven.MavenRepository;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpStatus;
 
 import java.io.InputStream;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
-@Path("/repositories/maven")
+@Path("/repositories/maven/{repository}/{path:.*}")
 public class MavenRepositoryEndpoint {
 
     private final RepositoryManager repositoryManager;
@@ -26,55 +22,33 @@ public class MavenRepositoryEndpoint {
         this.repositoryManager = repositoryManager;
     }
 
-    protected Maven3Repository resolveRepositoryOrThrowNotFound(final String name) {
-        final IRepository repository = repositoryManager.getRepositoryByName(name);
-        if (repository == null) {
-            throw new NotFoundException(name);
-        }
-        if (!(repository instanceof Maven3Repository mavenRepository)) {
-            throw new NotFoundException();
-        }
+    @PUT
+    @Transactional
+    public void deployArtifact(final @PathParam("repository") String repository,
+                               final @PathParam("path") String path,
+                               final @HeaderParam(HttpHeaders.CONTENT_TYPE) String contentType,
+                               final @HeaderParam(HttpHeaders.CONTENT_LENGTH) long contentLength,
+                               final InputStream data) {
+        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN_3);
+        if (repo == null) throw new NotFoundException("Unknown repository");
 
-        return mavenRepository;
+        repo.put(path, new StreamHandle(data, contentType, contentLength));
     }
 
     @GET
-    @Transactional
-    @Path("/{repository}/{path:.*}")
-    public Response get(final @PathParam("repository") String repositoryName,
-                        final @PathParam("path") String path) {
-        final Maven3Repository repository = resolveRepositoryOrThrowNotFound(repositoryName);
-        final Optional<ArtifactDescriptor> descriptor = repository.getBackend()
-                .get(path);
+    public Response getArtifact(final @PathParam("repository") String repository,
+                                final @PathParam("path") String path) {
+        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN_3);
+        if (repo == null) throw new NotFoundException("Unknown repository");
 
-        if (descriptor.isPresent()) {
-            final ArtifactDescriptor artifact = descriptor.get();
-            return Response.ok()
-                    .entity(artifact.stream())
-                    .header(HttpHeaders.CONTENT_LENGTH, artifact.contentLength())
-                    .header(HttpHeaders.CONTENT_TYPE, artifact.contentType())
-                    .build();
-        }
+        final StreamHandle handle = repo.get(path);
+        if (handle == null) throw new NotFoundException("Artifact not found");
 
-        return Response.status(HttpStatus.SC_NOT_FOUND)
+        return Response.ok()
+                .header(HttpHeaders.CONTENT_TYPE, handle.contentType())
+                .header(HttpHeaders.CONTENT_LENGTH, handle.contentLength())
+                .entity(handle.stream())
                 .build();
-    }
-
-    @PUT
-    @Transactional
-    @Path("/{repository}/{path:.*}")
-    public Uni<Response> put(final @PathParam("repository") String repositoryName,
-                             final @PathParam("path") String path,
-                             final @HeaderParam(HttpHeaders.CONTENT_LENGTH) long contentLength,
-                             final @HeaderParam(HttpHeaders.CONTENT_TYPE) String contentType,
-                             final @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization,
-                             final InputStream data) {
-        final Maven3Repository repository = resolveRepositoryOrThrowNotFound(repositoryName);
-        final CompletableFuture<Void> future = repository.uploadFile(path, data, contentLength, contentType);
-
-        return Uni.createFrom()
-                .completionStage(future)
-                .map(_ -> Response.status(HttpStatus.SC_CREATED).build());
     }
 
 }

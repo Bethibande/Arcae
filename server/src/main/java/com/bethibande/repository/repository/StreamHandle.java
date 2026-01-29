@@ -3,15 +3,14 @@ package com.bethibande.repository.repository;
 import java.io.IOException;
 import java.io.InputStream;
 
-public record ArtifactDescriptor(
-        String path,
-        long contentLength,
+public record StreamHandle(
+        InputStream stream,
         String contentType,
-        InputStream stream
+        long contentLength
 ) implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
-        stream.close();
+        this.stream.close();
     }
 }

@@ -1,19 +1,18 @@
 import './App.css'
-import {createBrowserRouter, RouterProvider, type RouteObject} from "react-router";
+import {createBrowserRouter, type RouteObject, RouterProvider} from "react-router";
 import ErrorLayout from "@/view/layouts/ErrorLayout.tsx";
 import MainLayout from "@/view/layouts/MainLayout.tsx";
 import LoginView from "@/view/LoginView.tsx";
 import {ViewConfigProvider} from "@/lib/view-config.tsx";
 import {AuthProvider} from "@/lib/auth.tsx";
 import {SetupUserView} from "@/view/setup/SetupUser.tsx";
-import {ThemeButton} from "@/components/theme-button.tsx";
-import {DefaultView} from "@/view/overview/DefaultView.tsx";
+import DashboardView from "@/view/dashboard/DashboardView.tsx";
 
 function App() {
     const primaryRoutes: RouteObject[] = [
         {
-            path: "/",
-            Component: DefaultView
+            index: true,
+            Component: DashboardView
         }
     ]
     const secondaryRoutes: RouteObject[] = [
@@ -40,7 +39,6 @@ function App() {
 
     return (
         <div className={"bg-muted w-full h-full flex"}>
-            <ThemeButton/>
             <ViewConfigProvider>
                 <AuthProvider>
                     <RouterProvider router={router}>

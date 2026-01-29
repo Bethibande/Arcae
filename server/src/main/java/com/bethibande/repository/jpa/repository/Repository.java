@@ -11,7 +11,7 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericFie
 @Entity
 @EntityDTO
 @EntityDTO(excludeProperties = "id")
-@EntityDTO(excludeProperties = "backend")
+@EntityDTO(excludeProperties = "settings")
 public class Repository extends PanacheEntityBase {
 
     @Id
@@ -24,13 +24,10 @@ public class Repository extends PanacheEntityBase {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    public RepositoryType type;
+    public PackageManager packageManager;
 
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     public String settings;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    public RepositoryBackend backend;
 
 }

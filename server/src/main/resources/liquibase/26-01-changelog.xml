@@ -7,31 +7,31 @@
         objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
 
     <changeSet id="1769519227119-1"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="ArtifactVersion_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769519227119-2"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="Artifact_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769519227119-3"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="Repository_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769519227119-4"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="Users_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769519227119-5"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="Artifact">
             <column name="id"
                     type="BIGINT">
@@ -54,7 +54,7 @@
         </createTable>
     </changeSet>
     <changeSet id="1769519227119-6"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="ArtifactVersion">
             <column name="id"
                     type="BIGINT">
@@ -71,17 +71,17 @@
                 <constraints nullable="false"/>
             </column>
             <column name="created"
-                    type="DATETIME">
+                    type="TIMESTAMPTZ">
                 <constraints nullable="false"/>
             </column>
             <column name="updated"
-                    type="DATETIME">
+                    type="TIMESTAMPTZ">
                 <constraints nullable="false"/>
             </column>
         </createTable>
     </changeSet>
     <changeSet id="1769519227119-7"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="Repository">
             <column name="id"
                     type="BIGINT">
@@ -102,7 +102,7 @@
         </createTable>
     </changeSet>
     <changeSet id="1769519227119-8"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="User_roles">
             <column name="User_id"
                     type="BIGINT">
@@ -113,7 +113,7 @@
         </createTable>
     </changeSet>
     <changeSet id="1769519227119-9"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="Users">
             <column name="id"
                     type="BIGINT">
@@ -136,43 +136,37 @@
         </createTable>
     </changeSet>
     <changeSet id="1769519227119-10"
-               author="maxbb">
-        <addUniqueConstraint columnNames="artifactId"
+               author="bethibande">
+        <addUniqueConstraint columnNames="artifactId,groupId,repository_id"
                              constraintName="uc_artifact_artifactid"
                              tableName="Artifact"/>
     </changeSet>
-    <changeSet id="1769519227119-11"
-               author="maxbb">
-        <addUniqueConstraint columnNames="groupId"
-                             constraintName="uc_artifact_groupid"
-                             tableName="Artifact"/>
-    </changeSet>
     <changeSet id="1769519227119-12"
-               author="maxbb">
-        <addUniqueConstraint columnNames="version"
+               author="bethibande">
+        <addUniqueConstraint columnNames="version,artifact_id"
                              constraintName="uc_artifactversion_version"
                              tableName="ArtifactVersion"/>
     </changeSet>
     <changeSet id="1769519227119-13"
-               author="maxbb">
-        <addUniqueConstraint columnNames="name"
+               author="bethibande">
+        <addUniqueConstraint columnNames="name,packageManager"
                              constraintName="uc_repository_name"
                              tableName="Repository"/>
     </changeSet>
     <changeSet id="1769519227119-14"
-               author="maxbb">
+               author="bethibande">
         <addUniqueConstraint columnNames="email"
                              constraintName="uc_users_email"
                              tableName="Users"/>
     </changeSet>
     <changeSet id="1769519227119-15"
-               author="maxbb">
+               author="bethibande">
         <addUniqueConstraint columnNames="name"
                              constraintName="uc_users_name"
                              tableName="Users"/>
     </changeSet>
     <changeSet id="1769519227119-16"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="artifact_id"
                                  baseTableName="ArtifactVersion"
                                  constraintName="FK_ARTIFACTVERSION_ON_ARTIFACT"
@@ -180,7 +174,7 @@
                                  referencedTableName="Artifact"/>
     </changeSet>
     <changeSet id="1769519227119-17"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="repository_id"
                                  baseTableName="Artifact"
                                  constraintName="FK_ARTIFACT_ON_REPOSITORY"
@@ -188,11 +182,24 @@
                                  referencedTableName="Repository"/>
     </changeSet>
     <changeSet id="1769519227119-18"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="User_id"
                                  baseTableName="User_roles"
                                  constraintName="fk_user_roles_on_user"
                                  referencedColumnNames="id"
                                  referencedTableName="Users"/>
+    </changeSet>
+
+    <changeSet id="1769702457331-1"
+               author="bethibande">
+        <addColumn tableName="Artifact">
+            <column name="lastUpdated"
+                    type="timestamptz"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1769702457331-2"
+               author="bethibande">
+        <addNotNullConstraint columnName="lastUpdated"
+                              tableName="Artifact"/>
     </changeSet>
 </databaseChangeLog>

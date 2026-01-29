@@ -54,12 +54,15 @@ public class MavenRepository implements ManagedRepository {
     }
 
     public StreamHandle get(final String path) {
-        return this.backend.get(path);
+        return this.backend.get("%s/%s".formatted(info.name, path));
     }
 
     public void put(final String path, final StreamHandle handle) {
-        if (!config.allowRedeployments() && this.backend.head(path))
+        final String namespacedPath = "%s/%s".formatted(info.name, path);
+
+        if (!config.allowRedeployments() && this.backend.head(namespacedPath)) {
             throw new BadRequestException("File already exists");
+        }
 
         if (path.endsWith(POM_FILE_EXTENSION)) {
             if (handle.contentLength() > MAX_POM_FILE_SIZE)
@@ -68,7 +71,7 @@ public class MavenRepository implements ManagedRepository {
             final byte[] bytes = readAllBytes(handle);
 
             this.backend.put(
-                    path,
+                    namespacedPath,
                     new StreamHandle(
                             new ByteArrayInputStream(bytes),
                             handle.contentType(),
@@ -78,7 +81,7 @@ public class MavenRepository implements ManagedRepository {
 
             indexPom(bytes);
         } else {
-            this.backend.put(path, handle);
+            this.backend.put(namespacedPath, handle);
         }
     }
 
@@ -100,18 +103,21 @@ public class MavenRepository implements ManagedRepository {
             final String artifactId = node.get("artifactId").asText();
             final String version = node.get("version").asText();
 
-            Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2", groupId, artifactId).firstResult();
+            final Instant now = Instant.now();
+            Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
             if (artifact == null) {
                 artifact = new Artifact();
                 artifact.groupId = groupId;
                 artifact.artifactId = artifactId;
                 artifact.repository = info;
+                artifact.lastUpdated = now;
 
                 artifact.persist();
+            } else {
+                artifact.lastUpdated = now;
             }
 
             ArtifactVersion versionEntity = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, version).firstResult();
-            final Instant now = Instant.now();
             if (versionEntity == null) {
                 versionEntity = new ArtifactVersion();
                 versionEntity.artifact = artifact;

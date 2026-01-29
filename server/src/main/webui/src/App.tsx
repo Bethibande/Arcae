@@ -7,12 +7,26 @@ import {ViewConfigProvider} from "@/lib/view-config.tsx";
 import {AuthProvider} from "@/lib/auth.tsx";
 import {SetupUserView} from "@/view/setup/SetupUser.tsx";
 import DashboardView from "@/view/dashboard/DashboardView.tsx";
+import RepositoryEditView from "@/view/dashboard/RepositoryEditView.tsx";
+import RepositoryBrowseView from "@/view/dashboard/RepositoryBrowseView.tsx";
 
 function App() {
     const primaryRoutes: RouteObject[] = [
         {
             index: true,
             Component: DashboardView
+        },
+        {
+            path: "/repositories/new",
+            Component: RepositoryEditView
+        },
+        {
+            path: "/repositories/:id/edit",
+            Component: RepositoryEditView
+        },
+        {
+            path: "/repositories/:id/browse",
+            Component: RepositoryBrowseView
         }
     ]
     const secondaryRoutes: RouteObject[] = [

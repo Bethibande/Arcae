@@ -1,14 +1,22 @@
 package com.bethibande.repository.jpa.artifact;
 
+import com.bethibande.process.annotation.EntityDTO;
+import com.bethibande.process.annotation.VirtualDTOField;
 import com.bethibande.repository.jpa.repository.Repository;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import io.quarkus.panache.common.Sort;
 import jakarta.persistence.*;
+import org.hibernate.search.engine.backend.types.Searchable;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
+import java.time.Instant;
+
 @Entity
 @Indexed
+@EntityDTO
+@EntityDTO(excludeProperties = "id")
 public class Artifact extends PanacheEntityBase {
 
     @Id
@@ -21,12 +29,24 @@ public class Artifact extends PanacheEntityBase {
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.NO)
     public Repository repository;
 
-    @FullTextField
-    @Column(unique = true, nullable = false, columnDefinition = "varchar(512)")
+    @FullTextField(analyzer = "artifact_path")
+    @Column(nullable = false, columnDefinition = "varchar(512)")
     public String groupId;
 
-    @FullTextField
-    @Column(unique = true, nullable = false, columnDefinition = "varchar(128)")
+    @FullTextField(analyzer = "artifact_path")
+    @Column(nullable = false, columnDefinition = "varchar(128)")
     public String artifactId;
+
+    @Column(nullable = false, columnDefinition = "timestamptz")
+    @GenericField(sortable = Sortable.YES, searchable = Searchable.YES)
+    public Instant lastUpdated;
+
+    @VirtualDTOField
+    public String latestVersion() {
+        return ArtifactVersion.<ArtifactVersion>find("artifact.id = ?1", Sort.descending("updated"), id)
+                .firstResultOptional()
+                .map(av -> av.version)
+                .orElse(null);
+    }
 
 }

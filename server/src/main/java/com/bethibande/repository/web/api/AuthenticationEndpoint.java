@@ -119,6 +119,8 @@ public class AuthenticationEndpoint {
     public UserDTOWithoutPassword me() {
         if (identity.isAnonymous()) throw new NotFoundException();
         final User user = User.find("name = ?1", identity.getPrincipal().getName()).firstResult();
+        if (user == null) throw new NotFoundException();
+
         return UserDTOWithoutPassword.from(user);
     }
 

@@ -4,8 +4,8 @@ plugins {
     `maven-publish`
 }
 
-group = "de.bethibande.finance"
-version = "1.0"
+group = "de.bethibande.repo"
+version = "1.0-snapshot"
 
 repositories {
     mavenCentral()
@@ -68,8 +68,8 @@ publishing {
 
     repositories {
         maven {
-            name = "Maven-Releases"
-            url = uri("http://localhost:8080/repositories/maven/releases")
+            name = "Maven-Snapshots"
+            url = uri("http://localhost:8080/repositories/maven/snapshots")
             isAllowInsecureProtocol = true
 
             credentials {

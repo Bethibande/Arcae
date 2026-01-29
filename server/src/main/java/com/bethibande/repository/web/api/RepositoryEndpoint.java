@@ -66,6 +66,23 @@ public class RepositoryEndpoint {
     @GET
     @PermitAll
     @Transactional
+    @Path("/overview/{id}")
+    public RepositoryOverviewDTO overview(@PathParam("id") final long id) {
+        final Repository repository = Repository.findById(id);
+        if (repository == null) {
+            throw new NotFoundException("Repository not found");
+        }
+
+        return new RepositoryOverviewDTO(
+                RepositoryDTOWithoutSettings.from(repository),
+                Artifact.count("repository.id = ?1", repository.id),
+                ArtifactVersion.findMaxUpdated(id)
+        );
+    }
+
+    @GET
+    @PermitAll
+    @Transactional
     @Path("/overview")
     public List<RepositoryOverviewDTO> overview() {
 

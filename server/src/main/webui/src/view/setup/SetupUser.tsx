@@ -31,7 +31,7 @@ function t(key: string, args?: Record<any, any>): string {
 export function SetupUserView() {
     const formSchema = z.object({
         name: z.string().min(3).max(64),
-        email: z.email().max(512),
+        email: z.string().email().max(512),
         password: z.string().min(8).max(256),
         passwordRepeat: z.string()
     }).superRefine(({password, passwordRepeat}, ctx) => {

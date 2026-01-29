@@ -6,9 +6,11 @@ import {useEffect, useState} from "react";
 import {RepositoryEndpointApi, type RepositoryOverviewDTO} from "@/generated";
 import {showError} from "@/lib/errors.ts";
 import {RepositoryCard} from "@/components/repository/RepositoryCard.tsx";
+import {useNavigate} from "react-router";
 
 export default function DashboardView() {
     const [repositories, setRepositories] = useState<RepositoryOverviewDTO[]>([])
+    const navigate = useNavigate();
     useEffect(() => {
         new RepositoryEndpointApi()
             .apiV1RepositoryOverviewGet()
@@ -82,6 +84,7 @@ export default function DashboardView() {
 
                 {/* Add New Repository */}
                 <Card
+                    onClick={() => navigate("/repositories/new")}
                     className="border-dashed border-2 bg-transparent ring-0 shadow-none flex flex-col items-center justify-center min-h-[200px] gap-4 group hover:border-primary/50 transition-all cursor-pointer">
                     <div className="p-3 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
                         <Plus className="size-6 text-muted-foreground group-hover:text-primary"/>

@@ -27,7 +27,7 @@ public class ArtifactVersion extends PanacheEntity {
     public Artifact artifact;
 
     @FullTextField
-    @Column(unique = true, nullable = false, columnDefinition = "varchar(128)")
+    @Column(nullable = false, columnDefinition = "varchar(128)")
     public String version;
 
     @GenericField

@@ -9,6 +9,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
+import java.util.List;
 import java.util.Set;
 
 @Path("/api/v1/setup")
@@ -24,7 +25,7 @@ public class SetupEndpoint {
         user.name = dto.name();
         user.email = dto.email();
         user.password = BcryptUtil.bcryptHash(dto.password());
-        user.roles = Set.of(UserRole.ADMIN, UserRole.DEFAULT);
+        user.roles = List.of(UserRole.ADMIN, UserRole.DEFAULT);
         user.persist();
     }
 

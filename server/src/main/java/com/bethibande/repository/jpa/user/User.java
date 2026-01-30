@@ -4,6 +4,7 @@ import com.bethibande.process.annotation.EntityDTO;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
 
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -24,6 +25,6 @@ public class User extends PanacheEntity {
     @Enumerated(EnumType.STRING)
     @ElementCollection(fetch = FetchType.EAGER)
     @Column(columnDefinition = "varchar(255)")
-    public Set<UserRole> roles;
+    public List<UserRole> roles;
 
 }

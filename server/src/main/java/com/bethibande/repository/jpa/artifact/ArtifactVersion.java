@@ -36,11 +36,11 @@ public class ArtifactVersion extends PanacheEntity {
     public String version;
 
     @GenericField
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant created;
 
     @GenericField
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant updated;
 
     @Column(columnDefinition = "jsonb")

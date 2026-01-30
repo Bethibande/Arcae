@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { FormField } from "@/components/form-field.tsx";
-import { FieldGroup } from "@/components/ui/field.tsx";
 import { S3ConfigForm } from "@/components/repository/S3ConfigForm.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
+import { Card, CardContent } from "@/components/ui/card.tsx";
 import type { Control, FieldPath, FieldValues } from "react-hook-form";
 
 export const s3Schema = z.object({
@@ -38,29 +38,37 @@ interface MavenConfigFormProps<TFieldValues extends FieldValues> {
 
 export function MavenConfigForm<TFieldValues extends FieldValues>({ control, prefix }: MavenConfigFormProps<TFieldValues>) {
     return (
-        <div className="space-y-6 pt-4 border-t">
-            <h2 className="text-lg font-semibold">Maven Configuration</h2>
-            <FieldGroup>
-                <FormField
-                    fieldName={`${prefix}.allowRedeployments` as FieldPath<TFieldValues>}
-                    label="Allow Redeployments"
-                    Input={({ value, onChange, id }) => (
-                        <div className="flex items-center space-x-2 h-9">
-                            <Switch
-                                id={id}
-                                checked={value}
-                                onCheckedChange={onChange}
-                            />
-                            <label htmlFor={"mavenConfig.allowRedeployments"} className="text-sm text-muted-foreground">
-                                Allow overwriting existing artifacts
-                            </label>
+        <>
+            <div id="behavior" className="space-y-6 pt-4">
+                <h2 className="text-xl font-bold tracking-tight">Behavioral Policies</h2>
+                <Card>
+                    <CardContent className="divide-y p-0">
+                        <div className="flex items-center justify-between p-6">
+                            <div className="space-y-0.5">
+                                <label className="text-base font-semibold">Allow Redeploy</label>
+                                <p className="text-sm text-muted-foreground">
+                                    Permit overwriting of existing artifacts in this repository. Dangerous for production.
+                                </p>
+                            </div>
+                            <div className="flex-none">
+                                <FormField
+                                    label={""}
+                                    fieldName={`${prefix}.allowRedeployments` as FieldPath<TFieldValues>}
+                                    Input={({ value, onChange }) => (
+                                        <Switch
+                                            checked={value}
+                                            onCheckedChange={onChange}
+                                        />
+                                    )}
+                                    control={control}
+                                />
+                            </div>
                         </div>
-                    )}
-                    control={control}
-                />
+                    </CardContent>
+                </Card>
+            </div>
 
-                <S3ConfigForm control={control} prefix={`${prefix}.s3Config`} />
-            </FieldGroup>
-        </div>
+            <S3ConfigForm control={control} prefix={`${prefix}.s3Config`} />
+        </>
     );
 }

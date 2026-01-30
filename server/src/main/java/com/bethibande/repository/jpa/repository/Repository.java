@@ -1,12 +1,15 @@
 package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.process.annotation.EntityDTO;
+import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Type;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
+
+import java.util.List;
 
 @Entity
 @EntityDTO
@@ -29,5 +32,8 @@ public class Repository extends PanacheEntityBase {
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     public String settings;
+
+    @OneToMany(mappedBy = "repository", cascade = CascadeType.ALL, orphanRemoval = true)
+    public List<PermissionScope> permissions;
 
 }

@@ -21,7 +21,7 @@ export const CONFIG_MAPPING: Record<PackageManager, PackageManagerConfig> = {
 export const dynamicFormSchema = z.object({
     name: z.string().min(3).max(64),
     packageManager: z.nativeEnum(PackageManager),
-    mavenConfig: mavenSchema.optional(),
+    mavenConfig: mavenSchema,
 });
 
 export type DynamicFormValues = z.infer<typeof dynamicFormSchema>;

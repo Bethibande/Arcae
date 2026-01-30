@@ -5,209 +5,165 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                                         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.33.xsd"
         objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
-
-    <changeSet id="1769519227119-1"
-               author="bethibande">
-        <createSequence incrementBy="50"
-                        sequenceName="ArtifactVersion_seq"
-                        startValue="1"/>
+    <changeSet id="1769795251243-1" author="bethibande">
+        <createSequence incrementBy="50" sequenceName="ArtifactVersion_seq" startValue="1"/>
     </changeSet>
-    <changeSet id="1769519227119-2"
-               author="bethibande">
-        <createSequence incrementBy="50"
-                        sequenceName="Artifact_seq"
-                        startValue="1"/>
+    <changeSet id="1769795251243-2" author="bethibande">
+        <createSequence incrementBy="50" sequenceName="Artifact_seq" startValue="1"/>
     </changeSet>
-    <changeSet id="1769519227119-3"
-               author="bethibande">
-        <createSequence incrementBy="50"
-                        sequenceName="Repository_seq"
-                        startValue="1"/>
+    <changeSet id="1769795251243-3" author="bethibande">
+        <createSequence incrementBy="50" sequenceName="PermissionScope_seq" startValue="1"/>
     </changeSet>
-    <changeSet id="1769519227119-4"
-               author="bethibande">
-        <createSequence incrementBy="50"
-                        sequenceName="Users_seq"
-                        startValue="1"/>
+    <changeSet id="1769795251243-4" author="bethibande">
+        <createSequence incrementBy="50" sequenceName="Repository_seq" startValue="1"/>
     </changeSet>
-    <changeSet id="1769519227119-5"
-               author="bethibande">
+    <changeSet id="1769795251243-5" author="bethibande">
+        <createSequence incrementBy="50" sequenceName="UserSelection_seq" startValue="1"/>
+    </changeSet>
+    <changeSet id="1769795251243-6" author="bethibande">
+        <createSequence incrementBy="50" sequenceName="Users_seq" startValue="1"/>
+    </changeSet>
+    <changeSet id="1769795251243-7" author="bethibande">
         <createTable tableName="Artifact">
-            <column name="id"
-                    type="BIGINT">
-                <constraints nullable="false"
-                             primaryKey="true"
-                             primaryKeyName="pk_artifact"/>
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_artifact"/>
             </column>
-            <column name="repository_id"
-                    type="BIGINT">
+            <column name="repository_id" type="BIGINT">
                 <constraints nullable="false"/>
             </column>
-            <column name="groupId"
-                    type="varchar(512)">
+            <column name="groupId" type="varchar(512)">
                 <constraints nullable="false"/>
             </column>
-            <column name="artifactId"
-                    type="varchar(128)">
+            <column name="artifactId" type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastUpdated" type="timestamptz">
                 <constraints nullable="false"/>
             </column>
         </createTable>
     </changeSet>
-    <changeSet id="1769519227119-6"
-               author="bethibande">
+    <changeSet id="1769795251243-8" author="bethibande">
         <createTable tableName="ArtifactVersion">
-            <column name="id"
-                    type="BIGINT">
-                <constraints nullable="false"
-                             primaryKey="true"
-                             primaryKeyName="pk_artifactversion"/>
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_artifactversion"/>
             </column>
-            <column name="artifact_id"
-                    type="BIGINT">
+            <column name="artifact_id" type="BIGINT">
                 <constraints nullable="false"/>
             </column>
-            <column name="version"
-                    type="varchar(128)">
+            <column name="version" type="varchar(128)">
                 <constraints nullable="false"/>
             </column>
-            <column name="created"
-                    type="TIMESTAMPTZ">
+            <column name="created" type="TIMESTAMPTZ">
                 <constraints nullable="false"/>
             </column>
-            <column name="updated"
-                    type="TIMESTAMPTZ">
+            <column name="updated" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="details" type="jsonb"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769795251243-9" author="bethibande">
+        <createTable tableName="PermissionScope">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_permissionscope"/>
+            </column>
+            <column name="repository_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="selection_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="level" type="SMALLINT">
                 <constraints nullable="false"/>
             </column>
         </createTable>
     </changeSet>
-    <changeSet id="1769519227119-7"
-               author="bethibande">
+    <changeSet id="1769795251243-10" author="bethibande">
         <createTable tableName="Repository">
-            <column name="id"
-                    type="BIGINT">
-                <constraints nullable="false"
-                             primaryKey="true"
-                             primaryKeyName="pk_repository"/>
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_repository"/>
             </column>
-            <column name="name"
-                    type="VARCHAR(64)">
+            <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false"/>
             </column>
-            <column name="packageManager"
-                    type="VARCHAR(255)">
+            <column name="packageManager" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="settings"
-                    type="jsonb"/>
+            <column name="settings" type="jsonb"/>
         </createTable>
     </changeSet>
-    <changeSet id="1769519227119-8"
-               author="bethibande">
+    <changeSet id="1769795251243-11" author="bethibande">
+        <createTable tableName="UserSelection">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_userselection"/>
+            </column>
+            <column name="type" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769795251243-12" author="bethibande">
         <createTable tableName="User_roles">
-            <column name="User_id"
-                    type="BIGINT">
+            <column name="User_id" type="BIGINT">
                 <constraints nullable="false"/>
             </column>
-            <column name="roles"
-                    type="varchar(255)"/>
+            <column name="roles" type="varchar(255)"/>
         </createTable>
     </changeSet>
-    <changeSet id="1769519227119-9"
-               author="bethibande">
+    <changeSet id="1769795251243-13" author="bethibande">
         <createTable tableName="Users">
-            <column name="id"
-                    type="BIGINT">
-                <constraints nullable="false"
-                             primaryKey="true"
-                             primaryKeyName="pk_users"/>
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_users"/>
             </column>
-            <column name="name"
-                    type="varchar(64)">
+            <column name="name" type="varchar(64)">
                 <constraints nullable="false"/>
             </column>
-            <column name="email"
-                    type="varchar(512)">
+            <column name="email" type="varchar(512)">
                 <constraints nullable="false"/>
             </column>
-            <column name="password"
-                    type="varchar(512)">
+            <column name="password" type="varchar(512)">
                 <constraints nullable="false"/>
             </column>
         </createTable>
     </changeSet>
-    <changeSet id="1769519227119-10"
-               author="bethibande">
-        <addUniqueConstraint columnNames="artifactId,groupId,repository_id"
-                             constraintName="uc_artifact_artifactid"
-                             tableName="Artifact"/>
+    <changeSet id="1769795251243-14" author="bethibande">
+        <addUniqueConstraint columnNames="name" constraintName="uc_repository_name" tableName="Repository"/>
     </changeSet>
-    <changeSet id="1769519227119-12"
-               author="bethibande">
-        <addUniqueConstraint columnNames="version,artifact_id"
-                             constraintName="uc_artifactversion_version"
-                             tableName="ArtifactVersion"/>
+    <changeSet id="1769795251243-15" author="bethibande">
+        <addUniqueConstraint columnNames="email" constraintName="uc_users_email" tableName="Users"/>
     </changeSet>
-    <changeSet id="1769519227119-13"
-               author="bethibande">
-        <addUniqueConstraint columnNames="name,packageManager"
-                             constraintName="uc_repository_name"
-                             tableName="Repository"/>
+    <changeSet id="1769795251243-16" author="bethibande">
+        <addUniqueConstraint columnNames="name" constraintName="uc_users_name" tableName="Users"/>
     </changeSet>
-    <changeSet id="1769519227119-14"
-               author="bethibande">
-        <addUniqueConstraint columnNames="email"
-                             constraintName="uc_users_email"
-                             tableName="Users"/>
-    </changeSet>
-    <changeSet id="1769519227119-15"
-               author="bethibande">
-        <addUniqueConstraint columnNames="name"
-                             constraintName="uc_users_name"
-                             tableName="Users"/>
-    </changeSet>
-    <changeSet id="1769519227119-16"
-               author="bethibande">
-        <addForeignKeyConstraint baseColumnNames="artifact_id"
-                                 baseTableName="ArtifactVersion"
-                                 constraintName="FK_ARTIFACTVERSION_ON_ARTIFACT"
-                                 referencedColumnNames="id"
+    <changeSet id="1769795251243-17" author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="artifact_id" baseTableName="ArtifactVersion"
+                                 constraintName="FK_ARTIFACTVERSION_ON_ARTIFACT" referencedColumnNames="id"
                                  referencedTableName="Artifact"/>
     </changeSet>
-    <changeSet id="1769519227119-17"
-               author="bethibande">
-        <addForeignKeyConstraint baseColumnNames="repository_id"
-                                 baseTableName="Artifact"
-                                 constraintName="FK_ARTIFACT_ON_REPOSITORY"
-                                 referencedColumnNames="id"
+    <changeSet id="1769795251243-18" author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="repository_id" baseTableName="Artifact"
+                                 constraintName="FK_ARTIFACT_ON_REPOSITORY" referencedColumnNames="id"
                                  referencedTableName="Repository"/>
     </changeSet>
-    <changeSet id="1769519227119-18"
-               author="bethibande">
-        <addForeignKeyConstraint baseColumnNames="User_id"
-                                 baseTableName="User_roles"
-                                 constraintName="fk_user_roles_on_user"
-                                 referencedColumnNames="id"
+    <changeSet id="1769795251243-19" author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="repository_id" baseTableName="PermissionScope"
+                                 constraintName="FK_PERMISSIONSCOPE_ON_REPOSITORY" referencedColumnNames="id"
+                                 referencedTableName="Repository"/>
+    </changeSet>
+    <changeSet id="1769795251243-20" author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="selection_id" baseTableName="PermissionScope"
+                                 constraintName="FK_PERMISSIONSCOPE_ON_SELECTION" referencedColumnNames="id"
+                                 referencedTableName="UserSelection"/>
+    </changeSet>
+    <changeSet id="1769795251243-21" author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="UserSelection"
+                                 constraintName="FK_USERSELECTION_ON_USER" referencedColumnNames="id"
                                  referencedTableName="Users"/>
     </changeSet>
-
-    <changeSet id="1769702457331-1"
-               author="bethibande">
-        <addColumn tableName="Artifact">
-            <column name="lastUpdated"
-                    type="timestamptz"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="1769702457331-2"
-               author="bethibande">
-        <addNotNullConstraint columnName="lastUpdated"
-                              tableName="Artifact"/>
-    </changeSet>
-
-    <changeSet id="1769766660271-1"
-               author="bethibande">
-        <addColumn tableName="ArtifactVersion">
-            <column name="details"
-                    type="jsonb"/>
-        </addColumn>
+    <changeSet id="1769795251243-22" author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="User_id" baseTableName="User_roles"
+                                 constraintName="fk_user_roles_on_user" referencedColumnNames="id"
+                                 referencedTableName="Users"/>
     </changeSet>
 </databaseChangeLog>

@@ -8,6 +8,7 @@ import {Toaster} from "@/components/ui/sonner.tsx";
 import {SetupUserTranslationsEN} from "@/view/setup/SetupUser.tsx";
 import {restoreTheme} from "@/lib/theme.ts";
 import {mainLayoutInit} from "@/view/layouts/MainLayout.tsx";
+import {settingsLayoutInit} from "@/view/layouts/SettingsLayout.tsx";
 
 i18next.init({
     fallbackLng: "en"
@@ -15,7 +16,9 @@ i18next.init({
 
 i18next.addResourceBundle("en", "views.login", LoginViewTranslationsEN)
 i18next.addResourceBundle("en", "views.onboarding.user", SetupUserTranslationsEN)
+
 mainLayoutInit()
+settingsLayoutInit()
 
 restoreTheme()
 

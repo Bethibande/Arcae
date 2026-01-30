@@ -1,16 +1,26 @@
-import {NavLink, Outlet} from "react-router";
+import {NavLink, Outlet, useNavigate} from "react-router";
 import {recordPath} from "@/lib/path-restore.ts";
 import i18next from "i18next";
 import {SidebarProvider} from "@/components/ui/sidebar.tsx";
-import {Box, Settings, User} from "lucide-react";
+import {Box, LogOut, Settings, User} from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
-import {Separator} from "@/components/ui/separator.tsx";
-import {ThemeButton} from "@/components/theme-button.tsx";
 import {useAuth} from "@/lib/auth.tsx";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu.tsx";
+import {ThemeButton} from "@/components/theme-button.tsx";
 
 export function mainLayoutInit() {
     i18next.addResourceBundle("en", "layout.main", {
-        "login": "Login"
+        "login": "Login",
+        "logout": "Logout",
+        "account": "Account",
+        "settings": "Settings"
     })
 }
 
@@ -21,42 +31,51 @@ function t(key: string) {
 export default function MainLayout() {
     recordPath()
 
-    const {user, pending} = useAuth()
+    const {user, pending, logout} = useAuth()
+    const navigate = useNavigate()
 
     return (
         <SidebarProvider>
             <div className="flex flex-col w-full h-full min-h-screen bg-background">
                 {/* Header */}
                 <header className="flex h-16 items-center justify-between border-b px-6 shrink-0">
-                    <div className="flex items-center gap-4">
+                    <NavLink to="/" className="flex items-center gap-4">
                         <div
                             className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                             <Box className="size-5"/>
                         </div>
                         <span className="text-lg font-bold tracking-tight">Repository</span>
-                    </div>
+                    </NavLink>
 
                     <div className="flex items-center gap-4">
                         {(!pending && user) && (
-                            <>
-                                <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
-                                        <Settings className="size-4"/>
-                                    </Button>
-                                </div>
-
-                                <Separator orientation="vertical" className="h-8"/>
-
-                                <div className="flex items-center gap-3 pl-1">
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-sm font-semibold leading-none">{user.name}</span>
-                                    </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
                                     <div
-                                        className="size-9 rounded-full bg-muted border flex items-center justify-center overflow-hidden">
-                                        <div className="size-full bg-orange-200"/>
+                                        className="flex items-center gap-3 pl-1 cursor-pointer hover:bg-accent p-1.5 rounded-lg transition-colors">
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-sm font-semibold leading-none">{user.name}</span>
+                                        </div>
+                                        <div
+                                            className="size-9 rounded-full bg-linear-to-br from-primary/20 to-primary/10 border flex items-center justify-center overflow-hidden">
+                                            <User className="size-5 text-primary"/>
+                                        </div>
                                     </div>
-                                </div>
-                            </>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuLabel>{t("account")}</DropdownMenuLabel>
+                                    <DropdownMenuSeparator/>
+                                    <DropdownMenuItem onClick={() => navigate("/settings/user")} className="cursor-pointer">
+                                        <Settings className="mr-2 h-4 w-4"/>
+                                        <span>{t("settings")}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator/>
+                                    <DropdownMenuItem onClick={() => logout()} variant="destructive" className="cursor-pointer">
+                                        <LogOut className="mr-2 h-4 w-4"/>
+                                        <span>{t("logout")}</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         )}
                         {(!pending && !user) && (
                             <NavLink to={"/login"}>
@@ -69,8 +88,7 @@ export default function MainLayout() {
                     </div>
                 </header>
 
-                {/* Main Content */}
-                <main className="flex-1 relative overflow-y-auto">
+                <main className="flex-1 relative overflow-hidden">
                     <Outlet/>
                     <ThemeButton/>
                 </main>

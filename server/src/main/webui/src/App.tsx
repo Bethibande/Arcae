@@ -9,6 +9,7 @@ import {SetupUserView} from "@/view/setup/SetupUser.tsx";
 import DashboardView from "@/view/dashboard/DashboardView.tsx";
 import RepositoryEditView from "@/view/dashboard/RepositoryEditView.tsx";
 import RepositoryBrowseView from "@/view/dashboard/RepositoryBrowseView.tsx";
+import ArtifactView from "@/view/dashboard/ArtifactView.tsx";
 
 function App() {
     const primaryRoutes: RouteObject[] = [
@@ -27,6 +28,10 @@ function App() {
         {
             path: "/repositories/:id/browse",
             Component: RepositoryBrowseView
+        },
+        {
+            path: "/artifacts/:id",
+            Component: ArtifactView
         }
     ]
     const secondaryRoutes: RouteObject[] = [

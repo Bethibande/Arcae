@@ -85,7 +85,8 @@ export default function RepositoryBrowseView() {
             {/* Breadcrumbs & Title */}
             <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="cursor-pointer hover:text-foreground" onClick={() => navigate("/")}>Repositories</span>
+                    <span className="cursor-pointer hover:text-foreground"
+                          onClick={() => navigate("/")}>Repositories</span>
                     <ChevronRight className="size-4"/>
                     <span className="text-foreground">{repository?.repository.name || "Loading..."}</span>
                     <ChevronRight className="size-4"/>
@@ -94,7 +95,7 @@ export default function RepositoryBrowseView() {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <Button variant="outline" size="icon" onClick={() => navigate("/")}>
-                            <ArrowLeft className="size-4" />
+                            <ArrowLeft className="size-4"/>
                         </Button>
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight">
@@ -108,7 +109,7 @@ export default function RepositoryBrowseView() {
 
                     <div className="flex items-center gap-3">
                         <div className="relative w-full md:w-64">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"/>
                             <Input
                                 type="search"
                                 placeholder="Search artifacts..."
@@ -125,8 +126,8 @@ export default function RepositoryBrowseView() {
                         <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg border">
                             <Select value={sort} onValueChange={handleSort}>
                                 <SelectTrigger className="border-none bg-transparent shadow-none h-8 w-[140px]">
-                                    <SortAsc className="size-4 mr-2 text-muted-foreground" />
-                                    <SelectValue placeholder="Sort by" />
+                                    <SortAsc className="size-4 mr-2 text-muted-foreground"/>
+                                    <SelectValue placeholder="Sort by"/>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="BEST_MATCH">Best Match</SelectItem>
@@ -144,7 +145,7 @@ export default function RepositoryBrowseView() {
                     <div className="grid grid-cols-1 gap-4">
                         {[1, 2, 3].map(i => (
                             <Card key={i} className="animate-pulse">
-                                <div className="h-24 bg-muted/50 rounded-lg" />
+                                <div className="h-24 bg-muted/50 rounded-lg"/>
                             </Card>
                         ))}
                     </div>
@@ -156,34 +157,39 @@ export default function RepositoryBrowseView() {
 
                         <div className="grid grid-cols-1 gap-4">
                             {results?.data?.map((artifact: ArtifactDTO) => (
-                                <Card key={artifact.id} className="group hover:ring-primary/50 transition-all cursor-pointer">
+                                <Card key={artifact.id}
+                                      className="group hover:ring-primary/50 transition-all cursor-pointer"
+                                      onClick={() => navigate(`/artifacts/${artifact.id}`)}>
                                     <CardContent className="p-4 flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                                <Package className="size-5" />
+                                                <Package className="size-5"/>
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-mono text-sm text-muted-foreground">{artifact.groupId}</span>
+                                                    <span
+                                                        className="font-mono text-sm text-muted-foreground">{artifact.groupId}</span>
                                                     <span className="text-muted-foreground">/</span>
                                                     <span className="font-bold">{artifact.artifactId}</span>
                                                 </div>
-                                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                                <div
+                                                    className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                                     {artifact.latestVersion && (
-                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                                                            <Tag className="size-3" />
+                                                        <div
+                                                            className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                                            <Tag className="size-3"/>
                                                             <span>{artifact.latestVersion}</span>
                                                         </div>
                                                     )}
                                                     <div className="flex items-center gap-1">
-                                                        <Clock className="size-3" />
+                                                        <Clock className="size-3"/>
                                                         <span>{artifact.lastUpdated ? `Updated ${new Date(artifact.lastUpdated).toLocaleDateString()}` : "Never Updated"}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon">
-                                            <ExternalLink className="size-4" />
+                                            <ExternalLink className="size-4"/>
                                         </Button>
                                     </CardContent>
                                 </Card>

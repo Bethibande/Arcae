@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.bethibande.repo"
-version = "1.0-snapshot"
+version = "1.2-snapshot"
 
 repositories {
     mavenCentral()

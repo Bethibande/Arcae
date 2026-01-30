@@ -1,10 +1,13 @@
 package com.bethibande.repository.jpa.artifact;
 
+import com.bethibande.process.annotation.EntityDTO;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import io.quarkus.panache.common.Sort;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
+import org.hibernate.annotations.Type;
 import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
@@ -12,6 +15,8 @@ import java.time.Instant;
 
 @Entity
 @Indexed
+@EntityDTO(excludeProperties = "artifact", name = "ArtifactVersionDTO")
+@EntityDTO(excludeProperties = {"artifact", "details"}, name = "ArtifactVersionDTOWithoutDetails")
 public class ArtifactVersion extends PanacheEntity {
 
     public static Instant findMaxUpdated(final long repositoryId) {
@@ -37,5 +42,9 @@ public class ArtifactVersion extends PanacheEntity {
     @GenericField
     @Column(nullable = false)
     public Instant updated;
+
+    @Column(columnDefinition = "jsonb")
+    @Type(JsonBinaryType.class)
+    public ArtifactDetails details;
 
 }

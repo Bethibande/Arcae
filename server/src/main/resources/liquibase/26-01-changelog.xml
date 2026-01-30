@@ -202,4 +202,12 @@
         <addNotNullConstraint columnName="lastUpdated"
                               tableName="Artifact"/>
     </changeSet>
+
+    <changeSet id="1769766660271-1"
+               author="bethibande">
+        <addColumn tableName="ArtifactVersion">
+            <column name="details"
+                    type="jsonb"/>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

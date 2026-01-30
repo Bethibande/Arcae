@@ -1,15 +1,12 @@
 package com.bethibande.repository.web.api;
 
-import com.bethibande.repository.jpa.artifact.Artifact;
-import com.bethibande.repository.jpa.artifact.ArtifactDTO;
+import com.bethibande.repository.jpa.artifact.*;
+import io.quarkus.panache.common.Sort;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.ws.rs.BeanParam;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.*;
 import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
 import org.hibernate.search.engine.search.predicate.dsl.PredicateFinalStep;
 import org.hibernate.search.engine.search.query.SearchResult;
@@ -71,6 +68,39 @@ public class ArtifactEndpoint {
                         .map(ArtifactDTO::from)
                         .toList(),
                 query.page(),
+                totalPages,
+                (int) total
+        );
+    }
+
+    @GET
+    @Transactional
+    @Path("/{id}")
+    public ArtifactDTO getArtifact(final @PathParam("id") long id) {
+        return ArtifactDTO.from(Artifact.findById(id));
+    }
+
+    @GET
+    @Transactional
+    @Path("/{id}/versions")
+    public PagedResponse<ArtifactVersionDTO> getArtifactVersions(final @PathParam("id") long id,
+                                                        final @QueryParam("p") @Min(0) int page,
+                                                        final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
+        final Artifact artifact = Artifact.<Artifact>findByIdOptional(id)
+                .orElseThrow(() -> new NotFoundException("Artifact not found"));
+
+        final var query = ArtifactVersion.<ArtifactVersion>find("artifact.id = ?1", Sort.descending("updated"), artifact.id)
+                .page(page, pageSize);
+
+        final List<ArtifactVersion> versions = query.list();
+        final long total = query.count();
+        final int totalPages = (int) Math.ceil(total / (double) pageSize);
+
+        return new PagedResponse<>(
+                versions.stream()
+                        .map(ArtifactVersionDTO::from)
+                        .toList(),
+                page,
                 totalPages,
                 (int) total
         );

@@ -1,6 +1,7 @@
 package com.bethibande.repository.repository.maven;
 
 import com.bethibande.repository.jpa.artifact.Artifact;
+import com.bethibande.repository.jpa.artifact.ArtifactDetails;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.ManagedRepository;
@@ -17,6 +18,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MavenRepository implements ManagedRepository {
 
@@ -85,6 +88,34 @@ public class MavenRepository implements ManagedRepository {
         }
     }
 
+    public ArtifactDetails getDetails(final JsonNode node) {
+        final JsonNode urlNode = node.get("url");
+        final String url = urlNode != null ? urlNode.asText() : null;
+
+        final JsonNode descriptionNode = node.get("description");
+        final String description = descriptionNode != null ? descriptionNode.asText() : null;
+
+        final List<ArtifactDetails.Author> authors = new ArrayList<>();
+        if (node.has("developers")) {
+            node.get("developers").elements().forEachRemaining(dev -> {
+                final JsonNode name = dev.get("name");
+                final JsonNode email = dev.get("email");
+                authors.add(new ArtifactDetails.Author(name != null ? name.asText() : null, email != null ? email.asText() : null));
+            });
+        }
+        final List<ArtifactDetails.License> licenses = new ArrayList<>();
+        if (node.has("licenses")) {
+            node.get("licenses").elements().forEachRemaining(license -> {
+                final JsonNode name = license.get("name");
+                final JsonNode licenseUrl = license.get("url");
+
+                licenses.add(new ArtifactDetails.License(name != null ? name.asText() : null, licenseUrl != null ? licenseUrl.asText() : null));
+            });
+        }
+
+        return new ArtifactDetails(description, url, authors, licenses);
+    }
+
     /**
      * Indexes a POM (Project Object Model) by extracting artifact and version information
      * from the provided XML byte array, and updating or creating corresponding entries
@@ -124,9 +155,12 @@ public class MavenRepository implements ManagedRepository {
                 versionEntity.version = version;
                 versionEntity.created = now;
                 versionEntity.updated = now;
+                versionEntity.details = getDetails(node);
+
                 versionEntity.persist();
             } else {
                 versionEntity.updated = now;
+                versionEntity.details = getDetails(node);
             }
         } catch (final IOException e) {
             throw new RuntimeException(e);

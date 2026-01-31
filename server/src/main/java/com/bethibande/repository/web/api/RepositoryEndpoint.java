@@ -20,6 +20,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.Path;
+import org.apache.http.HttpStatus;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -145,13 +146,11 @@ public class RepositoryEndpoint {
     @DELETE
     @Transactional
     @Path("/{id}")
-    public CRUDResponse<Void> delete(@PathParam("id") final Long id) {
-        if (Artifact.count("repository.id = ?", id) > 0)
-            return CRUDResponse.failure("Cannot delete repository with artifacts", "repository.delete.artifacts");
+    public void delete(@PathParam("id") final Long id) {
+        if (Artifact.count("repository.id = ?1", id) > 0)
+            throw new ClientErrorException("Cannot delete repository with artifacts", HttpStatus.SC_CONFLICT);
 
-        return Repository.deleteById(id)
-                ? CRUDResponse.success(null)
-                : CRUDResponse.failure("Unknown repository", "repository.delete.unknown");
+        Repository.deleteById(id);
     }
 
 }

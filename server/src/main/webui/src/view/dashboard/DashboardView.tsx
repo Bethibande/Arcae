@@ -11,11 +11,16 @@ import {useNavigate} from "react-router";
 export default function DashboardView() {
     const [repositories, setRepositories] = useState<RepositoryOverviewDTO[]>([])
     const navigate = useNavigate();
-    useEffect(() => {
+
+    const fetchRepositories = () => {
         new RepositoryEndpointApi()
             .apiV1RepositoryOverviewGet()
             .then(setRepositories)
             .catch(showError)
+    };
+
+    useEffect(() => {
+        fetchRepositories();
     }, [])
 
     return (
@@ -79,7 +84,7 @@ export default function DashboardView() {
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {repositories.map((repo) => (
-                    <RepositoryCard key={repo.repository.name} repository={repo}/>
+                    <RepositoryCard key={repo.repository.name} repository={repo} onDelete={fetchRepositories}/>
                 ))}
 
                 {/* Add New Repository */}

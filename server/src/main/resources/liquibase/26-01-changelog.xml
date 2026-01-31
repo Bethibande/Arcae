@@ -120,13 +120,13 @@
     </changeSet>
 
     <changeSet id="1769855282720-1"
-               author="maxbb">
+               author="bethibande">
         <createSequence incrementBy="50"
                         sequenceName="PermissionScope_seq"
                         startValue="1"/>
     </changeSet>
     <changeSet id="1769855282720-2"
-               author="maxbb">
+               author="bethibande">
         <createTable tableName="PermissionScope">
             <column name="id"
                     type="BIGINT">
@@ -151,7 +151,7 @@
         </createTable>
     </changeSet>
     <changeSet id="1769855282720-3"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="repository_id"
                                  baseTableName="PermissionScope"
                                  constraintName="FK_PERMISSIONSCOPE_ON_REPOSITORY"
@@ -159,11 +159,75 @@
                                  referencedTableName="Repository"/>
     </changeSet>
     <changeSet id="1769855282720-4"
-               author="maxbb">
+               author="bethibande">
         <addForeignKeyConstraint baseColumnNames="user_id"
                                  baseTableName="PermissionScope"
                                  constraintName="FK_PERMISSIONSCOPE_ON_USER"
                                  referencedColumnNames="id"
                                  referencedTableName="Users"/>
+    </changeSet>
+
+    <changeSet id="1769870955718-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="AccessToken_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1769870955718-2"
+               author="bethibande">
+        <createTable tableName="AccessToken">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_accesstoken"/>
+            </column>
+            <column name="owner_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="token"
+                    type="varchar(256)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiresAfter"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769870955718-3"
+               author="bethibande">
+        <addUniqueConstraint columnNames="token"
+                             constraintName="uc_accesstoken_token"
+                             tableName="AccessToken"/>
+    </changeSet>
+    <changeSet id="1769870955718-4"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="owner_id"
+                                 baseTableName="AccessToken"
+                                 constraintName="FK_ACCESSTOKEN_ON_OWNER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+
+    <changeSet id="1769871042285-1"
+               author="bethibande">
+        <addColumn tableName="AccessToken">
+            <column name="name"
+                    type="varchar(64)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1769871042285-2"
+               author="bethibande">
+        <addNotNullConstraint columnName="name"
+                              tableName="AccessToken"/>
+    </changeSet>
+
+    <changeSet id="1769872646659-1"
+               author="maxbb">
+        <dropNotNullConstraint columnDataType="timestamptz"
+                               columnName="expiresAfter"
+                               tableName="AccessToken"/>
     </changeSet>
 </databaseChangeLog>

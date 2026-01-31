@@ -85,7 +85,7 @@ export function RepositoryCard({ repository: overview }: RepositoryCardProps) {
                             className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded text-white", packageBGPrimary[repo.packageManager] || "bg-muted")}>
                             {repo.packageManager}
                         </span>
-                        <span className="text-xs text-muted-foreground">• {overview.artifactsCount} Artifacts</span>
+                        <span className="text-xs text-muted-foreground">• {overview.artifactsCount} {overview.artifactsCount === 1 ? 'Artifact' : 'Artifacts'}</span>
                     </div>
                 </div>
 

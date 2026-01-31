@@ -2,10 +2,10 @@ package com.bethibande.repository.web.api;
 
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
+import com.bethibande.repository.jpa.repository.PublicRepositoryDTO;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.repository.RepositoryDTO;
 import com.bethibande.repository.jpa.repository.RepositoryDTOWithoutId;
-import com.bethibande.repository.jpa.repository.RepositoryDTOWithoutSettings;
 import com.bethibande.repository.web.CRUDResponse;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
@@ -57,7 +57,7 @@ public class RepositoryEndpoint {
     }
 
     public record RepositoryOverviewDTO(
-            @NotNull RepositoryDTOWithoutSettings repository,
+            @NotNull PublicRepositoryDTO repository,
             long artifactsCount,
             Instant lastUpdated
     ) {
@@ -74,7 +74,7 @@ public class RepositoryEndpoint {
         }
 
         return new RepositoryOverviewDTO(
-                RepositoryDTOWithoutSettings.from(repository),
+                PublicRepositoryDTO.from(repository),
                 Artifact.count("repository.id = ?1", repository.id),
                 ArtifactVersion.findMaxUpdated(id)
         );
@@ -86,9 +86,9 @@ public class RepositoryEndpoint {
     @Path("/overview")
     public List<RepositoryOverviewDTO> overview() {
 
-        final List<RepositoryDTOWithoutSettings> repositories = Repository.<Repository>listAll()
+        final List<PublicRepositoryDTO> repositories = Repository.<Repository>listAll()
                 .stream()
-                .map(RepositoryDTOWithoutSettings::from)
+                .map(PublicRepositoryDTO::from)
                 .toList();
 
         return repositories.stream()

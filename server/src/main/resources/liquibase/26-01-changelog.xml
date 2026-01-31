@@ -11,14 +11,8 @@
     <changeSet id="1769795251243-2" author="bethibande">
         <createSequence incrementBy="50" sequenceName="Artifact_seq" startValue="1"/>
     </changeSet>
-    <changeSet id="1769795251243-3" author="bethibande">
-        <createSequence incrementBy="50" sequenceName="PermissionScope_seq" startValue="1"/>
-    </changeSet>
     <changeSet id="1769795251243-4" author="bethibande">
         <createSequence incrementBy="50" sequenceName="Repository_seq" startValue="1"/>
-    </changeSet>
-    <changeSet id="1769795251243-5" author="bethibande">
-        <createSequence incrementBy="50" sequenceName="UserSelection_seq" startValue="1"/>
     </changeSet>
     <changeSet id="1769795251243-6" author="bethibande">
         <createSequence incrementBy="50" sequenceName="Users_seq" startValue="1"/>
@@ -62,22 +56,6 @@
             <column name="details" type="jsonb"/>
         </createTable>
     </changeSet>
-    <changeSet id="1769795251243-9" author="bethibande">
-        <createTable tableName="PermissionScope">
-            <column name="id" type="BIGINT">
-                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_permissionscope"/>
-            </column>
-            <column name="repository_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="selection_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="level" type="SMALLINT">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-    </changeSet>
     <changeSet id="1769795251243-10" author="bethibande">
         <createTable tableName="Repository">
             <column name="id" type="BIGINT">
@@ -90,17 +68,6 @@
                 <constraints nullable="false"/>
             </column>
             <column name="settings" type="jsonb"/>
-        </createTable>
-    </changeSet>
-    <changeSet id="1769795251243-11" author="bethibande">
-        <createTable tableName="UserSelection">
-            <column name="id" type="BIGINT">
-                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_userselection"/>
-            </column>
-            <column name="type" type="SMALLINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="user_id" type="BIGINT"/>
         </createTable>
     </changeSet>
     <changeSet id="1769795251243-12" author="bethibande">
@@ -146,24 +113,57 @@
                                  constraintName="FK_ARTIFACT_ON_REPOSITORY" referencedColumnNames="id"
                                  referencedTableName="Repository"/>
     </changeSet>
-    <changeSet id="1769795251243-19" author="bethibande">
-        <addForeignKeyConstraint baseColumnNames="repository_id" baseTableName="PermissionScope"
-                                 constraintName="FK_PERMISSIONSCOPE_ON_REPOSITORY" referencedColumnNames="id"
-                                 referencedTableName="Repository"/>
-    </changeSet>
-    <changeSet id="1769795251243-20" author="bethibande">
-        <addForeignKeyConstraint baseColumnNames="selection_id" baseTableName="PermissionScope"
-                                 constraintName="FK_PERMISSIONSCOPE_ON_SELECTION" referencedColumnNames="id"
-                                 referencedTableName="UserSelection"/>
-    </changeSet>
-    <changeSet id="1769795251243-21" author="bethibande">
-        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="UserSelection"
-                                 constraintName="FK_USERSELECTION_ON_USER" referencedColumnNames="id"
-                                 referencedTableName="Users"/>
-    </changeSet>
     <changeSet id="1769795251243-22" author="bethibande">
         <addForeignKeyConstraint baseColumnNames="User_id" baseTableName="User_roles"
                                  constraintName="fk_user_roles_on_user" referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+
+    <changeSet id="1769855282720-1"
+               author="maxbb">
+        <createSequence incrementBy="50"
+                        sequenceName="PermissionScope_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1769855282720-2"
+               author="maxbb">
+        <createTable tableName="PermissionScope">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_permissionscope"/>
+            </column>
+            <column name="repository_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type"
+                    type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id"
+                    type="BIGINT"/>
+            <column name="level"
+                    type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769855282720-3"
+               author="maxbb">
+        <addForeignKeyConstraint baseColumnNames="repository_id"
+                                 baseTableName="PermissionScope"
+                                 constraintName="FK_PERMISSIONSCOPE_ON_REPOSITORY"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Repository"/>
+    </changeSet>
+    <changeSet id="1769855282720-4"
+               author="maxbb">
+        <addForeignKeyConstraint baseColumnNames="user_id"
+                                 baseTableName="PermissionScope"
+                                 constraintName="FK_PERMISSIONSCOPE_ON_USER"
+                                 referencedColumnNames="id"
                                  referencedTableName="Users"/>
     </changeSet>
 </databaseChangeLog>

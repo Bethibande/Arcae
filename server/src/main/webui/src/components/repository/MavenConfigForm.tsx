@@ -3,10 +3,10 @@ import { FormField } from "@/components/form-field.tsx";
 import { S3ConfigForm } from "@/components/repository/S3ConfigForm.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Card, CardContent } from "@/components/ui/card.tsx";
-import type { Control, FieldPath, FieldValues } from "react-hook-form";
+import {type Control, type FieldPath, type FieldValues, useFormContext} from "react-hook-form";
 
 export const s3Schema = z.object({
-    url: z.string().url().or(z.string().length(0)).or(z.string().startsWith("http://")),
+    url: z.string().url().or(z.string().startsWith("http://")),
     region: z.string().min(1),
     bucket: z.string().min(1),
     accessKey: z.string().min(1),
@@ -37,6 +37,7 @@ interface MavenConfigFormProps<TFieldValues extends FieldValues> {
 }
 
 export function MavenConfigForm<TFieldValues extends FieldValues>({ control, prefix }: MavenConfigFormProps<TFieldValues>) {
+    const { formState } = useFormContext();
     return (
         <>
             <div id="behavior" className="space-y-6 pt-4">

@@ -2,7 +2,7 @@ import { FormField } from "@/components/form-field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Database } from "lucide-react";
-import type {Control, FieldPath, FieldValues} from "react-hook-form";
+import {type Control, type FieldPath, type FieldValues, useFormContext} from "react-hook-form";
 
 interface S3ConfigFormProps<TFieldValues extends FieldValues> {
     control: Control<TFieldValues>;
@@ -10,6 +10,7 @@ interface S3ConfigFormProps<TFieldValues extends FieldValues> {
 }
 
 export function S3ConfigForm<TFieldValues extends FieldValues>({ control, prefix }: S3ConfigFormProps<TFieldValues>) {
+    const { formState } = useFormContext();
     return (
         <div id="storage" className="space-y-6 pt-4">
             <h2 className="text-xl font-bold tracking-tight">Storage (S3)</h2>

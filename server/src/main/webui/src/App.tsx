@@ -4,7 +4,6 @@ import ErrorLayout from "@/view/layouts/ErrorLayout.tsx";
 import MainLayout from "@/view/layouts/MainLayout.tsx";
 import SettingsLayout from "@/view/layouts/SettingsLayout.tsx";
 import LoginView from "@/view/LoginView.tsx";
-import {ViewConfigProvider} from "@/lib/view-config.tsx";
 import {AuthProvider} from "@/lib/auth.tsx";
 import {SetupUserView} from "@/view/setup/SetupUser.tsx";
 import DashboardView from "@/view/dashboard/DashboardView.tsx";
@@ -80,12 +79,10 @@ function App() {
 
     return (
         <div className={"bg-muted w-full h-full flex"}>
-            <ViewConfigProvider>
                 <AuthProvider>
                     <RouterProvider router={router}>
                     </RouterProvider>
                 </AuthProvider>
-            </ViewConfigProvider>
         </div>
     )
 }

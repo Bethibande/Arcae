@@ -88,9 +88,11 @@ export default function MainLayout() {
                     </div>
                 </header>
 
-                <main className="flex-1 relative overflow-hidden">
-                    <Outlet/>
-                    <ThemeButton/>
+                <main className="flex-1 relative min-h-0 overflow-hidden">
+                    <div className={"overflow-y-auto h-full max-h-full"}>
+                        <Outlet/>
+                        <ThemeButton/>
+                    </div>
                 </main>
             </div>
         </SidebarProvider>

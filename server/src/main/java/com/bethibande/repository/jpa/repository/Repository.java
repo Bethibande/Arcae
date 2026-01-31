@@ -12,9 +12,9 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericFie
 import java.util.List;
 
 @Entity
-@EntityDTO
-@EntityDTO(excludeProperties = "id")
-@EntityDTO(excludeProperties = "settings")
+@EntityDTO(excludeProperties = "permissions", name = "RepositoryDTO")
+@EntityDTO(excludeProperties = {"id", "permissions"}, name = "RepositoryDTOWithoutId")
+@EntityDTO(excludeProperties = {"settings", "permissions"}, name = "PublicRepositoryDTO")
 public class Repository extends PanacheEntityBase {
 
     @Id

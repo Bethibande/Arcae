@@ -1,18 +1,24 @@
 import {useNavigate, useParams} from "react-router";
 import {useEffect, useRef, useState} from "react";
-import {PackageManager, RepositoryEndpointApi} from "@/generated";
+import {PackageManager, RepositoryEndpointApi, RepositoryPermissionEndpointApi} from "@/generated";
 import {showError} from "@/lib/errors.ts";
 import {ChevronRight, Cloud, Lock, RefreshCw, Save, Settings, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
 import {Card, CardContent} from "@/components/ui/card.tsx";
 import {Input} from "@/components/ui/input.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
-import {useForm} from "react-hook-form";
+import {FormProvider, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {FormField} from "@/components/form-field.tsx";
 import {handleSubmit} from "@/lib/forms.ts";
-import {CONFIG_MAPPING, dynamicFormSchema, type DynamicFormValues} from "@/lib/repository-configs.ts";
+import {
+    CONFIG_MAPPING,
+    dynamicFormSchema,
+    type DynamicFormValues,
+    type PermissionValues
+} from "@/lib/repository-configs.ts";
 import {cn} from "@/lib/utils.ts";
+import {PermissionsForm} from "@/components/repository/PermissionsForm.tsx";
 
 export default function RepositoryEditView() {
     const {id} = useParams();
@@ -28,28 +34,44 @@ export default function RepositoryEditView() {
         defaultValues: {
             name: "",
             packageManager: PackageManager.Maven3,
-            mavenConfig: CONFIG_MAPPING[PackageManager.Maven3].defaultValues
+            mavenConfig: CONFIG_MAPPING[PackageManager.Maven3].defaultValues,
+            permissions: []
         }
     });
 
     const selectedPackageManager = form.watch("packageManager");
     const pmConfig = CONFIG_MAPPING[selectedPackageManager];
 
+    const [initialPermissions, setInitialPermissions] = useState<PermissionValues[]>([]);
+
     useEffect(() => {
         if (isEdit) {
-            new RepositoryEndpointApi()
-                .apiV1RepositoryGet()
-                .then(repos => {
+            Promise.all([
+                new RepositoryEndpointApi().apiV1RepositoryGet(),
+                new RepositoryPermissionEndpointApi().apiV1RepositoryIdPermissionsGet({id: parseInt(id!)})
+            ])
+                .then(([repos, permissions]) => {
                     const repo = repos.find(r => r.id === parseInt(id!));
                     if (repo) {
                         form.setValue("name", repo.name);
                         form.setValue("packageManager", repo.packageManager);
+
+                        const mappedPermissions: PermissionValues[] = permissions.map((p) => ({
+                            id: p.id,
+                            level: p.level,
+                            type: p.type,
+                            userId: p.userId ?? undefined,
+                            userName: p.userName ? `User ${p.userName}` : undefined
+                        }));
+                        form.setValue("permissions", mappedPermissions);
+                        setInitialPermissions([...mappedPermissions]);
+
                         if (repo.settings) {
                             try {
                                 const settings = JSON.parse(repo.settings);
                                 const currentPmConfig = CONFIG_MAPPING[repo.packageManager];
                                 if (currentPmConfig) {
-                                    form.setValue(currentPmConfig.configKey as any, settings);
+                                    form.setValue(currentPmConfig.configKey as keyof DynamicFormValues, settings);
                                 }
                             } catch (e) {
                                 console.error("Failed to parse settings", e);
@@ -67,31 +89,73 @@ export default function RepositoryEditView() {
 
     const onSubmit = async (data: DynamicFormValues) => {
         const api = new RepositoryEndpointApi();
+        const permissionApi = new RepositoryPermissionEndpointApi();
 
         const currentPmConfig = CONFIG_MAPPING[data.packageManager];
-        const config = currentPmConfig ? (data as any)[currentPmConfig.configKey] : undefined;
+        const config = currentPmConfig ? data[currentPmConfig.configKey as keyof DynamicFormValues] : undefined;
 
         const settings = config ? JSON.stringify(config) : undefined;
 
         try {
+            let repoId: number;
             if (isEdit) {
+                repoId = parseInt(id!)
                 await api.apiV1RepositoryPut({
                     repositoryDTO: {
-                        id: parseInt(id!),
+                        id: repoId,
                         name: data.name,
                         packageManager: data.packageManager,
                         settings
                     }
                 });
             } else {
-                await api.apiV1RepositoryPost({
+                const repo = await api.apiV1RepositoryPost({
                     repositoryDTOWithoutId: {
                         name: data.name,
                         packageManager: data.packageManager,
                         settings
                     }
                 });
+                repoId = repo.id!;
             }
+
+            // Handle permissions
+            const currentPermissions = data.permissions || [];
+            const toDelete = initialPermissions.filter(ip => ip.id !== undefined && !currentPermissions.find(cp => cp.id === ip.id));
+            const toUpdate = currentPermissions.filter(cp => cp.id !== undefined);
+            const toCreate = currentPermissions.filter(cp => cp.id === undefined);
+
+            const promises: Promise<any>[] = [];
+
+            for (const p of toDelete) {
+                promises.push(permissionApi.apiV1RepositoryPermissionIdDelete({id: p.id!}));
+            }
+
+            for (const p of toUpdate) {
+                promises.push(permissionApi.apiV1RepositoryPermissionPut({
+                    permissionScopeDTO: {
+                        id: p.id!,
+                        repositoryId: repoId,
+                        level: p.level,
+                        type: p.type,
+                        userId: p.userId ?? undefined
+                    }
+                }));
+            }
+
+            for (const p of toCreate) {
+                promises.push(permissionApi.apiV1RepositoryPermissionPost({
+                    permissionScopeDTOWithoutId: {
+                        repositoryId: repoId,
+                        level: p.level,
+                        type: p.type,
+                        userId: p.userId ?? undefined
+                    }
+                }));
+            }
+
+            await Promise.all(promises);
+
             navigate("/");
         } catch (err) {
             showError(err);
@@ -150,7 +214,7 @@ export default function RepositoryEditView() {
     };
 
     return (
-        <div className="flex flex-col h-full w-full">
+        <div className="flex flex-col h-full w-full overflow-hidden">
             <div className="flex-none border-b bg-background p-4 flex justify-between items-center">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="cursor-pointer hover:text-foreground"
@@ -162,111 +226,111 @@ export default function RepositoryEditView() {
                     <Button type="button" variant="ghost" onClick={() => navigate("/")}>
                         Cancel
                     </Button>
-                    <Button onClick={form.handleSubmit(onSubmit)}>
+                    <Button onClick={form.handleSubmit(onSubmit, (errors) => {
+                        console.log("Form errors", errors);
+                        showError(new Error("Form is invalid. Please check the fields."));
+                    })}>
                         <Save className="size-4 mr-2"/>
                         {isEdit ? "Save Changes" : "Create Repository"}
                     </Button>
                 </div>
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
-                {/* Sidebar */}
-                <div className="w-64 border-r bg-muted/10 p-4 space-y-4">
-                    <div className="px-2 py-1">
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repository
-                            Settings</h3>
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+                <FormProvider {...form}>
+                    {/* Sidebar */}
+                    <div className="w-64 border-r bg-muted/10 p-4 space-y-4 shrink-0 overflow-y-auto">
+                        <div className="px-2 py-1">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repository
+                                Settings</h3>
+                        </div>
+                        <nav className="space-y-1">
+                            {sections.map((section) => (
+                                <button
+                                    key={section.id}
+                                    onClick={() => scrollToSection(section.id)}
+                                    className={cn(
+                                        "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                                        activeSection === section.id
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    )}
+                                >
+                                    <section.icon className="size-4"/>
+                                    {section.label}
+                                </button>
+                            ))}
+                        </nav>
                     </div>
-                    <nav className="space-y-1">
-                        {sections.map((section) => (
-                            <button
-                                key={section.id}
-                                onClick={() => scrollToSection(section.id)}
-                                className={cn(
-                                    "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                                    activeSection === section.id
-                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                )}
-                            >
-                                <section.icon className="size-4"/>
-                                {section.label}
-                            </button>
-                        ))}
-                    </nav>
-                </div>
 
-                {/* Content */}
-                <div id="repository-edit-content" className="flex-1 overflow-y-auto p-8">
-                    <form onSubmit={handleSubmit(form, onSubmit)} className="max-w-4xl mx-auto space-y-12 pb-24">
-                        <div id="general" className="space-y-6">
-                            <h2 className="text-xl font-bold tracking-tight">Repository Identity</h2>
-                            <Card>
-                                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-                                    <FormField
-                                        fieldName="name"
-                                        label="Repository Name"
-                                        Input={props => <Input {...props} placeholder="production-maven-central"/>}
-                                        control={form.control}
-                                    />
+                    {/* Content */}
+                    <div id="repository-edit-content" className="flex-1 overflow-y-auto p-8">
+                        <form onSubmit={handleSubmit(form, onSubmit, (errors) => {
+                            console.log("Form errors", errors);
+                            showError(new Error("Form is invalid. Please check the fields."));
+                        })} className="max-w-4xl mx-auto space-y-12 pb-24">
+                            <div id="general" className="space-y-6">
+                                <h2 className="text-xl font-bold tracking-tight">Repository Identity</h2>
+                                <Card>
+                                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                                        <FormField
+                                            fieldName="name"
+                                            label="Repository Name"
+                                            Input={props => <Input {...props} placeholder="production-maven-central"/>}
+                                            control={form.control}
+                                        />
 
-                                    <FormField
-                                        fieldName="packageManager"
-                                        label="Artifact Type"
-                                        Input={({value, onChange}) => (
-                                            <Select value={value} onValueChange={onChange}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select package manager"/>
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {Object.values(PackageManager).map((pm) => (
-                                                        <SelectItem key={pm} value={pm}>
-                                                            {pm}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-                                        control={form.control}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </div>
+                                        <FormField
+                                            fieldName="packageManager"
+                                            label="Artifact Type"
+                                            Input={({value, onChange}) => (
+                                                <Select value={value} onValueChange={onChange}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select package manager"/>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Object.values(PackageManager).map((pm) => (
+                                                            <SelectItem key={pm} value={pm}>
+                                                                {pm}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                            control={form.control}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </div>
 
-                        {pmConfig && (
-                            <pmConfig.FormComponent control={form.control} prefix={pmConfig.configKey}/>
-                        )}
+                            {pmConfig && (
+                                <pmConfig.FormComponent control={form.control} prefix={pmConfig.configKey}/>
+                            )}
 
-                        <div id="replication" className="space-y-6 pt-4">
-                            <h2 className="text-xl font-bold tracking-tight">Replication/Mirroring</h2>
-                            <Card className="opacity-50">
-                                <CardContent className="p-6">
-                                    <p className="text-sm text-muted-foreground">Replication and mirroring settings are
-                                        not yet available.</p>
-                                </CardContent>
-                            </Card>
-                        </div>
+                            <div id="replication" className="space-y-6 pt-4">
+                                <h2 className="text-xl font-bold tracking-tight">Replication/Mirroring</h2>
+                                <Card className="opacity-50">
+                                    <CardContent className="p-6">
+                                        <p className="text-sm text-muted-foreground">Replication and mirroring settings are
+                                            not yet available.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
 
-                        <div id="cleanup" className="space-y-6 pt-4">
-                            <h2 className="text-xl font-bold tracking-tight">Cleanup Policies</h2>
-                            <Card className="opacity-50">
-                                <CardContent className="p-6">
-                                    <p className="text-sm text-muted-foreground">Cleanup policies are not yet
-                                        available.</p>
-                                </CardContent>
-                            </Card>
-                        </div>
+                            <div id="cleanup" className="space-y-6 pt-4">
+                                <h2 className="text-xl font-bold tracking-tight">Cleanup Policies</h2>
+                                <Card className="opacity-50">
+                                    <CardContent className="p-6">
+                                        <p className="text-sm text-muted-foreground">Cleanup policies are not yet
+                                            available.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
 
-                        <div id="permissions" className="space-y-6 pt-4">
-                            <h2 className="text-xl font-bold tracking-tight">Permissions</h2>
-                            <Card className="opacity-50">
-                                <CardContent className="p-6">
-                                    <p className="text-sm text-muted-foreground">Permissions management is not yet
-                                        available.</p>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </form>
-                </div>
+                            <PermissionsForm control={form.control}/>
+                        </form>
+                    </div>
+                </FormProvider>
             </div>
         </div>
     );

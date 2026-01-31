@@ -33,7 +33,17 @@ public class PermissionScope extends PanacheEntity {
         return user != null ? user.name : null;
     }
 
-    public boolean isAllowed(final User user) {
+    public boolean canView(final User user) {
+        return switch (type) {
+            case ANONYMOUS -> true;
+            case AUTHENTICATED -> user != null;
+            case USER -> Objects.equals(this.user.id, user.id);
+        };
+    }
+
+    public boolean canWrite(final User user) {
+        if (level == PermissionLevel.READ) return false;
+
         return switch (type) {
             case ANONYMOUS -> true;
             case AUTHENTICATED -> user != null;

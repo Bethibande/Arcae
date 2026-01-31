@@ -3,6 +3,7 @@ package com.bethibande.repository.jpa.repository;
 import com.bethibande.process.annotation.EntityDTO;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
 import com.bethibande.repository.jpa.user.User;
+import com.bethibande.repository.jpa.user.UserRole;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
@@ -38,8 +39,17 @@ public class Repository extends PanacheEntityBase {
     public List<PermissionScope> permissions;
 
     public boolean canView(final User user) {
+        if (user != null && user.roles.contains(UserRole.ADMIN)) return true;
         for (int i = 0; i < permissions.size(); i++) {
-            if (permissions.get(i).isAllowed(user)) return true;
+            if (permissions.get(i).canView(user)) return true;
+        }
+        return false;
+    }
+
+    public boolean canWrite(final User user) {
+        if (user != null && user.roles.contains(UserRole.ADMIN)) return true;
+        for (int i = 0; i < permissions.size(); i++) {
+            if (permissions.get(i).canWrite(user)) return true;
         }
         return false;
     }

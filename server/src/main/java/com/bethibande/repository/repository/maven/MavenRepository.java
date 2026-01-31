@@ -4,6 +4,7 @@ import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactDetails;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.repository.Repository;
+import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.backend.RepositoryBackend;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
 
 import java.io.ByteArrayInputStream;
@@ -56,11 +58,15 @@ public class MavenRepository implements ManagedRepository {
         }
     }
 
-    public StreamHandle get(final String path) {
+    public StreamHandle get(final User user, final String path) {
+        if (!this.info.canView(user)) throw new UnauthorizedException();
+
         return this.backend.get("%s/%s".formatted(info.name, path));
     }
 
-    public void put(final String path, final StreamHandle handle) {
+    public void put(final User user, final String path, final StreamHandle handle) {
+        if(!this.info.canWrite(user)) throw new UnauthorizedException();
+
         final String namespacedPath = "%s/%s".formatted(info.name, path);
 
         if (!config.allowRedeployments() && this.backend.head(namespacedPath)) {

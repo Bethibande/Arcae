@@ -5,6 +5,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Transient;
 
 import java.time.Instant;
 
@@ -25,5 +26,10 @@ public class AccessToken extends PanacheEntity {
 
     @Column(columnDefinition = "timestamptz")
     public Instant expiresAfter;
+
+    @Transient
+    public boolean isExpired(final Instant now) {
+        return this.expiresAfter != null && now.isAfter(this.expiresAfter);
+    }
 
 }

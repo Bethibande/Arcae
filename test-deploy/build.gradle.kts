@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.bethibande.repo"
-version = "1.2-snapshot"
+version = "1.3-snapshot"
 
 repositories {
     mavenCentral()
@@ -73,8 +73,8 @@ publishing {
             isAllowInsecureProtocol = true
 
             credentials {
-                username = providers.gradleProperty("mavenUsername").get()
-                password = providers.gradleProperty("mavenPassword").get()
+                username = "admin"
+                password = "7WYBCabVEyyWgzJG3c19zSelLsr3jEz4ZQ5R1N2y11uTrV0KhX7kIl5zbcX86p7xHroad2ClpIaniqyzrrk1JGi8QIHUybWFVYFj8iLdv8LoZxKmWQtY4gGnXfz94c3N"
             }
         }
     }

@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {type ColumnDef, getCoreRowModel, type PaginationState, useReactTable,} from "@tanstack/react-table";
-import {type UserDTOWithoutPassword, UserEndpointApi, type UserRole} from "@/generated";
+import {type UserDTOWithoutPassword, UserEndpointApi, UserRole} from "@/generated";
 import {DataTable} from "@/components/data-table";
 import {DataTablePagination} from "@/components/data-table-pagination";
 import {Badge} from "@/components/ui/badge";
@@ -16,8 +16,16 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {toast} from "sonner";
+import {useAuth} from "@/lib/auth.tsx";
+import {Navigate} from "react-router";
 
 export default function UserManagementView() {
+    const {user} = useAuth();
+
+    if (!user?.roles?.includes(UserRole.Admin)) {
+        return <Navigate to="/settings/user" replace />;
+    }
+
     const [data, setData] = useState<UserDTOWithoutPassword[]>([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState<PaginationState>({

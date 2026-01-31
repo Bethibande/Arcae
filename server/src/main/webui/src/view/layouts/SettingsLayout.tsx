@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import {Key, ShieldCheck, User} from "lucide-react";
 import i18next from "i18next";
+import {useAuth} from "@/lib/auth.tsx";
+import {UserRole} from "@/generated";
 
 export function settingsLayoutInit() {
     i18next.addResourceBundle("en", "layout.settings", {
@@ -27,6 +29,12 @@ function t(key: string) {
 }
 
 export default function SettingsLayout() {
+    const {user} = useAuth();
+
+    const hasRole = (role: UserRole) => {
+        return user?.roles?.includes(role);
+    };
+
     return (
         <div className="flex h-full w-full">
             <Sidebar variant="sidebar" className="top-16 border-r h-[calc(100vh-4rem)]">
@@ -55,16 +63,18 @@ export default function SettingsLayout() {
                                         )}
                                     </NavLink>
                                 </SidebarMenuItem>
-                                <SidebarMenuItem>
-                                    <NavLink to="/settings/management" className="w-full">
-                                        {({isActive}) => (
-                                            <SidebarMenuButton isActive={isActive}>
-                                                <ShieldCheck />
-                                                <span>{t("management")}</span>
-                                            </SidebarMenuButton>
-                                        )}
-                                    </NavLink>
-                                </SidebarMenuItem>
+                                {hasRole(UserRole.Admin) && (
+                                    <SidebarMenuItem>
+                                        <NavLink to="/settings/management" className="w-full">
+                                            {({isActive}) => (
+                                                <SidebarMenuButton isActive={isActive}>
+                                                    <ShieldCheck />
+                                                    <span>{t("management")}</span>
+                                                </SidebarMenuButton>
+                                            )}
+                                        </NavLink>
+                                    </SidebarMenuItem>
+                                )}
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>

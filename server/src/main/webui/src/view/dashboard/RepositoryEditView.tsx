@@ -1,6 +1,6 @@
-import {useNavigate, useParams} from "react-router";
+import {Navigate, useNavigate, useParams} from "react-router";
 import {useEffect, useRef, useState} from "react";
-import {PackageManager, RepositoryEndpointApi, RepositoryPermissionEndpointApi} from "@/generated";
+import {PackageManager, RepositoryEndpointApi, RepositoryPermissionEndpointApi, UserRole} from "@/generated";
 import {showError} from "@/lib/errors.ts";
 import {ChevronRight, Cloud, Lock, RefreshCw, Save, Settings, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
@@ -19,10 +19,16 @@ import {
 } from "@/lib/repository-configs.ts";
 import {cn} from "@/lib/utils.ts";
 import {PermissionsForm} from "@/components/repository/PermissionsForm.tsx";
+import {useAuth} from "@/lib/auth.tsx";
 
 export default function RepositoryEditView() {
+    const {user} = useAuth();
     const {id} = useParams();
     const navigate = useNavigate();
+
+    if (!user?.roles?.includes(UserRole.Admin)) {
+        return <Navigate to="/" replace />;
+    }
     const isEdit = id !== undefined;
 
     const [loading, setLoading] = useState(isEdit);

@@ -8,9 +8,10 @@ import {
 } from "@/components/ui/dropdown-menu.tsx";
 import {Clock, Coffee, ExternalLink, MoreHorizontal, Pencil, Trash2} from "lucide-react";
 import {cn} from "@/lib/utils.ts";
-import {PackageManager, RepositoryEndpointApi, type RepositoryOverviewDTO} from "@/generated";
+import {PackageManager, RepositoryEndpointApi, type RepositoryOverviewDTO, UserRole} from "@/generated";
 import {useNavigate} from "react-router";
 import {useState} from "react";
+import {useAuth} from "@/lib/auth.tsx";
 import {
     Dialog,
     DialogContent,
@@ -41,6 +42,7 @@ interface RepositoryCardProps {
 }
 
 export function RepositoryCard({ repository: overview, onDelete }: RepositoryCardProps) {
+    const {user} = useAuth();
     const navigate = useNavigate();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -55,6 +57,10 @@ export function RepositoryCard({ repository: overview, onDelete }: RepositoryCar
     const days = Math.floor(hours / 24);
 
     const updatedString = days > 0 ? `Updated ${days} days ago` : (hours > 0 ? `Updated ${hours} hours ago` : (minutes > 0 ? `Updated ${minutes} minutes ago` : (seconds > 0 ? `Updated ${seconds} seconds ago` : "Never Updated")));
+
+    const hasRole = (role: UserRole) => {
+        return user?.roles?.includes(role);
+    };
 
     const handleDelete = async () => {
         setIsDeleting(true);
@@ -85,27 +91,29 @@ export function RepositoryCard({ repository: overview, onDelete }: RepositoryCar
                     <div className={cn("p-2 rounded-lg", packageBG[repo.packageManager] || "bg-muted")}>
                         <Icon className={cn("size-5", packageFG[repo.packageManager] || "text-muted-foreground")}/>
                     </div>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground">
-                                <MoreHorizontal className="size-4"/>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repositories/${repo.id}/browse`); }}>
-                                <ExternalLink className="size-4 mr-2"/>
-                                Browse
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repositories/${repo.id}/edit`); }}>
-                                <Pencil className="size-4 mr-2"/>
-                                Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}>
-                                <Trash2 className="size-4 mr-2"/>
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {hasRole(UserRole.Admin) && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon-xs" className="text-muted-foreground">
+                                    <MoreHorizontal className="size-4"/>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repositories/${repo.id}/browse`); }}>
+                                    <ExternalLink className="size-4 mr-2"/>
+                                    Browse
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repositories/${repo.id}/edit`); }}>
+                                    <Pencil className="size-4 mr-2"/>
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}>
+                                    <Trash2 className="size-4 mr-2"/>
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div>

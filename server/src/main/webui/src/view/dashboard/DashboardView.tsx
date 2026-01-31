@@ -3,12 +3,14 @@ import {Button} from "@/components/ui/button.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {ChevronRight, LayoutGrid, List, Plus,} from "lucide-react";
 import {useEffect, useState} from "react";
-import {RepositoryEndpointApi, type RepositoryOverviewDTO} from "@/generated";
+import {RepositoryEndpointApi, type RepositoryOverviewDTO, UserRole} from "@/generated";
 import {showError} from "@/lib/errors.ts";
 import {RepositoryCard} from "@/components/repository/RepositoryCard.tsx";
 import {useNavigate} from "react-router";
+import {useAuth} from "@/lib/auth.tsx";
 
 export default function DashboardView() {
+    const {user} = useAuth();
     const [repositories, setRepositories] = useState<RepositoryOverviewDTO[]>([])
     const navigate = useNavigate();
 
@@ -22,6 +24,10 @@ export default function DashboardView() {
     useEffect(() => {
         fetchRepositories();
     }, [])
+
+    const hasRole = (role: UserRole) => {
+        return user?.roles?.includes(role);
+    };
 
     return (
         <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto">
@@ -88,15 +94,17 @@ export default function DashboardView() {
                 ))}
 
                 {/* Add New Repository */}
-                <Card
-                    onClick={() => navigate("/repositories/new")}
-                    className="border-dashed border-2 bg-transparent ring-0 shadow-none flex flex-col items-center justify-center min-h-[200px] gap-4 group hover:border-primary/50 transition-all cursor-pointer">
-                    <div className="p-3 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
-                        <Plus className="size-6 text-muted-foreground group-hover:text-primary"/>
-                    </div>
-                    <span
-                        className="font-medium text-muted-foreground group-hover:text-foreground">Add New Repository</span>
-                </Card>
+                {hasRole(UserRole.Admin) && (
+                    <Card
+                        onClick={() => navigate("/repositories/new")}
+                        className="border-dashed border-2 bg-transparent ring-0 shadow-none flex flex-col items-center justify-center min-h-[200px] gap-4 group hover:border-primary/50 transition-all cursor-pointer">
+                        <div className="p-3 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
+                            <Plus className="size-6 text-muted-foreground group-hover:text-primary"/>
+                        </div>
+                        <span
+                            className="font-medium text-muted-foreground group-hover:text-foreground">Add New Repository</span>
+                    </Card>
+                )}
             </div>
         </div>
     );

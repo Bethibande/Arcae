@@ -6,19 +6,35 @@ import com.bethibande.repository.jpa.repository.PublicRepositoryDTO;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.repository.RepositoryDTO;
 import com.bethibande.repository.jpa.repository.RepositoryDTOWithoutId;
+import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
+import com.bethibande.repository.jpa.repository.permissions.UserSelectionType;
+import com.bethibande.repository.jpa.user.User;
+import com.bethibande.repository.jpa.user.UserRole;
+import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.CRUDResponse;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
+import jakarta.persistence.criteria.*;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.Path;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @RolesAllowed("ADMIN")
 @Path("/api/v1/repository")
 public class RepositoryEndpoint {
+
+    private final AuthenticatedUser authenticatedUser;
+
+    @Inject
+    public RepositoryEndpoint(final AuthenticatedUser authenticatedUser) {
+        this.authenticatedUser = authenticatedUser;
+    }
 
     @POST
     @Transactional
@@ -73,6 +89,9 @@ public class RepositoryEndpoint {
             throw new NotFoundException("Repository not found");
         }
 
+        final User self = authenticatedUser.getSelf();
+        if (!repository.canView(self)) throw new ForbiddenException("Unauthorized");
+
         return new RepositoryOverviewDTO(
                 PublicRepositoryDTO.from(repository),
                 Artifact.count("repository.id = ?1", repository.id),
@@ -85,8 +104,31 @@ public class RepositoryEndpoint {
     @Transactional
     @Path("/overview")
     public List<RepositoryOverviewDTO> overview() {
+        final CriteriaBuilder builder = Repository.getEntityManager().getCriteriaBuilder();
+        final CriteriaQuery<Repository> query = builder.createQuery(Repository.class);
+        final Root<Repository> root = query.from(Repository.class);
+        final Join<Repository, List<PermissionScope>> scopeJoin = root.join("permissions", JoinType.LEFT);
 
-        final List<PublicRepositoryDTO> repositories = Repository.<Repository>listAll()
+        final List<Predicate> predicates = new ArrayList<>();
+        predicates.add(builder.equal(scopeJoin.get("type"), UserSelectionType.ANONYMOUS));
+        predicates.add(builder.isEmpty(root.get("permissions")));
+
+        final User self = authenticatedUser.getSelf();
+        if (self != null) {
+            if (self.roles.contains(UserRole.ADMIN)) {
+                predicates.add(builder.conjunction());
+            } else {
+                predicates.add(builder.equal(scopeJoin.get("type"), UserSelectionType.AUTHENTICATED));
+                predicates.add(builder.equal(scopeJoin.get("user"), self));
+            }
+        }
+
+        query.where(builder.or(predicates.toArray(Predicate[]::new)));
+        query.distinct(true);
+
+        final List<PublicRepositoryDTO> repositories = Repository.getEntityManager()
+                .createQuery(query)
+                .getResultList()
                 .stream()
                 .map(PublicRepositoryDTO::from)
                 .toList();
@@ -104,7 +146,8 @@ public class RepositoryEndpoint {
     @Transactional
     @Path("/{id}")
     public CRUDResponse<Void> delete(@PathParam("id") final Long id) {
-        if (Artifact.count("repository.id = ?", id) > 0) return CRUDResponse.failure("Cannot delete repository with artifacts", "repository.delete.artifacts");
+        if (Artifact.count("repository.id = ?", id) > 0)
+            return CRUDResponse.failure("Cannot delete repository with artifacts", "repository.delete.artifacts");
 
         return Repository.deleteById(id)
                 ? CRUDResponse.success(null)

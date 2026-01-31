@@ -7,7 +7,6 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextFi
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Indexed

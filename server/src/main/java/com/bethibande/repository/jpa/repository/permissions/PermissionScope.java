@@ -9,6 +9,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
 
+import java.util.Objects;
+
 @Entity
 @EntityDTO
 @EntityDTO(excludeProperties = "id")
@@ -29,6 +31,14 @@ public class PermissionScope extends PanacheEntity {
     @VirtualDTOField
     public String userName() {
         return user != null ? user.name : null;
+    }
+
+    public boolean isAllowed(final User user) {
+        return switch (type) {
+            case ANONYMOUS -> true;
+            case AUTHENTICATED -> user != null;
+            case USER -> Objects.equals(this.user.id, user.id);
+        };
     }
 
 }

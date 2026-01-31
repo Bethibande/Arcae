@@ -2,6 +2,7 @@ package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.process.annotation.EntityDTO;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
+import com.bethibande.repository.jpa.user.User;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
@@ -35,5 +36,12 @@ public class Repository extends PanacheEntityBase {
 
     @OneToMany(mappedBy = "repository", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<PermissionScope> permissions;
+
+    public boolean canView(final User user) {
+        for (int i = 0; i < permissions.size(); i++) {
+            if (permissions.get(i).isAllowed(user)) return true;
+        }
+        return false;
+    }
 
 }

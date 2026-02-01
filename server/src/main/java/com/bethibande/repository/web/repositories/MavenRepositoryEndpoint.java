@@ -60,10 +60,11 @@ public class MavenRepositoryEndpoint {
 
         final User user = extractUser(authorization);
 
-        repo.put(user, path, new StreamHandle(data, contentType, contentLength));
+        repo.put(user, path, new StreamHandle(data, contentType, contentLength), false);
     }
 
     @GET
+    @Transactional
     public Response getArtifact(final @PathParam("repository") String repository,
                                 final @PathParam("path") String path,
                                 final @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization) {

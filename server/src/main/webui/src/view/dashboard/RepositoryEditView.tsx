@@ -170,8 +170,9 @@ export default function RepositoryEditView() {
 
     const sections = [
         {id: "general", label: "General", icon: Settings},
-        {id: "storage", label: "Storage (S3)", icon: Cloud},
+        {id: "behavior", label: "Behavioral Policies", icon: Settings},
         {id: "replication", label: "Replication/Mirroring", icon: RefreshCw},
+        {id: "storage", label: "Storage (S3)", icon: Cloud},
         {id: "cleanup", label: "Cleanup Policies", icon: Trash2},
         {id: "permissions", label: "Permissions", icon: Lock},
     ];
@@ -312,16 +313,6 @@ export default function RepositoryEditView() {
                             {pmConfig && (
                                 <pmConfig.FormComponent control={form.control} prefix={pmConfig.configKey}/>
                             )}
-
-                            <div id="replication" className="space-y-6 pt-4">
-                                <h2 className="text-xl font-bold tracking-tight">Replication/Mirroring</h2>
-                                <Card className="opacity-50">
-                                    <CardContent className="p-6">
-                                        <p className="text-sm text-muted-foreground">Replication and mirroring settings are
-                                            not yet available.</p>
-                                    </CardContent>
-                                </Card>
-                            </div>
 
                             <div id="cleanup" className="space-y-6 pt-4">
                                 <h2 className="text-xl font-bold tracking-tight">Cleanup Policies</h2>

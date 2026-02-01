@@ -40,6 +40,8 @@ public class Repository extends PanacheEntityBase {
 
     public boolean canView(final User user) {
         if (user != null && user.roles.contains(UserRole.ADMIN)) return true;
+        if (permissions.isEmpty()) return true;
+
         for (int i = 0; i < permissions.size(); i++) {
             if (permissions.get(i).canView(user)) return true;
         }

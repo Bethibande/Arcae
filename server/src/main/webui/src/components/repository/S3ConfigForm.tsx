@@ -25,32 +25,33 @@ export function S3ConfigForm<TFieldValues extends FieldValues>({ control, prefix
                     <FormField
                         fieldName={`${prefix}.url` as FieldPath<TFieldValues>}
                         label="S3 Endpoint URL"
-                        Input={props => <Input {...props} placeholder="https://s3.amazonaws.com" />}
+                        placeholder="https://s3.amazonaws.com"
                         control={control}
                     />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                             fieldName={`${prefix}.region` as FieldPath<TFieldValues>}
                             label="Bucket Region"
-                            Input={props => <Input {...props} placeholder="us-east-1 (N. Virginia)" />}
+                            placeholder="us-east-1 (N. Virginia)"
                             control={control}
                         />
                         <FormField
                             fieldName={`${prefix}.bucket` as FieldPath<TFieldValues>}
                             label="Bucket Name"
-                            Input={props => <Input {...props} placeholder="corp-artifacts-prod-01" />}
+                            placeholder="corp-artifacts-prod-01"
                             control={control}
                         />
                         <FormField
                             fieldName={`${prefix}.accessKey` as FieldPath<TFieldValues>}
                             label="Access Key ID"
-                            Input={props => <Input {...props} placeholder="AKIA..." />}
+                            placeholder="AKIA..."
                             control={control}
                         />
                         <FormField
                             fieldName={`${prefix}.secretKey` as FieldPath<TFieldValues>}
                             label="Secret Access Key"
-                            Input={props => <Input {...props} type="password" placeholder="●●●●●●●" />}
+                            type="password"
+                            placeholder="●●●●●●●"
                             control={control}
                         />
                     </div>

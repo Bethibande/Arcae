@@ -125,6 +125,7 @@ public class RepositoryEndpoint {
         }
 
         query.where(builder.or(predicates.toArray(Predicate[]::new)));
+        query.orderBy(builder.asc(root.get("name")));
         query.distinct(true);
 
         final List<PublicRepositoryDTO> repositories = Repository.getEntityManager()

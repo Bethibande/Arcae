@@ -11,7 +11,7 @@ export interface PackageManagerConfig<T extends FieldValues = any> {
 }
 
 export const CONFIG_MAPPING: Record<PackageManager, PackageManagerConfig<DynamicFormValues>> = {
-    [PackageManager.Maven3]: {
+    [PackageManager.Maven]: {
         schema: mavenSchema,
         defaultValues: defaultMavenConfig,
         FormComponent: MavenConfigForm,

@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public enum PackageManager {
 
-    MAVEN_3(MavenRepository::new);
+    MAVEN(MavenRepository::new);
 
     private final RepositoryFactory factory;
 

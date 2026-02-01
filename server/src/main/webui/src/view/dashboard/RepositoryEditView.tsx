@@ -39,8 +39,8 @@ export default function RepositoryEditView() {
         resolver: zodResolver(dynamicFormSchema),
         defaultValues: {
             name: "",
-            packageManager: PackageManager.Maven3,
-            mavenConfig: CONFIG_MAPPING[PackageManager.Maven3].defaultValues,
+            packageManager: PackageManager.Maven,
+            mavenConfig: CONFIG_MAPPING[PackageManager.Maven].defaultValues,
             permissions: []
         }
     });

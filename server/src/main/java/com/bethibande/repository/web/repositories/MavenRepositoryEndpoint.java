@@ -55,7 +55,7 @@ public class MavenRepositoryEndpoint {
                                final @HeaderParam(HttpHeaders.CONTENT_LENGTH) long contentLength,
                                final @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization,
                                final InputStream data) {
-        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN_3);
+        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN);
         if (repo == null) throw new NotFoundException("Unknown repository");
 
         final User user = extractUser(authorization);
@@ -68,7 +68,7 @@ public class MavenRepositoryEndpoint {
     public Response getArtifact(final @PathParam("repository") String repository,
                                 final @PathParam("path") String path,
                                 final @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization) {
-        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN_3);
+        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN);
         if (repo == null) throw new NotFoundException("Unknown repository");
 
         final User user = extractUser(authorization);

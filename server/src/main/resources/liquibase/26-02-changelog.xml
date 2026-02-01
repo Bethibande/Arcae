@@ -118,4 +118,10 @@
                                  referencedColumnNames="id"
                                  referencedTableName="StoredFile"/>
     </changeSet>
+
+    <changeSet id="1769969568855-1" author="bethibande">
+        <sql>
+            UPDATE repository SET packagemanager = 'MAVEN' WHERE packagemanager = 'MAVEN_3';
+        </sql>
+    </changeSet>
 </databaseChangeLog>

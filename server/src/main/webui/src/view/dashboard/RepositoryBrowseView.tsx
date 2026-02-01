@@ -39,7 +39,7 @@ function RepositoryConfigDetails({ repository }: { repository: RepositoryOvervie
 
     const getSnippets = (): RepositorySnippet[] => {
         const baseUrl = `${window.location.origin}/repositories/maven/${repository.repository.name}`;
-        if (repository.repository.packageManager === PackageManager.Maven3) {
+        if (repository.repository.packageManager === PackageManager.Maven) {
             return [
                 {
                     name: "Maven",

@@ -233,7 +233,6 @@ function ConnectionForm<TFieldValues extends FieldValues>({ control, prefix, onR
 }
 
 export function MavenConfigForm<TFieldValues extends FieldValues>({ control, prefix }: MavenConfigFormProps<TFieldValues>) {
-    const { formState } = useFormContext();
     return (
         <>
             <div id="behavior" className="space-y-6 pt-4">

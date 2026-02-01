@@ -22,18 +22,18 @@ import {
 import {showError, showErrorMessage} from "@/lib/errors.ts";
 
 const packageBG: Record<PackageManager, string> = {
-    [PackageManager.Maven3]: "bg-red-500/10"
+    [PackageManager.Maven]: "bg-red-500/10"
 }
 const packageBGPrimary: Record<PackageManager, string> = {
-    [PackageManager.Maven3]: "bg-red-600"
+    [PackageManager.Maven]: "bg-red-600"
 }
 
 const packageFG: Record<PackageManager, string> = {
-    [PackageManager.Maven3]: "text-red-500"
+    [PackageManager.Maven]: "text-red-500"
 }
 
 const packageIcon: Record<PackageManager, any> = {
-    [PackageManager.Maven3]: Coffee
+    [PackageManager.Maven]: Coffee
 }
 
 interface RepositoryCardProps {

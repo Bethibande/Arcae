@@ -21,6 +21,7 @@ import {
     Package,
     Tag,
     Terminal,
+    Trash2,
     User
 } from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
@@ -28,6 +29,9 @@ import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card.tsx
 import {Badge} from "@/components/ui/badge.tsx";
 import {cn} from "@/lib/utils.ts";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx";
+import {ConfirmDialog} from "@/components/confirm-dialog.tsx";
+import {toast} from "sonner";
+import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";
 
 interface DependencySnippet {
     name: string;
@@ -130,25 +134,39 @@ export default function ArtifactView() {
     const [selectedVersion, setSelectedVersion] = useState<ArtifactVersionDTO | null>(null);
     const [loading, setLoading] = useState(true);
     const [versionsLoading, setVersionsLoading] = useState(false);
+    const [canWrite, setCanWrite] = useState(false);
+    const [isDeletingArtifact, setIsDeletingArtifact] = useState(false);
+    const [isDeletingVersion, setIsDeletingVersion] = useState(false);
+    const [showDeleteArtifactDialog, setShowDeleteArtifactDialog] = useState(false);
+    const [showDeleteVersionDialog, setShowDeleteVersionDialog] = useState(false);
 
-    useEffect(() => {
+    const fetchArtifact = () => {
         if (!id) return;
-
         setLoading(true);
         const api = new ArtifactEndpointApi();
         const repoApi = new RepositoryEndpointApi();
-        
+
         api.apiV1ArtifactIdGet({id: parseInt(id)})
             .then(data => {
                 setArtifact(data);
-                return repoApi.apiV1RepositoryOverviewIdGet({id: data.repositoryId});
+                return Promise.all([
+                    repoApi.apiV1RepositoryOverviewIdGet({id: data.repositoryId}),
+                    repoApi.apiV1RepositoryIdCanWriteGet({id: data.repositoryId})
+                ]);
             })
-            .then(setRepository)
+            .then(([overview, canWrite]) => {
+                setRepository(overview);
+                setCanWrite(canWrite);
+            })
             .catch(showError)
             .finally(() => setLoading(false));
-    }, [id]);
+    };
 
     useEffect(() => {
+        fetchArtifact();
+    }, [id]);
+
+    const fetchVersions = () => {
         if (!id) return;
 
         setVersionsLoading(true);
@@ -157,13 +175,61 @@ export default function ArtifactView() {
         api.apiV1ArtifactIdVersionsGet({id: parseInt(id), p: versionPage, s: 10})
             .then(data => {
                 setVersions(data);
-                if (data.data && data.data.length > 0 && !selectedVersion) {
-                    setSelectedVersion(data.data[0]);
+                if (data.data && data.data.length > 0) {
+                    if (!selectedVersion || !data.data.find(v => v.id === selectedVersion.id)) {
+                        setSelectedVersion(data.data[0]);
+                    }
+                } else {
+                    setSelectedVersion(null);
                 }
             })
             .catch(showError)
             .finally(() => setVersionsLoading(false));
+    };
+
+    useEffect(() => {
+        fetchVersions();
     }, [id, versionPage]);
+
+    const handleDeleteArtifact = () => {
+        if (!artifact) return;
+        setIsDeletingArtifact(true);
+        const api = new ArtifactEndpointApi();
+        api.apiV1ArtifactIdDelete({id: artifact.id})
+            .then(() => {
+                toast.success("Artifact deleted successfully");
+                navigate(`/repositories/${artifact.repositoryId}/browse`);
+            })
+            .catch(showError)
+            .finally(() => {
+                setIsDeletingArtifact(false);
+                setShowDeleteArtifactDialog(false);
+            });
+    };
+
+    const handleDeleteVersion = () => {
+        if (!selectedVersion || !artifact) return;
+        setIsDeletingVersion(true);
+        const isLatest = selectedVersion.version === artifact.latestVersion;
+        const api = new ArtifactEndpointApi();
+        api.apiV1ArtifactVersionIdDelete({id: selectedVersion.id})
+            .then(() => {
+                toast.success("Version deleted successfully");
+                if (versions?.total === 1) {
+                    navigate(`/repositories/${artifact.repositoryId}/browse`);
+                } else {
+                    fetchVersions();
+                    if (isLatest) {
+                        fetchArtifact();
+                    }
+                }
+            })
+            .catch(showError)
+            .finally(() => {
+                setIsDeletingVersion(false);
+                setShowDeleteVersionDialog(false);
+            });
+    };
 
     const handlePage = (newPage: number) => {
         setSearchParams(prev => {
@@ -211,6 +277,18 @@ export default function ArtifactView() {
                             </p>
                         </div>
                     </div>
+
+                    {canWrite && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex items-center gap-2"
+                            onClick={() => setShowDeleteArtifactDialog(true)}
+                        >
+                            <Trash2 className="size-4"/>
+                            Delete Artifact
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -303,9 +381,28 @@ export default function ArtifactView() {
                         <>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="text-xl flex items-center gap-2 overflow-hidden">
-                                        <Info className="size-5 shrink-0"/>
-                                        <span className="truncate">Details for {selectedVersion.version}</span>
+                                    <CardTitle className="text-xl flex items-center justify-between gap-2 overflow-hidden">
+                                        <div className="flex items-center gap-2 truncate">
+                                            <Info className="size-5 shrink-0"/>
+                                            <span className="truncate">Details for {selectedVersion.version}</span>
+                                        </div>
+                                        {canWrite && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                                        onClick={() => setShowDeleteVersionDialog(true)}
+                                                    >
+                                                        <Trash2 className="size-4"/>
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    Delete Version
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        )}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
@@ -390,6 +487,28 @@ export default function ArtifactView() {
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={showDeleteArtifactDialog}
+                onOpenChange={setShowDeleteArtifactDialog}
+                title="Delete Artifact"
+                description={`Are you sure you want to delete the artifact ${artifact.groupId}:${artifact.artifactId}? This action cannot be undone.`}
+                onConfirm={handleDeleteArtifact}
+                confirmText="Delete"
+                variant="destructive"
+                loading={isDeletingArtifact}
+            />
+
+            <ConfirmDialog
+                open={showDeleteVersionDialog}
+                onOpenChange={setShowDeleteVersionDialog}
+                title="Delete Version"
+                description={`Are you sure you want to delete version ${selectedVersion?.version} of ${artifact.artifactId}? This action cannot be undone.`}
+                onConfirm={handleDeleteVersion}
+                confirmText="Delete"
+                variant="destructive"
+                loading={isDeletingVersion}
+            />
         </div>
     );
 }

@@ -1,6 +1,11 @@
 package com.bethibande.repository.web.api;
 
 import com.bethibande.repository.jpa.artifact.*;
+import com.bethibande.repository.jpa.repository.Repository;
+import com.bethibande.repository.jpa.repository.RepositoryManager;
+import com.bethibande.repository.jpa.user.User;
+import com.bethibande.repository.repository.maven.MavenRepository;
+import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.panache.common.Sort;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -18,6 +23,11 @@ import java.util.List;
 
 @Path("/api/v1/artifact")
 public class ArtifactEndpoint {
+
+    @Inject
+    RepositoryManager repositoryManager;
+    @Inject
+    AuthenticatedUser authenticatedUser;
 
     public enum ArtifactSortOrder {
         BEST_MATCH,
@@ -104,6 +114,36 @@ public class ArtifactEndpoint {
                 totalPages,
                 (int) total
         );
+    }
+
+    @DELETE
+    @Transactional
+    @Path("/{id}")
+    public void delete(final @PathParam("id") long id) {
+        final Artifact artifact = Artifact.findById(id);
+        if (artifact == null) throw new NotFoundException("Unknown artifact");
+
+        final Repository repositoryEntity = artifact.repository;
+        final MavenRepository repository = repositoryManager.findRepository(repositoryEntity.name, repositoryEntity.packageManager);
+
+        final User self = authenticatedUser.getSelf();
+
+        repository.delete(self, artifact);
+    }
+
+    @DELETE
+    @Transactional
+    @Path("/version/{id}")
+    public void deleteVersion(final @PathParam("id") long id) {
+        final ArtifactVersion version = ArtifactVersion.findById(id);
+        if (version == null) throw new NotFoundException("Unknown version");
+
+        final Repository repositoryEntity = version.artifact.repository;
+        final MavenRepository repository = repositoryManager.findRepository(repositoryEntity.name, repositoryEntity.packageManager);
+
+        final User self = authenticatedUser.getSelf();
+
+        repository.delete(self, version, true);
     }
 
 }

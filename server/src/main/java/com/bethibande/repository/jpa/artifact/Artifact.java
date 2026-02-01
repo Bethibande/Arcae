@@ -55,4 +55,8 @@ public class Artifact extends PanacheEntityBase {
                 .orElse(null);
     }
 
+    public long countVersions() {
+        return ArtifactVersion.count("artifact.id = ?1", id);
+    }
+
 }

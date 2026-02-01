@@ -242,7 +242,7 @@ export default function ArtifactView() {
                                         >
                                             <span className="truncate">{v.version}</span>
                                             {v.version === artifact.latestVersion && (
-                                                <Badge variant={selectedVersion?.id === v.id ? "outline" : "secondary"} className="text-[10px] px-1.5 h-4">
+                                                <Badge variant={selectedVersion?.id === v.id ? "outline" : "secondary"} className={cn((selectedVersion?.id === v.id && "text-primary-foreground"), "text-[10px] px-1.5 h-4")}>
                                                     Latest
                                                 </Badge>
                                             )}

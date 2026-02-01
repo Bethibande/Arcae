@@ -1,22 +1,22 @@
 package com.bethibande.repository.jpa.artifact;
 
 import com.bethibande.process.annotation.EntityDTO;
+import com.bethibande.repository.jpa.StoredFile;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import io.quarkus.panache.common.Sort;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import org.hibernate.annotations.Type;
 import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Indexed
-@EntityDTO(excludeProperties = "artifact", name = "ArtifactVersionDTO")
-@EntityDTO(excludeProperties = {"artifact", "details"}, name = "ArtifactVersionDTOWithoutDetails")
+@EntityDTO(excludeProperties = {"artifact", "files"}, name = "ArtifactVersionDTO")
+@EntityDTO(excludeProperties = {"artifact", "details", "files"}, name = "ArtifactVersionDTOWithoutDetails")
 public class ArtifactVersion extends PanacheEntity {
 
     public static Instant findMaxUpdated(final long repositoryId) {
@@ -46,5 +46,9 @@ public class ArtifactVersion extends PanacheEntity {
     @Column(columnDefinition = "jsonb")
     @Type(JsonBinaryType.class)
     public ArtifactDetails details;
+
+    @ManyToMany
+    @JoinTable(name = "ArtifactVersion_files")
+    public List<StoredFile> files;
 
 }

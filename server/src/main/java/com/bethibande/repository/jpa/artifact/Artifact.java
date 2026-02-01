@@ -2,6 +2,7 @@ package com.bethibande.repository.jpa.artifact;
 
 import com.bethibande.process.annotation.EntityDTO;
 import com.bethibande.process.annotation.VirtualDTOField;
+import com.bethibande.repository.jpa.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.panache.common.Sort;
@@ -12,11 +13,12 @@ import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Indexed
-@EntityDTO
-@EntityDTO(excludeProperties = "id")
+@EntityDTO(excludeProperties = "files", name = "ArtifactDTO")
+@EntityDTO(excludeProperties = {"id", "files"}, name = "ArtifactDTOWithoutId")
 public class Artifact extends PanacheEntityBase {
 
     @Id
@@ -40,6 +42,10 @@ public class Artifact extends PanacheEntityBase {
     @Column(nullable = false, columnDefinition = "timestamptz")
     @GenericField(sortable = Sortable.YES, searchable = Searchable.YES)
     public Instant lastUpdated;
+
+    @ManyToMany
+    @JoinTable(name = "Artifact_files")
+    public List<StoredFile> files;
 
     @VirtualDTOField
     public String latestVersion() {

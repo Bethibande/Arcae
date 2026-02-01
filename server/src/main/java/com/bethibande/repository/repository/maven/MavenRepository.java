@@ -1,5 +1,6 @@
 package com.bethibande.repository.repository.maven;
 
+import com.bethibande.repository.jpa.StoredFile;
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactDetails;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
@@ -15,8 +16,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import org.apache.http.HttpHeaders;
+import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,9 +31,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MavenRepository implements ManagedRepository {
 
@@ -38,6 +41,14 @@ public class MavenRepository implements ManagedRepository {
 
     public static final String POM_FILE_EXTENSION = ".pom";
     public static final long MAX_POM_FILE_SIZE = 5_000_000L;
+
+    public static final Set<String> HASH_FILE_EXTENSIONS = Set.of("sha1", "sha256", "sha512", "md5");
+    public static final long MAX_HASH_FILE_SIZE = 128L;
+
+    public static final Pattern GAV_PATH_PATTERN = Pattern.compile("^(?<groupId>.+)/(?<artifactId>[^/]+)/(?<version>[^/]+)/(?<filename>[^/]+)$");
+    public static final Pattern GA_PATH_PATTERN = Pattern.compile("^(?<groupId>.+)/(?<artifactId>[^/]+)/(?<filename>[^/]+)$");
+
+    public static final String METADATA_FILE_NAME = "maven-metadata.xml";
 
     private final Repository info;
     private final MavenRepositoryConfig config;
@@ -122,10 +133,33 @@ public class MavenRepository implements ManagedRepository {
         throw new NotFoundException("Artifact not found");
     }
 
+    protected boolean isHash(final String path) {
+        final String extension = path.substring(path.lastIndexOf('.') + 1);
+        return HASH_FILE_EXTENSIONS.contains(extension);
+    }
+
+    protected StreamHandle fetchHash(final String path) {
+        final String filePath = path.substring(0, path.lastIndexOf('.'));
+        final StoredFile file = StoredFile.find("path = ?1 and repository.id = ?2", filePath, info.id).firstResult();
+        if (file == null) return null;
+
+        final String hashType = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
+        final String hash = file.hashes.get(hashType);
+        if (hash == null) return null;
+
+        final byte[] bytes = hash.getBytes();
+        final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+
+        return new StreamHandle(stream, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), bytes.length);
+    }
+
     public StreamHandle get(final User user, final String path) {
         if (!this.info.canView(user)) throw new UnauthorizedException();
 
-        final StreamHandle result = this.backend.get("%s/%s".formatted(info.name, path));
+        final StreamHandle result = isHash(path)
+                ? fetchHash(path)
+                : this.backend.get("%s/%s".formatted(info.name, path));
+
         if (result == null
                 && this.config.mirrorConfig() != null
                 && this.config.mirrorConfig().enabled()) {
@@ -142,6 +176,10 @@ public class MavenRepository implements ManagedRepository {
 
         if (!config.allowRedeployments() && this.backend.head(namespacedPath)) {
             throw new BadRequestException("File already exists");
+        }
+
+        if (indexFile(path, handle)) {
+            return; // Hash was uploaded to db instead of s3
         }
 
         if (path.endsWith(POM_FILE_EXTENSION)) {
@@ -163,6 +201,128 @@ public class MavenRepository implements ManagedRepository {
         } else {
             this.backend.put(namespacedPath, handle);
         }
+    }
+
+    /**
+     * Indexes a file by determining its type (hash file or regular file) and appropriately
+     * updating or creating entries in the database.
+     * <p>
+     * If the file is a hash file (determined by its extension), it updates the stored hashes
+     * for the corresponding source file. If it is a regular file, it ensures that a record
+     * exists in the database for the file, creating a new entry if none exists, and updates
+     * the record's timestamps.
+     *
+     * @param path   The file path, used to determine the file type and for identifying
+     *               or creating a corresponding database record.
+     * @param handle A {@link StreamHandle} representing the file's content and metadata,
+     *               used when processing the file content.
+     * @return {@code true} if this method consumed the given {@code StreamHandle}.
+     */
+    protected boolean indexFile(final String path, final StreamHandle handle) {
+        if (isHash(path)) {
+            return updateHash(path, handle);
+        } else {
+            final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", path, info.id).firstResult();
+            final Instant now = Instant.now();
+            if (file == null) {
+                final StoredFile newFile = new StoredFile();
+                newFile.key = path;
+                newFile.repository = info;
+                newFile.created = now;
+                newFile.updated = now;
+                newFile.persist();
+
+                tryLinkFile(path, newFile);
+            } else {
+                file.updated = now;
+            }
+        }
+        return false;
+    }
+
+    protected boolean tryLinkToArtifact(final String path, final StoredFile file) {
+        final Matcher matcher = GA_PATH_PATTERN.matcher(path);
+        if (!matcher.matches()) return false;
+
+        final String groupId = matcher.group("groupId").replaceAll("/", ".");
+        final String artifactId = matcher.group("artifactId");
+
+        final Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
+        if (artifact == null) return false;
+
+        if (artifact.files == null) artifact.files = new ArrayList<>();
+        artifact.files.add(file);
+        artifact.lastUpdated = Instant.now();
+
+        return true;
+    }
+
+    protected void tryLinkToVersion(final String path, final StoredFile file) {
+        final Matcher matcher = GAV_PATH_PATTERN.matcher(path);
+        if (!matcher.matches()) return;
+
+        final String groupId = matcher.group("groupId").replaceAll("/", ".");
+        final String artifactId = matcher.group("artifactId");
+        final String version = matcher.group("version");
+
+        if (version.equalsIgnoreCase(METADATA_FILE_NAME)) {
+            // Shouldn't be possible but you never know...
+            throw new InternalServerErrorException("How'd we get here?");
+        }
+
+        final Instant now = Instant.now();
+
+        Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
+        if (artifact == null) {
+            artifact = new Artifact();
+            artifact.groupId = groupId;
+            artifact.artifactId = artifactId;
+            artifact.repository = info;
+            artifact.files = Collections.emptyList();
+            artifact.lastUpdated = now;
+            artifact.persist();
+        } else {
+            artifact.lastUpdated = now;
+        }
+
+        ArtifactVersion versionEntity = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, version).firstResult();
+        if (versionEntity == null) {
+            versionEntity = new ArtifactVersion();
+            versionEntity.artifact = artifact;
+            versionEntity.version = version;
+            versionEntity.created = now;
+            versionEntity.updated = now;
+            versionEntity.files = new ArrayList<>();
+            versionEntity.files.add(file);
+
+            versionEntity.persist();
+        } else {
+            versionEntity.updated = now;
+
+            if (versionEntity.files == null) versionEntity.files = new ArrayList<>();
+            versionEntity.files.add(file);
+        }
+    }
+
+    protected void tryLinkFile(final String path, final StoredFile file) {
+        if (path.endsWith(METADATA_FILE_NAME) && tryLinkToArtifact(path, file)) return;
+        tryLinkToVersion(path, file);
+    }
+
+    protected boolean updateHash(final String path, final StreamHandle handle) {
+        final String sourcePath = path.substring(0, path.lastIndexOf('.'));
+        final String hashType = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
+
+        final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", sourcePath, info.id).firstResult();
+        if (file == null) return false;
+
+        if (handle.contentLength() > MAX_HASH_FILE_SIZE)
+            throw new BadRequestException("Hash file size exceeds maximum allowed size");
+        final String hash = new String(readAllBytes(handle));
+
+        if (file.hashes == null) file.hashes = new HashMap<>();
+        file.hashes.put(hashType, hash);
+        return true;
     }
 
     public ArtifactDetails getDetails(final JsonNode node) {

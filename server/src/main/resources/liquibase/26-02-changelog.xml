@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.33.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1769943556375-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="StoredFile_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1769943556375-2"
+               author="bethibande">
+        <createTable tableName="ArtifactVersion_files">
+            <column name="ArtifactVersion_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="files_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769943556375-3"
+               author="bethibande">
+        <createTable tableName="StoredFile">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_storedfile"/>
+            </column>
+            <column name="repository_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="key"
+                    type="varchar(1024)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769943556375-4"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="repository_id"
+                                 baseTableName="StoredFile"
+                                 constraintName="FK_STOREDFILE_ON_REPOSITORY"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Repository"/>
+    </changeSet>
+    <changeSet id="1769943556375-5"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="ArtifactVersion_id"
+                                 baseTableName="ArtifactVersion_files"
+                                 constraintName="fk_artfil_on_artifact_version"
+                                 referencedColumnNames="id"
+                                 referencedTableName="ArtifactVersion"/>
+    </changeSet>
+    <changeSet id="1769943556375-6"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="files_id"
+                                 baseTableName="ArtifactVersion_files"
+                                 constraintName="fk_artfil_on_stored_file"
+                                 referencedColumnNames="id"
+                                 referencedTableName="StoredFile"/>
+    </changeSet>
+
+    <changeSet id="1769950427746-1"
+               author="bethibande">
+        <createTable tableName="Artifact_files">
+            <column name="Artifact_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="files_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1769950427746-2"
+               author="bethibande">
+        <addColumn tableName="StoredFile">
+            <column name="created"
+                    type="timestamptz"/>
+            <column name="hashes"
+                    type="jsonb"/>
+            <column name="updated"
+                    type="timestamptz"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1769950427746-3"
+               author="bethibande">
+        <addNotNullConstraint columnName="created"
+                              tableName="StoredFile"/>
+    </changeSet>
+    <changeSet id="1769950427746-6"
+               author="bethibande">
+        <addNotNullConstraint columnName="updated"
+                              tableName="StoredFile"/>
+    </changeSet>
+    <changeSet id="1769950427746-7"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="Artifact_id"
+                                 baseTableName="Artifact_files"
+                                 constraintName="fk_artfil_on_artifact"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Artifact"/>
+    </changeSet>
+    <changeSet id="1769950427746-8"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="files_id"
+                                 baseTableName="Artifact_files"
+                                 constraintName="fk_artfil_on_stored_file"
+                                 referencedColumnNames="id"
+                                 referencedTableName="StoredFile"/>
+    </changeSet>
+</databaseChangeLog>

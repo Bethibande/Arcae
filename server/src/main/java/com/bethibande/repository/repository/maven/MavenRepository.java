@@ -140,7 +140,7 @@ public class MavenRepository implements ManagedRepository {
 
     protected StreamHandle fetchHash(final String path) {
         final String filePath = path.substring(0, path.lastIndexOf('.'));
-        final StoredFile file = StoredFile.find("path = ?1 and repository.id = ?2", filePath, info.id).firstResult();
+        final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", filePath, info.id).firstResult();
         if (file == null) return null;
 
         final String hashType = path.substring(path.lastIndexOf('.') + 1).toLowerCase();

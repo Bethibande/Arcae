@@ -24,6 +24,7 @@ import org.apache.http.HttpStatus;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @RolesAllowed("ADMIN")
@@ -100,11 +101,17 @@ public class RepositoryEndpoint {
         );
     }
 
+    public enum RepositorySortOrder {
+        LAST_UPDATED,
+        ARTIFACT_COUNT,
+        ALPHABETICAL
+    }
+
     @GET
     @PermitAll
     @Transactional
     @Path("/overview")
-    public List<RepositoryOverviewDTO> overview() {
+    public List<RepositoryOverviewDTO> overview(final @QueryParam("o") @DefaultValue("ALPHABETICAL") RepositorySortOrder order) {
         final CriteriaBuilder builder = Repository.getEntityManager().getCriteriaBuilder();
         final CriteriaQuery<Repository> query = builder.createQuery(Repository.class);
         final Root<Repository> root = query.from(Repository.class);
@@ -135,12 +142,19 @@ public class RepositoryEndpoint {
                 .map(PublicRepositoryDTO::from)
                 .toList();
 
+        final Comparator<RepositoryOverviewDTO> comparator = switch (order) {
+            case ALPHABETICAL -> Comparator.comparing(dto -> dto.repository.name());
+            case LAST_UPDATED -> Comparator.comparing(RepositoryOverviewDTO::lastUpdated, Comparator.nullsLast(Comparator.reverseOrder()));
+            case ARTIFACT_COUNT -> Comparator.comparing(RepositoryOverviewDTO::artifactsCount).reversed();
+        };
+
         return repositories.stream()
                 .map(repository -> new RepositoryOverviewDTO(
                         repository,
                         Artifact.count("repository.id = ?1", repository.id()),
                         ArtifactVersion.findMaxUpdated(repository.id())
                 ))
+                .sorted(comparator)
                 .toList();
     }
 

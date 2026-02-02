@@ -3,7 +3,7 @@ import {Button} from "@/components/ui/button.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {ChevronRight, LayoutGrid, List, Plus,} from "lucide-react";
 import {useEffect, useState} from "react";
-import {RepositoryEndpointApi, type RepositoryOverviewDTO, UserRole} from "@/generated";
+import {RepositoryEndpointApi, type RepositoryOverviewDTO, RepositorySortOrder, UserRole} from "@/generated";
 import {showError} from "@/lib/errors.ts";
 import {RepositoryCard} from "@/components/repository/RepositoryCard.tsx";
 import {useNavigate} from "react-router";
@@ -12,18 +12,26 @@ import {useAuth} from "@/lib/auth.tsx";
 export default function DashboardView() {
     const {user} = useAuth();
     const [repositories, setRepositories] = useState<RepositoryOverviewDTO[]>([])
+    const [sortOrder, setSortOrder] = useState<RepositorySortOrder>(() => {
+        const saved = localStorage.getItem("repository_sort_order");
+        if (saved && Object.values(RepositorySortOrder).includes(saved as RepositorySortOrder)) {
+            return saved as RepositorySortOrder;
+        }
+        return RepositorySortOrder.Alphabetical;
+    })
     const navigate = useNavigate();
 
-    const fetchRepositories = () => {
+    const fetchRepositories = (order: RepositorySortOrder) => {
         new RepositoryEndpointApi()
-            .apiV1RepositoryOverviewGet()
+            .apiV1RepositoryOverviewGet({ o: order })
             .then(setRepositories)
             .catch(showError)
     };
 
     useEffect(() => {
-        fetchRepositories();
-    }, [])
+        fetchRepositories(sortOrder);
+        localStorage.setItem("repository_sort_order", sortOrder);
+    }, [sortOrder])
 
     const hasRole = (role: UserRole) => {
         return user?.roles?.includes(role);
@@ -46,6 +54,21 @@ export default function DashboardView() {
                         </p>
                     </div>
 
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg border">
+                            <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as RepositorySortOrder)}>
+                                <SelectTrigger className="border-none bg-transparent shadow-none h-8">
+                                    <span className="text-muted-foreground mr-1">Sort:</span>
+                                    <SelectValue placeholder="Alphabetical"/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={RepositorySortOrder.Alphabetical}>Alphabetical</SelectItem>
+                                    <SelectItem value={RepositorySortOrder.LastUpdated}>Last Updated</SelectItem>
+                                    <SelectItem value={RepositorySortOrder.ArtifactCount}>Artifact Count</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                     { /* Hidden until we implement this */}
                     <div className="flex items-center gap-3 hidden">
                         <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg border">
@@ -90,7 +113,7 @@ export default function DashboardView() {
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {repositories.map((repo) => (
-                    <RepositoryCard key={repo.repository.name} repository={repo} onDelete={fetchRepositories}/>
+                    <RepositoryCard key={repo.repository.name} repository={repo} onDelete={() => fetchRepositories(sortOrder)}/>
                 ))}
 
                 {/* Add New Repository */}

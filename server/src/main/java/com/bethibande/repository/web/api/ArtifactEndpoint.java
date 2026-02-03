@@ -128,7 +128,7 @@ public class ArtifactEndpoint {
 
         final User self = authenticatedUser.getSelf();
 
-        repository.delete(self, artifact);
+        repository.delete(self, artifact, false);
     }
 
     @DELETE
@@ -143,7 +143,7 @@ public class ArtifactEndpoint {
 
         final User self = authenticatedUser.getSelf();
 
-        repository.delete(self, version, true);
+        repository.delete(self, version, true, false);
     }
 
 }

@@ -51,7 +51,7 @@ public class MavenRepository implements ManagedRepository {
         this.info = info;
         this.config = config;
         this.backend = new S3Backend(config.s3Config());
-        this.fileIndexer = new MavenFileIndexer(info);
+        this.fileIndexer = new MavenFileIndexer(info, this);
     }
 
     protected StreamHandle mirrorGet(final User user, final String path, final MirrorConnectionSettings mirror) {
@@ -172,8 +172,8 @@ public class MavenRepository implements ManagedRepository {
         }
     }
 
-    protected void delete0(final User user, final List<StoredFile> files) {
-        if (!this.info.canWrite(user)) throw new UnauthorizedException();
+    protected void delete0(final User user, final List<StoredFile> files, final boolean skipAuth) {
+        if (!skipAuth && !this.info.canWrite(user)) throw new UnauthorizedException();
 
         for (int i = 0; i < files.size(); i++) {
             final StoredFile file = files.get(i);
@@ -192,12 +192,22 @@ public class MavenRepository implements ManagedRepository {
         return new StreamHandle(stream, contentType, bytes.length);
     }
 
-    public void delete(final User user, final ArtifactVersion version, final boolean updateMavenMetadata) {
-        delete0(user, version.files);
+    @Override
+    public void delete(final User user,
+                       final ArtifactVersion version,
+                       final boolean skipAuth) {
+        delete(user, version, true, skipAuth);
+    }
+
+    public void delete(final User user,
+                       final ArtifactVersion version,
+                       final boolean updateMavenMetadata,
+                       final boolean skipAuth) {
+        delete0(user, version.files, skipAuth);
         version.delete();
 
         if (version.artifact.countVersions() <= 0) {
-            delete(user, version.artifact);
+            delete(user, version.artifact, skipAuth);
         } else if (updateMavenMetadata) {
             final StoredFile metadataFile = fileIndexer.getGAMetadataFile(version.artifact);
             if (metadataFile == null)
@@ -213,12 +223,12 @@ public class MavenRepository implements ManagedRepository {
         }
     }
 
-    public void delete(final User user, final Artifact artifact) {
-        delete0(user, artifact.files);
+    public void delete(final User user, final Artifact artifact, final boolean skipAuth) {
+        delete0(user, artifact.files, skipAuth);
 
         ArtifactVersion.<ArtifactVersion>find("artifact = ?1", artifact)
                 .stream()
-                .forEach(version -> delete(user, version, false));
+                .forEach(version -> delete(user, version, false, true));
 
         Artifact.deleteById(artifact.id);
     }

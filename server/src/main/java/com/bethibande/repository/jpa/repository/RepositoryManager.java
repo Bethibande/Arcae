@@ -11,12 +11,16 @@ public class RepositoryManager {
     @Inject
     protected ObjectMapper mapper;
 
-    @SuppressWarnings("unchecked")
     public <T extends ManagedRepository> T findRepository(final String name, final PackageManager packageManager) {
         final Repository repo = Repository.find("name = ?1 and packageManager = ?2", name, packageManager).firstResult();
         if (repo == null) return null;
 
-        return (T) packageManager.createRepository(repo, mapper);
+        return manage(repo);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends ManagedRepository> T manage(final Repository repo) {
+        return (T) repo.packageManager.createRepository(repo, mapper);
     }
 
 }

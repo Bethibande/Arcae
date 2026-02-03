@@ -13,6 +13,7 @@ import {FormField} from "@/components/form-field.tsx";
 import {handleSubmit} from "@/lib/forms.ts";
 import {
     CONFIG_MAPPING,
+    defaultCleanupPolicies,
     dynamicFormSchema,
     type DynamicFormValues,
     type PermissionValues
@@ -20,6 +21,7 @@ import {
 import {cn} from "@/lib/utils.ts";
 import {PermissionsForm} from "@/components/repository/PermissionsForm.tsx";
 import {useAuth} from "@/lib/auth.tsx";
+import {CleanupPoliciesForm} from "@/components/repository/CleanupPoliciesForm.tsx";
 
 export default function RepositoryEditView() {
     const {user} = useAuth();
@@ -41,7 +43,8 @@ export default function RepositoryEditView() {
             name: "",
             packageManager: PackageManager.Maven,
             mavenConfig: CONFIG_MAPPING[PackageManager.Maven].defaultValues,
-            permissions: []
+            permissions: [],
+            cleanupPolicies: defaultCleanupPolicies
         }
     });
 
@@ -61,6 +64,20 @@ export default function RepositoryEditView() {
                     if (repo) {
                         form.setValue("name", repo.name);
                         form.setValue("packageManager", repo.packageManager);
+                        if (repo.cleanupPolicies) {
+                            form.setValue("cleanupPolicies", {
+                                ...defaultCleanupPolicies,
+                                ...repo.cleanupPolicies,
+                                maxAgePolicy: {
+                                    ...defaultCleanupPolicies.maxAgePolicy,
+                                    ...(repo.cleanupPolicies.maxAgePolicy || {})
+                                },
+                                maxVersionCountPolicy: {
+                                    ...defaultCleanupPolicies.maxVersionCountPolicy,
+                                    ...(repo.cleanupPolicies.maxVersionCountPolicy || {})
+                                }
+                            });
+                        }
 
                         const mappedPermissions: PermissionValues[] = permissions.map((p) => ({
                             id: p.id,
@@ -77,7 +94,20 @@ export default function RepositoryEditView() {
                                 const settings = JSON.parse(repo.settings);
                                 const currentPmConfig = CONFIG_MAPPING[repo.packageManager];
                                 if (currentPmConfig) {
-                                    form.setValue(currentPmConfig.configKey as keyof DynamicFormValues, settings);
+                                    const mergedSettings = {
+                                        ...currentPmConfig.defaultValues,
+                                        ...settings,
+                                        // Ensure nested objects are also merged with defaults
+                                        s3Config: {
+                                            ...(currentPmConfig.defaultValues.s3Config || {}),
+                                            ...(settings.s3Config || {})
+                                        },
+                                        mirrorConfig: {
+                                            ...(currentPmConfig.defaultValues.mirrorConfig || {}),
+                                            ...(settings.mirrorConfig || {})
+                                        }
+                                    };
+                                    form.setValue(currentPmConfig.configKey as keyof DynamicFormValues, mergedSettings);
                                 }
                             } catch (e) {
                                 console.error("Failed to parse settings", e);
@@ -111,7 +141,8 @@ export default function RepositoryEditView() {
                         id: repoId,
                         name: data.name,
                         packageManager: data.packageManager,
-                        settings
+                        settings,
+                        cleanupPolicies: data.cleanupPolicies
                     }
                 });
             } else {
@@ -119,7 +150,8 @@ export default function RepositoryEditView() {
                     repositoryDTOWithoutId: {
                         name: data.name,
                         packageManager: data.packageManager,
-                        settings
+                        settings,
+                        cleanupPolicies: data.cleanupPolicies
                     }
                 });
                 repoId = repo.id!;
@@ -170,7 +202,6 @@ export default function RepositoryEditView() {
 
     const sections = [
         {id: "general", label: "General", icon: Settings},
-        {id: "behavior", label: "Behavioral Policies", icon: Settings},
         {id: "replication", label: "Replication/Mirroring", icon: RefreshCw},
         {id: "storage", label: "Storage (S3)", icon: Cloud},
         {id: "cleanup", label: "Cleanup Policies", icon: Trash2},
@@ -314,15 +345,7 @@ export default function RepositoryEditView() {
                                 <pmConfig.FormComponent control={form.control} prefix={pmConfig.configKey}/>
                             )}
 
-                            <div id="cleanup" className="space-y-6 pt-4">
-                                <h2 className="text-xl font-bold tracking-tight">Cleanup Policies</h2>
-                                <Card className="opacity-50">
-                                    <CardContent className="p-6">
-                                        <p className="text-sm text-muted-foreground">Cleanup policies are not yet
-                                            available.</p>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                            <CleanupPoliciesForm control={form.control}/>
 
                             <PermissionsForm control={form.control}/>
                         </form>

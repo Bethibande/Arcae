@@ -45,6 +45,7 @@ public class RepositoryEndpoint {
         repository.name = dto.name();
         repository.packageManager = dto.packageManager();
         repository.settings = dto.settings();
+        repository.cleanupPolicies = dto.cleanupPolicies();
 
         repository.persist();
 
@@ -60,6 +61,7 @@ public class RepositoryEndpoint {
         repository.name = dto.name();
         repository.packageManager = dto.packageManager();
         repository.settings = dto.settings();
+        repository.cleanupPolicies = dto.cleanupPolicies();
         repository.persist();
 
         return RepositoryDTO.from(repository);

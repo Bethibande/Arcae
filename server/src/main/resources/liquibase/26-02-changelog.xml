@@ -124,4 +124,50 @@
             UPDATE repository SET packagemanager = 'MAVEN' WHERE packagemanager = 'MAVEN_3';
         </sql>
     </changeSet>
+
+    <changeSet id="1770035947861-1"
+               author="bethibande">
+        <addColumn tableName="Repository">
+            <column name="cleanupPolicies"
+                    type="jsonb"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="1770114595082-1"
+               author="behtibande">
+        <createSequence incrementBy="50"
+                        sequenceName="TaskLock_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1770114595082-2"
+               author="behtibande">
+        <createTable tableName="TaskLock">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_tasklock"/>
+            </column>
+            <column name="taskId"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="doNotExecuteBefore"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lock"
+                    type="varchar(255)"/>
+            <column name="lockEnd"
+                    type="timestamptz"/>
+            <column name="lastSuccess"
+                    type="timestamptz"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1770114595082-3"
+               author="behtibande">
+        <addUniqueConstraint columnNames="taskId"
+                             constraintName="uc_tasklock_taskid"
+                             tableName="TaskLock"/>
+    </changeSet>
 </databaseChangeLog>

@@ -9,18 +9,18 @@ import {Button} from "@/components/ui/button.tsx";
 import {Plus, Trash2} from "lucide-react";
 
 export const s3Schema = z.object({
-    url: z.string().url().or(z.string().startsWith("http://")),
-    region: z.string().min(1),
-    bucket: z.string().min(1),
-    accessKey: z.string().min(1),
-    secretKey: z.string().min(1),
+    url: z.string().url().or(z.string().startsWith("http://")).or(z.string().length(0)),
+    region: z.string(),
+    bucket: z.string(),
+    accessKey: z.string(),
+    secretKey: z.string(),
 });
 
 export const connectionSchema = z.object({
     url: z.string().url().or(z.string().startsWith("http://")).or(z.string().length(0)),
     authType: z.enum(["NONE", "BASIC", "BEARER"]),
-    username: z.string(),
-    password: z.string(),
+    username: z.string().optional(),
+    password: z.string().optional(),
 });
 
 export const mirrorSchema = z.object({

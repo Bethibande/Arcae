@@ -36,10 +36,12 @@ public class MavenFileIndexer {
 
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
+    private final MavenRepository repository;
     private final Repository info;
 
-    public MavenFileIndexer(final Repository info) {
+    public MavenFileIndexer(final Repository info, final MavenRepository repository) {
         this.info = info;
+        this.repository = repository;
     }
 
     public StoredFile getGAMetadataFile(final Artifact artifact) {
@@ -61,10 +63,16 @@ public class MavenFileIndexer {
         try {
             final JsonNode root = mapper.readTree(fileContent);
             final ObjectNode versioningNode = (ObjectNode) root.get("versioning");
-            final ArrayNode versionsNode = (ArrayNode) versioningNode.get("versions").get("version");
-            versionsNode.removeIf(node -> node.asText().equalsIgnoreCase(version.version));
-
+            final ObjectNode versionsNode = (ObjectNode) versioningNode.get("versions");
             final ArtifactVersion latestVersion = getLatestVersion(version.artifact);
+
+            if (versionsNode.get("version").isArray()) {
+                final ArrayNode versionNode = (ArrayNode) versioningNode.get("versions").get("version");
+                versionNode.removeIf(node -> node.asText().equalsIgnoreCase(version.version));
+            } else {
+                versionsNode.set("version", new TextNode(latestVersion.version));
+            }
+
             versioningNode.set("latest", new TextNode(latestVersion.version));
 
             final Instant now = Instant.now();
@@ -177,6 +185,12 @@ public class MavenFileIndexer {
             versionEntity.files.add(file);
 
             versionEntity.persist();
+
+            if (info.cleanupPolicies != null
+                    && info.cleanupPolicies.maxVersionCountPolicy() != null
+                    && info.cleanupPolicies.maxVersionCountPolicy().enabled()) {
+                info.cleanupPolicies.maxVersionCountPolicy().cleanup(artifact, repository);
+            }
         } else {
             versionEntity.updated = now;
 

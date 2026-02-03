@@ -1,32 +1,33 @@
 package com.bethibande.repository.web.api;
 
+import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserDTOWithoutPassword;
+import com.bethibande.repository.security.SecurityAttributes;
+import com.bethibande.repository.security.UserAuthenticationMechanism;
+import com.bethibande.repository.security.UserSessionService;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.security.identity.SecurityIdentity;
-import io.smallrye.jwt.build.Jwt;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.wildfly.security.util.PasswordUtil;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Path("/api/v1/auth")
 public class AuthenticationEndpoint {
 
     private static final String DUMMY_BCRYPT_HASH = BcryptUtil.bcryptHash(PasswordUtil.generateSecureRandomString(17));
+    @Inject
+    UserSessionService userSessionService;
 
     public static class Credentials {
         public String username;
@@ -38,12 +39,6 @@ public class AuthenticationEndpoint {
 
     @ConfigProperty(name = "quarkus.profile")
     protected String profile;
-
-    @ConfigProperty(name = "mp.jwt.verify.issuer")
-    protected String issuer;
-
-    @ConfigProperty(name = "mp.jwt.token.cookie")
-    protected String cookieName;
 
     protected boolean isDevMode() {
         return Objects.equals(profile, "dev");
@@ -76,25 +71,17 @@ public class AuthenticationEndpoint {
     }
 
     public Response doLogin(final User user) {
-        final Set<String> roles = user.roles.stream()
-                .map(Object::toString)
-                .collect(Collectors.toSet());
-
-        final Duration duration = Duration.ofHours(24);
-        final String token = Jwt.issuer(issuer)
-                .upn(user.name)
-                .groups(roles)
-                .expiresIn(duration)
-                .sign();
+        final UserSession session = userSessionService.createSessionForUser(user);
+        final Duration maxAge = Duration.between(Instant.now(), session.expiresAfter());
 
         return Response.ok(UserDTOWithoutPassword.from(user))
-                .cookie(new NewCookie.Builder(cookieName)
-                        .value(token)
+                .cookie(new NewCookie.Builder(UserAuthenticationMechanism.COOKIE_NAME)
+                        .value(session.token)
                         .httpOnly(true)
                         .secure(!isDevMode())
                         .sameSite(NewCookie.SameSite.STRICT)
                         .path("/")
-                        .maxAge((int) duration.toSeconds())
+                        .maxAge((int) maxAge.toSeconds())
                         .build())
                 .build();
     }
@@ -103,8 +90,11 @@ public class AuthenticationEndpoint {
     @PermitAll
     @Path("/logout")
     public Response logout() {
+        final UserSession session = identity.getAttribute(SecurityAttributes.SESSION);
+        userSessionService.invalidateSession(session.token);
+
         return Response.ok()
-                .cookie(new NewCookie.Builder(cookieName)
+                .cookie(new NewCookie.Builder(UserAuthenticationMechanism.COOKIE_NAME)
                         .httpOnly(true)
                         .secure(!isDevMode())
                         .path("/")
@@ -117,11 +107,10 @@ public class AuthenticationEndpoint {
     @GET
     @PermitAll
     @Path("/me")
-    public UserDTOWithoutPassword me() {
+    public UserDTOWithoutPassword me(final @HeaderParam("User-Agent") String userAgent) {
         if (identity.isAnonymous()) throw new NotFoundException();
-        final User user = User.find("name = ?1", identity.getPrincipal().getName()).firstResult();
-        if (user == null) throw new NotFoundException();
 
+        final User user = identity.getPrincipal(User.class);
         return UserDTOWithoutPassword.from(user);
     }
 

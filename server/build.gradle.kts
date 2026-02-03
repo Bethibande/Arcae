@@ -1,9 +1,7 @@
-import org.gradle.kotlin.dsl.withType
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 import kotlin.io.path.readText
 import kotlin.io.path.walk
 import kotlin.io.path.writeText
-import kotlin.sequences.forEach
 
 plugins {
     id("java")
@@ -35,6 +33,7 @@ dependencies {
     implementation("io.quarkus:quarkus-jdbc-postgresql")
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-hibernate-orm")
+    implementation("io.quarkus:quarkus-cache")
 
     implementation("io.quarkus:quarkus-scheduler")
     implementation("com.cronutils:cron-utils:9.2.1")
@@ -52,8 +51,6 @@ dependencies {
     implementation("io.quarkus:quarkus-hibernate-search-orm-elasticsearch")
 
     // Security
-    implementation("io.quarkus:quarkus-smallrye-jwt")
-    implementation("io.quarkus:quarkus-smallrye-jwt-build")
     implementation("io.quarkus:quarkus-security-jpa")
     implementation("io.quarkus:quarkus-security")
 

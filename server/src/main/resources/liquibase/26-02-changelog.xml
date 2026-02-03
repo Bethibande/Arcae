@@ -170,4 +170,62 @@
                              constraintName="uc_tasklock_taskid"
                              tableName="TaskLock"/>
     </changeSet>
+
+    <changeSet id="1770133651187-1"
+               author="behtibande">
+        <createSequence incrementBy="50"
+                        sequenceName="UserSession_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1770133651187-2"
+               author="behtibande">
+        <createTable tableName="UserSession">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_usersession"/>
+            </column>
+            <column name="token"
+                    type="varchar(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="device"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1770133651187-3"
+               author="behtibande">
+        <addUniqueConstraint columnNames="token"
+                             constraintName="uc_usersession_token"
+                             tableName="UserSession"/>
+    </changeSet>
+    <changeSet id="1770133651187-4"
+               author="behtibande">
+        <addForeignKeyConstraint baseColumnNames="user_id"
+                                 baseTableName="UserSession"
+                                 constraintName="FK_USERSESSION_ON_USER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+    <changeSet id="1770134319183-1" author="bethibande">
+        <createIndex tableName="UserSession" indexName="idx_usersession_token">
+            <column name="token"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1770136876985-1" author="bethibande">
+        <dropColumn tableName="UserSession">
+            <column name="device"/>
+        </dropColumn>
+    </changeSet>
 </databaseChangeLog>

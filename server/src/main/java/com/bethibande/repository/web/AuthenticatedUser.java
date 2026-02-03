@@ -13,8 +13,7 @@ public class AuthenticatedUser {
 
     public User getSelf() {
         if (identity.isAnonymous()) return null;
-        // TODO: Properly cache query result
-        return User.find("name = ?1", identity.getPrincipal().getName()).firstResult();
+        return identity.getPrincipal(User.class);
     }
 
 }

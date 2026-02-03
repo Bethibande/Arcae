@@ -13,6 +13,7 @@ import java.util.List;
 @Table(name = "Users")
 @EntityDTO(excludeProperties = "id")
 @EntityDTO(excludeProperties = "password")
+@EntityDTO(excludeProperties = "roles")
 public class User extends PanacheEntity {
 
     @FullTextField

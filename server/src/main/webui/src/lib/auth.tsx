@@ -37,6 +37,7 @@ async function logout() {
 export interface AuthStatus {
     user?: UserDTOWithoutPassword;
     pending: boolean;
+    updateAuthState: () => void;
     login: (username: string, password: string) => Promise<LoginResult>;
     logout: () => Promise<void>;
 }
@@ -47,7 +48,7 @@ export const AuthProvider = ({children}: { children: ReactNode }) => {
     const [auth, setAuth] = useState<UserDTOWithoutPassword | undefined>(undefined);
     const [pending, setPending] = useState<boolean>(true);
 
-    useEffect(() => {
+    function updateAuthState() {
         fetch("/api/v1/auth/me", {
             headers: {
                 "Accept": "application/json",
@@ -65,7 +66,9 @@ export const AuthProvider = ({children}: { children: ReactNode }) => {
                 showErrorMessage(i18next.t("login.error.load"))
             }
         }).catch(showError)
-    }, [])
+    }
+
+    useEffect(updateAuthState, [])
 
     async function login0(username: string, password: string) {
         return login(username, password).then(result => {
@@ -79,7 +82,7 @@ export const AuthProvider = ({children}: { children: ReactNode }) => {
     }
 
     return (
-        <AuthContext.Provider value={{user: auth, pending: pending, login: login0, logout: logout0}}>
+        <AuthContext.Provider value={{user: auth, pending: pending, updateAuthState, login: login0, logout: logout0}}>
             {!pending && children}
         </AuthContext.Provider>
     )

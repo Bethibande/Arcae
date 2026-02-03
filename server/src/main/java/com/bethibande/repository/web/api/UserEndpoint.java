@@ -3,15 +3,21 @@ package com.bethibande.repository.web.api;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserDTOWithoutId;
 import com.bethibande.repository.jpa.user.UserDTOWithoutPassword;
+import com.bethibande.repository.jpa.user.UserDTOWithoutRoles;
+import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Sort;
+import io.quarkus.security.Authenticated;
+import io.quarkus.security.UnauthorizedException;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Response;
+import org.apache.http.HttpStatus;
 import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
 import org.hibernate.search.engine.search.predicate.dsl.PredicateFinalStep;
 import org.hibernate.search.engine.search.query.SearchResult;
@@ -27,6 +33,10 @@ public class UserEndpoint {
 
     @Inject
     public SearchSession searchSession;
+    @Inject
+    AuthenticatedUser authenticatedUser;
+    @Inject
+    AuthenticationEndpoint authenticationEndpoint;
 
     @POST
     @Transactional
@@ -129,4 +139,45 @@ public class UserEndpoint {
     public void delete(final @QueryParam("id") long id) {
         User.deleteById(id);
     }
+
+    @PUT
+    @Transactional
+    @Authenticated
+    @Path("/self")
+    public Response updateSelf(final UserDTOWithoutRoles dto) {
+        if (User.count("name = ?1", dto.name()) > 1)
+            throw new WebApplicationException("Duplicate username", HttpStatus.SC_CONFLICT);
+        if (User.count("email = ?1", dto.email()) > 1)
+            throw new WebApplicationException("Duplicate email", HttpStatus.SC_CONFLICT);
+
+        final User self = authenticatedUser.getSelf();
+        if (!BcryptUtil.matches(dto.password(), self.password)) throw new UnauthorizedException("Invalid password");
+
+        self.name = dto.name();
+        self.email = dto.email();
+
+        self.persist();
+
+        return authenticationEndpoint.doLogin(self);
+    }
+
+    public record PasswordResetForm(
+            String current,
+            String newPassword
+    ) {
+    }
+
+    @PUT
+    @Transactional
+    @Authenticated
+    @Path("/self/password")
+    public void resetPassword(final PasswordResetForm form) {
+        final User self = authenticatedUser.getSelf();
+        if (BcryptUtil.matches(form.current, self.password)) {
+            self.password = BcryptUtil.bcryptHash(form.newPassword);
+        } else {
+            throw new UnauthorizedException("Invalid current password");
+        }
+    }
+
 }

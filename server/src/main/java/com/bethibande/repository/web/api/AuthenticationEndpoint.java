@@ -6,6 +6,7 @@ import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.annotation.security.PermitAll;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -14,7 +15,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.jwt.Claims;
 import org.wildfly.security.util.PasswordUtil;
 
 import java.time.Duration;
@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@ApplicationScoped
 @Path("/api/v1/auth")
 public class AuthenticationEndpoint {
 
@@ -74,7 +75,7 @@ public class AuthenticationEndpoint {
         }
     }
 
-    private Response doLogin(final User user) {
+    public Response doLogin(final User user) {
         final Set<String> roles = user.roles.stream()
                 .map(Object::toString)
                 .collect(Collectors.toSet());

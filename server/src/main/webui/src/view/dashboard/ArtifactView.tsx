@@ -3,7 +3,7 @@ import {useEffect, useState} from "react";
 import {
     type ArtifactDTO,
     ArtifactEndpointApi,
-    type ArtifactVersionDTO,
+    type ArtifactVersionDTO, PackageManager,
     type PagedResponseArtifactVersionDTO,
     RepositoryEndpointApi,
     type RepositoryOverviewDTO
@@ -43,7 +43,7 @@ function UsageDetails({ artifact, version, packageManager }: { artifact: Artifac
     const [copied, setCopied] = useState<string | null>(null);
 
     const getSnippets = (): DependencySnippet[] => {
-        if (packageManager === "MAVEN_3") {
+        if (packageManager === PackageManager.Maven) {
             return [
                 {
                     name: "Maven",

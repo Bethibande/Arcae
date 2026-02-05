@@ -28,9 +28,9 @@ public class UserAuthenticationMechanism implements HttpAuthenticationMechanism 
                 : null;
 
         if (authCookie != null) {
-            try {
-                return identityProviderManager.authenticate(new TokenAuthenticationRequest(new TokenCredential(authCookie, "user")));
-            } catch (final AuthenticationFailedException _) {}
+            return identityProviderManager.authenticate(new TokenAuthenticationRequest(new TokenCredential(authCookie, "user")))
+                    .onFailure(AuthenticationFailedException.class)
+                    .recoverWithUni(Uni.createFrom().optional(Optional.empty()));
         }
 
         return Uni.createFrom().optional(Optional.empty());

@@ -5,11 +5,13 @@ import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScopeDTO;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScopeDTOWithoutId;
 import com.bethibande.repository.jpa.user.User;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 
 import java.util.List;
 
+@RolesAllowed("ADMIN")
 @Path("/api/v1/repository")
 public class RepositoryPermissionEndpoint {
 

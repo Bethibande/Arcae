@@ -1,6 +1,9 @@
 package com.bethibande.repository.web.api;
 
-import com.bethibande.repository.jpa.artifact.*;
+import com.bethibande.repository.jpa.artifact.Artifact;
+import com.bethibande.repository.jpa.artifact.ArtifactDTO;
+import com.bethibande.repository.jpa.artifact.ArtifactVersion;
+import com.bethibande.repository.jpa.artifact.ArtifactVersionDTO;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
 import com.bethibande.repository.jpa.user.User;
@@ -49,6 +52,11 @@ public class ArtifactEndpoint {
     @GET
     @Transactional
     public PagedResponse<ArtifactDTO> searchByGroupAndName(final @BeanParam ArtifactQuery query) {
+        final User self = authenticatedUser.getSelf();
+        final Repository repository = Repository.findById(query.repositoryId());
+        if (repository == null) throw new NotFoundException("Unknown repository");
+        if (!repository.canView(self)) throw new ForbiddenException("Unauthorized");
+
         final SearchResult<Artifact> result = searchSession.search(Artifact.class)
                 .where(q -> {
                     final List<PredicateFinalStep> predicates = new ArrayList<>();
@@ -87,17 +95,26 @@ public class ArtifactEndpoint {
     @Transactional
     @Path("/{id}")
     public ArtifactDTO getArtifact(final @PathParam("id") long id) {
-        return ArtifactDTO.from(Artifact.findById(id));
+        final Artifact artifact = Artifact.findById(id);
+        if (artifact == null) throw new NotFoundException("Unknown artifact");
+
+        final User self = authenticatedUser.getSelf();
+        if (!artifact.repository.canView(self)) throw new ForbiddenException("Unauthorized");
+
+        return ArtifactDTO.from(artifact);
     }
 
     @GET
     @Transactional
     @Path("/{id}/versions")
     public PagedResponse<ArtifactVersionDTO> getArtifactVersions(final @PathParam("id") long id,
-                                                        final @QueryParam("p") @Min(0) int page,
-                                                        final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
+                                                                 final @QueryParam("p") @Min(0) int page,
+                                                                 final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
         final Artifact artifact = Artifact.<Artifact>findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Artifact not found"));
+
+        final User self = authenticatedUser.getSelf();
+        if (!artifact.repository.canView(self)) throw new ForbiddenException("Unauthorized");
 
         final var query = ArtifactVersion.<ArtifactVersion>find("artifact.id = ?1", Sort.descending("updated"), artifact.id)
                 .page(page, pageSize);

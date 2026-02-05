@@ -14,17 +14,19 @@ import java.time.Instant;
 @ApplicationScoped
 public class UserSessionService {
 
+    public static final String USER_SESSION_CACHE = "user-sessions";
+
     // TODO: Config
     public static final Duration SESSION_LIFETIME = Duration.ofDays(7);
 
     @Transactional
-    @CacheResult(cacheName = "user-sessions")
+    @CacheResult(cacheName = USER_SESSION_CACHE)
     public UserSession getSessionByToken(final String token) {
         return UserSession.find("token = ?1", token).firstResult();
     }
 
     @Transactional
-    @CacheInvalidate(cacheName = "user-sessions")
+    @CacheInvalidate(cacheName = USER_SESSION_CACHE)
     public void invalidateSession(final String token) {
         UserSession.delete("token = ?1", token);
     }

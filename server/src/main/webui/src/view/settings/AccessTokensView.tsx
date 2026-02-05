@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
-import {type ColumnDef, getCoreRowModel, useReactTable} from "@tanstack/react-table";
-import {AccessTokenEndpointApi, type AccessTokenDTOWithoutToken} from "@/generated";
+import {type ColumnDef} from "@tanstack/react-table";
+import {type AccessTokenDTOWithoutToken, AccessTokenEndpointApi} from "@/generated";
 import {DataTable} from "@/components/data-table";
 import {Button} from "@/components/ui/button";
-import {Plus, MoreHorizontal, Pencil, Trash} from "lucide-react";
+import {MoreHorizontal, Pencil, Plus, Trash} from "lucide-react";
 import {AccessTokenEditDialog} from "@/components/access-token-edit-dialog";
 import {ConfirmDialog} from "@/components/confirm-dialog";
 import {
@@ -14,6 +14,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {toast} from "sonner";
+import {showError} from "@/lib/errors.ts";
 
 export default function AccessTokensView() {
     const [data, setData] = useState<AccessTokenDTOWithoutToken[]>([]);
@@ -39,7 +40,7 @@ export default function AccessTokensView() {
     };
 
     useEffect(() => {
-        fetchData();
+        fetchData().catch(showError);
     }, []);
 
     const deleteToken = async () => {
@@ -86,7 +87,7 @@ export default function AccessTokensView() {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
                                     <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
+                                    <MoreHorizontal className="h-4 w-4"/>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -97,7 +98,7 @@ export default function AccessTokensView() {
                                         setIsDialogOpen(true);
                                     }}
                                 >
-                                    <Pencil className="mr-2 h-4 w-4" />
+                                    <Pencil className="mr-2 h-4 w-4"/>
                                     Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
@@ -107,7 +108,7 @@ export default function AccessTokensView() {
                                         setIsDeleteDialogOpen(true);
                                     }}
                                 >
-                                    <Trash className="mr-2 h-4 w-4" />
+                                    <Trash className="mr-2 h-4 w-4"/>
                                     Delete
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -117,12 +118,6 @@ export default function AccessTokensView() {
             },
         },
     ];
-
-    const table = useReactTable({
-        data,
-        columns,
-        getCoreRowModel: getCoreRowModel(),
-    });
 
     return (
         <div className="p-6 space-y-6">
@@ -135,7 +130,7 @@ export default function AccessTokensView() {
                     setEditToken(null);
                     setIsDialogOpen(true);
                 }}>
-                    <Plus className="mr-2 h-4 w-4" /> Generate Token
+                    <Plus className="mr-2 h-4 w-4"/> Generate Token
                 </Button>
             </div>
 

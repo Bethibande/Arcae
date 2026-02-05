@@ -37,8 +37,8 @@ export default function RepositoryEditView() {
     const [activeSection, setActiveSection] = useState("general");
     const isScrolling = useRef(false);
 
-    const form = useForm<DynamicFormValues>({
-        resolver: zodResolver(dynamicFormSchema),
+    const form = useForm<DynamicFormValues, any, any>({
+        resolver: zodResolver(dynamicFormSchema) as any,
         defaultValues: {
             name: "",
             packageManager: PackageManager.Maven,

@@ -6,7 +6,7 @@ import {type Control, type FieldValues} from "react-hook-form";
 export interface PackageManagerConfig<T extends FieldValues = any> {
     schema: z.ZodType<any>;
     defaultValues: any;
-    FormComponent: React.ComponentType<{ control: Control<T>; prefix: string }>;
+    FormComponent: React.ComponentType<{ control: Control<T, any, any>; prefix: string }>;
     configKey: string;
 }
 

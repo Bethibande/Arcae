@@ -3,10 +3,12 @@ package com.bethibande.repository.repository.cleanup;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.ManagedRepository;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+@RegisterForReflection
 public record MaxAgeCleanupPolicy(
         boolean enabled,
         long time,

@@ -1,0 +1,49 @@
+name: repository-deployment
+services:
+  postgres:
+    image: postgres:16.3-alpine
+    environment:
+      POSTGRES_DB: repository
+      POSTGRES_USER: repository
+      POSTGRES_PASSWORD: 12345
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+  elastic:
+    image: elasticsearch:8.13.4
+    environment:
+      discovery.type: "single-node"
+      xpack.security.enabled: false
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+  minio:
+    image: quay.io/minio/minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: "repository"
+      MINIO_ROOT_PASSWORD: "12345678"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+  repository:
+    image: ocr.bethibande.com/bethibande/repository:1.0-SNAPSHOT
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/repository
+      DATABASE_USERNAME: repository
+      DATABASE_PASSWORD: 12345
+      SEARCH_HOSTS: elastic:9200
+volumes:
+  postgres: {}
+  elastic: {}
+  minio: {}

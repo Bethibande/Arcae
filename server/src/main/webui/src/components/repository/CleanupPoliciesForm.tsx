@@ -8,7 +8,7 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/c
 import {ChronoUnit} from "@/generated";
 
 interface CleanupPoliciesFormProps {
-    control: Control<DynamicFormValues>;
+    control: Control<DynamicFormValues, any, any>;
 }
 
 export function CleanupPoliciesForm({control}: CleanupPoliciesFormProps) {

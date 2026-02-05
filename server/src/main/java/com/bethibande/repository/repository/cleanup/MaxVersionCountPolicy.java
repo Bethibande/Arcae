@@ -4,10 +4,12 @@ import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.repository.ManagedRepository;
 import io.quarkus.panache.common.Sort;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.Min;
 
 import java.util.List;
 
+@RegisterForReflection
 public record MaxVersionCountPolicy(
         boolean enabled,
         @Min(0) int maxVersions

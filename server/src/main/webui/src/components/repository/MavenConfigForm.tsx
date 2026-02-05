@@ -54,7 +54,7 @@ export const defaultMavenConfig: MavenConfig = {
 };
 
 interface MavenConfigFormProps<TFieldValues extends FieldValues> {
-    control: Control<TFieldValues>;
+    control: Control<TFieldValues, any, any>;
     prefix: string;
 }
 
@@ -125,6 +125,7 @@ export function MirrorConfigForm<TFieldValues extends FieldValues>({ control, pr
                                         type="button"
                                         variant="outline"
                                         size="sm"
+                                        // @ts-ignore
                                         onClick={() => append({ url: "", authType: "NONE", username: "", password: "" })}
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
@@ -156,7 +157,7 @@ export function MirrorConfigForm<TFieldValues extends FieldValues>({ control, pr
 }
 
 interface ConnectionFormProps<TFieldValues extends FieldValues> {
-    control: Control<TFieldValues>;
+    control: Control<TFieldValues, any, any>;
     prefix: string;
     onRemove: () => void;
 }

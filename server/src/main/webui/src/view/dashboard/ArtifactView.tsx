@@ -195,7 +195,7 @@ export default function ArtifactView() {
         if (!artifact) return;
         setIsDeletingArtifact(true);
         const api = new ArtifactEndpointApi();
-        api.apiV1ArtifactIdDelete({id: artifact.id})
+        api.apiV1ArtifactIdDelete({id: artifact.id!})
             .then(() => {
                 toast.success("Artifact deleted successfully");
                 navigate(`/repositories/${artifact.repositoryId}/browse`);
@@ -212,7 +212,7 @@ export default function ArtifactView() {
         setIsDeletingVersion(true);
         const isLatest = selectedVersion.version === artifact.latestVersion;
         const api = new ArtifactEndpointApi();
-        api.apiV1ArtifactVersionIdDelete({id: selectedVersion.id})
+        api.apiV1ArtifactVersionIdDelete({id: selectedVersion.id!})
             .then(() => {
                 toast.success("Version deleted successfully");
                 if (versions?.total === 1) {

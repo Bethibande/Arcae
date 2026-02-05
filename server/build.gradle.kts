@@ -48,7 +48,9 @@ dependencies {
     // Jackson & Hibernate Search ORM
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.0")
     implementation("io.quarkus:quarkus-rest-client-jackson")
-    implementation("io.quarkus:quarkus-hibernate-search-orm-elasticsearch")
+    implementation("io.quarkus:quarkus-hibernate-search-orm-elasticsearch") {
+        exclude(group = "commons-logging", module = "commons-logging")
+    }
 
     // Security
     implementation("io.quarkus:quarkus-security-jpa")
@@ -59,6 +61,12 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-openapi")
     implementation("io.quarkus:quarkus-rest")
     implementation("io.quarkus:quarkus-rest-jackson")
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
+    }
 }
 
 openApiGenerate {

@@ -35,7 +35,9 @@ public class DeleteOldVersionsTask {
             lock.scheduleForCron("0 * * * * *");
 
             Repository.<Repository>streamAll().forEach(repository -> {
-                if (repository.cleanupPolicies != null && repository.cleanupPolicies.maxAgePolicy() != null) {
+                if (repository.cleanupPolicies != null
+                        && repository.cleanupPolicies.maxAgePolicy() != null
+                        && repository.cleanupPolicies.maxAgePolicy().enabled()) {
                     final ManagedRepository managedRepository = repositoryManager.manage(repository);
                     repository.cleanupPolicies.maxAgePolicy().cleanup(repository, managedRepository);
                 }

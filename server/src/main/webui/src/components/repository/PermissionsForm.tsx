@@ -9,7 +9,7 @@ import {UserSearch} from "@/components/UserSearch.tsx";
 import {FormField} from "@/components/form-field.tsx";
 
 interface PermissionsFormProps {
-    control: Control<DynamicFormValues>;
+    control: Control<DynamicFormValues, any, any>;
 }
 
 export function PermissionsForm({control}: PermissionsFormProps) {

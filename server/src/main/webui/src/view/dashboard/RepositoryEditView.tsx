@@ -43,6 +43,7 @@ export default function RepositoryEditView() {
             name: "",
             packageManager: PackageManager.Maven,
             mavenConfig: CONFIG_MAPPING[PackageManager.Maven].defaultValues,
+            ociConfig: CONFIG_MAPPING[PackageManager.Oci].defaultValues,
             permissions: [],
             cleanupPolicies: defaultCleanupPolicies
         }
@@ -97,16 +98,22 @@ export default function RepositoryEditView() {
                                     const mergedSettings = {
                                         ...currentPmConfig.defaultValues,
                                         ...settings,
-                                        // Ensure nested objects are also merged with defaults
-                                        s3Config: {
+                                    };
+
+                                    // Ensure nested objects are also merged with defaults for Maven or OCI
+                                    if (repo.packageManager === PackageManager.Maven || repo.packageManager === PackageManager.Oci) {
+                                        mergedSettings.s3Config = {
                                             ...(currentPmConfig.defaultValues.s3Config || {}),
                                             ...(settings.s3Config || {})
-                                        },
-                                        mirrorConfig: {
-                                            ...(currentPmConfig.defaultValues.mirrorConfig || {}),
-                                            ...(settings.mirrorConfig || {})
+                                        };
+                                        if (repo.packageManager === PackageManager.Maven) {
+                                            mergedSettings.mirrorConfig = {
+                                                ...(currentPmConfig.defaultValues.mirrorConfig || {}),
+                                                ...(settings.mirrorConfig || {})
+                                            };
                                         }
-                                    };
+                                    }
+
                                     form.setValue(currentPmConfig.configKey as keyof DynamicFormValues, mergedSettings);
                                 }
                             } catch (e) {
@@ -202,7 +209,7 @@ export default function RepositoryEditView() {
 
     const sections = [
         {id: "general", label: "General", icon: Settings},
-        {id: "replication", label: "Replication/Mirroring", icon: RefreshCw},
+        ...(selectedPackageManager === PackageManager.Maven ? [{id: "replication", label: "Replication/Mirroring", icon: RefreshCw}] : []),
         {id: "storage", label: "Storage (S3)", icon: Cloud},
         {id: "cleanup", label: "Cleanup Policies", icon: Trash2},
         {id: "permissions", label: "Permissions", icon: Lock},

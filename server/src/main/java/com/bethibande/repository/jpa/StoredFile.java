@@ -33,8 +33,8 @@ public class StoredFile extends PanacheEntity {
     public Map<String, String> hashes;
 
     public long usages() {
-        final long versions = ArtifactVersion.count("files.id = ?", id);
-        final long artifacts = Artifact.count("files.id = ?", id);
+        final long versions = ArtifactVersion.count("join files f on f.id = ?1", id);
+        final long artifacts = Artifact.count("join files f on f.id = ?1", id);
 
         return versions + artifacts;
     }

@@ -6,7 +6,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import {Clock, Coffee, ExternalLink, MoreHorizontal, Pencil, Trash2} from "lucide-react";
+import {Clock, Coffee, ExternalLink, MoreHorizontal, Pencil, Trash2, Box} from "lucide-react";
 import {cn} from "@/lib/utils.ts";
 import {PackageManager, RepositoryEndpointApi, type RepositoryOverviewDTO, UserRole} from "@/generated";
 import {useNavigate} from "react-router";
@@ -22,18 +22,22 @@ import {
 import {showError, showErrorMessage} from "@/lib/errors.ts";
 
 const packageBG: Record<PackageManager, string> = {
-    [PackageManager.Maven]: "bg-red-500/10"
+    [PackageManager.Maven]: "bg-red-500/10",
+    [PackageManager.Oci]: "bg-blue-500/10"
 }
 const packageBGPrimary: Record<PackageManager, string> = {
-    [PackageManager.Maven]: "bg-red-600"
+    [PackageManager.Maven]: "bg-red-600",
+    [PackageManager.Oci]: "bg-blue-600"
 }
 
 const packageFG: Record<PackageManager, string> = {
-    [PackageManager.Maven]: "text-red-500"
+    [PackageManager.Maven]: "text-red-500",
+    [PackageManager.Oci]: "text-blue-500"
 }
 
 const packageIcon: Record<PackageManager, any> = {
-    [PackageManager.Maven]: Coffee
+    [PackageManager.Maven]: Coffee,
+    [PackageManager.Oci]: Box
 }
 
 interface RepositoryCardProps {

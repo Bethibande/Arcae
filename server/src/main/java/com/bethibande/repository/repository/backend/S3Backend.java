@@ -7,6 +7,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.auth.aws.signer.SignerConstant;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -30,7 +31,7 @@ public class S3Backend implements RepositoryBackend {
     }
 
     public String createMultipartUpload(final String path) {
-        return this.client.createMultipartUpload(b -> b.bucket(this.config.bucket()).key(path))
+        return this.client.createMultipartUpload(b -> b.bucket(this.config.bucket()).key(path).contentType("application/octet-stream"))
                 .uploadId();
     }
 
@@ -39,6 +40,7 @@ public class S3Backend implements RepositoryBackend {
         this.client.uploadPart(
                 b -> b.bucket(this.config.bucket())
                         .key(path)
+                        .contentLength(handle.contentLength())
                         .uploadId(uploadId)
                         .partNumber(partNumber),
                 body
@@ -70,7 +72,10 @@ public class S3Backend implements RepositoryBackend {
                 .contentLength();
 
         if (contentLength < 5_000_000_000L) {
-            this.client.copyObject(b -> b.sourceBucket(this.config.bucket()).destinationKey(destination).sourceKey(source));
+            this.client.copyObject(b -> b.destinationBucket(this.config.bucket())
+                    .destinationKey(destination)
+                    .sourceBucket(this.config.bucket())
+                    .sourceKey(source));
         } else {
             final String uploadId = this.createMultipartUpload(destination);
 

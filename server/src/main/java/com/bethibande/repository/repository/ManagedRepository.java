@@ -1,5 +1,6 @@
 package com.bethibande.repository.repository;
 
+import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.user.User;
@@ -17,5 +18,7 @@ public interface ManagedRepository {
     }
 
     void delete(final User user, final ArtifactVersion version, final boolean skipAuth);
+
+    void delete(final User user, final Artifact artifact, final boolean skipAuth);
 
 }

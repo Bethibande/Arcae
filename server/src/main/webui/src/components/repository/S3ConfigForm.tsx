@@ -2,6 +2,15 @@ import {FormField} from "@/components/form-field.tsx";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card.tsx";
 import {Database} from "lucide-react";
 import {type Control, type FieldPath, type FieldValues} from "react-hook-form";
+import {z} from "zod";
+
+export const s3Schema = z.object({
+    url: z.string().url().or(z.string().startsWith("http://")).or(z.string().length(0)),
+    region: z.string(),
+    bucket: z.string(),
+    accessKey: z.string(),
+    secretKey: z.string(),
+});
 
 interface S3ConfigFormProps<TFieldValues extends FieldValues> {
     control: Control<TFieldValues, any, any>;

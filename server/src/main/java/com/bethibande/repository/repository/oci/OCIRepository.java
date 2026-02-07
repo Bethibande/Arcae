@@ -241,7 +241,33 @@ public class OCIRepository implements ManagedRepository {
 
     @Override
     public void delete(final User user, final ArtifactVersion version, final boolean skipAuth) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (!skipAuth && !info.canWrite(user)) throw new UnauthorizedException();
+
+        final List<StoredFile> files = new ArrayList<>(version.files);
+        version.files.clear();
+        version.manifest = null;
+        for (int i = 0; i < files.size(); i++) {
+            final StoredFile file = files.get(i);
+            if (file.usages() > 0) continue;
+
+            this.backend.delete(file.key);
+            file.delete();
+        }
+
+        version.delete();
+        if (version.artifact.countVersions() <= 0) {
+            delete(user, version.artifact, true);
+        }
+    }
+
+    public void delete(final User user, final Artifact artifact, final boolean skipAuth) {
+        if (!skipAuth && !info.canWrite(user)) throw new UnauthorizedException();
+
+        ArtifactVersion.<ArtifactVersion>find("artifact = ?1", artifact)
+                .stream()
+                .forEach(version -> delete(user, version, true));
+
+        Artifact.deleteById(artifact.id);
     }
 
     protected void putFile(final String key, final byte[] contents, final String contentType) {

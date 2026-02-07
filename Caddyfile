@@ -1,0 +1,11 @@
+{
+    debug
+}
+
+:8081 {
+    request_body {
+        max_size 10GB
+    }
+    rewrite * /repositories/oci/docker{uri}
+    reverse_proxy http://host.docker.internal:8080
+}

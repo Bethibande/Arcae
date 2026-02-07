@@ -1,5 +1,6 @@
 import { ChronoUnit, PackageManager, PermissionLevel, UserSelectionType } from "@/generated";
 import { defaultMavenConfig, MavenConfigForm, mavenSchema } from "@/components/repository/MavenConfigForm.tsx";
+import { defaultOCIConfig, OCIConfigForm, ociSchema } from "@/components/repository/OCIConfigForm.tsx";
 import { z } from "zod";
 import {type Control, type FieldValues} from "react-hook-form";
 
@@ -16,6 +17,12 @@ export const CONFIG_MAPPING: Record<PackageManager, PackageManagerConfig<Dynamic
         defaultValues: defaultMavenConfig,
         FormComponent: MavenConfigForm,
         configKey: "mavenConfig"
+    },
+    [PackageManager.Oci]: {
+        schema: ociSchema,
+        defaultValues: defaultOCIConfig,
+        FormComponent: OCIConfigForm,
+        configKey: "ociConfig"
     }
 };
 
@@ -50,6 +57,7 @@ export const dynamicFormSchema = z.object({
     name: z.string().min(3).max(64),
     packageManager: z.nativeEnum(PackageManager),
     mavenConfig: mavenSchema,
+    ociConfig: ociSchema,
     permissions: z.array(permissionSchema),
     cleanupPolicies: cleanupPoliciesSchema,
 });

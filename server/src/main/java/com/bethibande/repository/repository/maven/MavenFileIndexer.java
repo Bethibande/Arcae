@@ -246,7 +246,7 @@ public class MavenFileIndexer {
             });
         }
 
-        return new ArtifactDetails(description, url, authors, licenses);
+        return new ArtifactDetails(description, url, authors, licenses, null);
     }
 
     /**

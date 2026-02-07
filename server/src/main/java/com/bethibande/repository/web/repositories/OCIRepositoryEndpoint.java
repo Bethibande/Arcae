@@ -52,7 +52,6 @@ public class OCIRepositoryEndpoint {
 
         if (!repository.canView(user)) throw new ForbiddenException("Unauthorized");
 
-
         return Response.ok().build();
     }
 
@@ -179,7 +178,7 @@ public class OCIRepositoryEndpoint {
     @Transactional
     @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response uploadChunk(final @PathParam("repositoryId") String repositoryId,
-                                final @QueryParam("namespace") String namespace,
+                                final @PathParam("namespace") String namespace,
                                 final @PathParam("sessionId") UUID sessionId,
                                 final @QueryParam("uploadId") String uploadId,
                                 final @QueryParam("part") int partNumber,
@@ -213,27 +212,32 @@ public class OCIRepositoryEndpoint {
     @Transactional
     @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response completeUpload(final @PathParam("repositoryId") String repositoryId,
-                                   final @QueryParam("namespace") String namespace,
+                                   final @PathParam("namespace") String namespace,
                                    final @PathParam("sessionId") UUID sessionId,
                                    final @QueryParam("digest") String digest,
                                    final @QueryParam("uploadId") String uploadId,
                                    final @QueryParam("part") int partNumber,
                                    final @HeaderParam(HttpHeaders.CONTENT_LENGTH) Long contentLength,
                                    final InputStream content) {
-        final OCIRepository repository = repositoryOrThrow(repositoryId);
-        final User user = authenticatedUser.getSelf();
-        final UploadSessionHandle handle = new UploadSessionHandle(sessionId, uploadId);
+        try {
+            final OCIRepository repository = repositoryOrThrow(repositoryId);
+            final User user = authenticatedUser.getSelf();
+            final UploadSessionHandle handle = new UploadSessionHandle(sessionId, uploadId);
 
-        if (contentLength != null && contentLength > 0) {
-            final StreamHandle streamHandle = new StreamHandle(content, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), contentLength);
-            repository.uploadPart(user, namespace, handle, partNumber, streamHandle);
+            if (contentLength != null && contentLength > 0) {
+                final StreamHandle streamHandle = new StreamHandle(content, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), contentLength);
+                repository.uploadPart(user, namespace, handle, partNumber, streamHandle);
+            }
+
+            repository.completeUploadSession(user, namespace, digest, handle);
+
+            final String url = "/v2/%s/blobs/%s".formatted(namespace, digest);
+            return Response.created(URI.create(url))
+                    .build();
+        } catch (final Throwable th) {
+            System.err.println(th.getMessage());
+            return Response.serverError().build();
         }
-
-        repository.completeUploadSession(user, namespace, digest, handle);
-
-        final String url = "/v2/%s/blobs/%s".formatted(namespace, digest);
-        return Response.created(URI.create(url))
-                .build();
     }
 
     @PUT
@@ -258,7 +262,7 @@ public class OCIRepositoryEndpoint {
     @Transactional
     @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response abortUpload(final @PathParam("repositoryId") String repositoryId,
-                                final @QueryParam("namespace") String namespace,
+                                final @PathParam("namespace") String namespace,
                                 final @PathParam("sessionId") UUID sessionId,
                                 final @QueryParam("uploadId") String uploadId) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);

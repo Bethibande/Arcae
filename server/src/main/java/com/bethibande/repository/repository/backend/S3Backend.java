@@ -2,6 +2,7 @@ package com.bethibande.repository.repository.backend;
 
 import com.bethibande.repository.repository.S3Config;
 import com.bethibande.repository.repository.StreamHandle;
+import com.bethibande.repository.web.repositories.OCIRepositoryEndpoint;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.net.URI;
+import java.util.List;
 
 public class S3Backend implements RepositoryBackend {
 
@@ -25,6 +27,74 @@ public class S3Backend implements RepositoryBackend {
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(config.accessKey(), config.secretKey())))
                 .forcePathStyle(true)
                 .build();
+    }
+
+    public String createMultipartUpload(final String path) {
+        return this.client.createMultipartUpload(b -> b.bucket(this.config.bucket()).key(path))
+                .uploadId();
+    }
+
+    public void uploadPart(final String uploadId, final String path, final int partNumber, final StreamHandle handle) {
+        final RequestBody body = RequestBody.fromInputStream(handle.stream(), handle.contentLength());
+        this.client.uploadPart(
+                b -> b.bucket(this.config.bucket())
+                        .key(path)
+                        .uploadId(uploadId)
+                        .partNumber(partNumber),
+                body
+        );
+    }
+
+    public void completeMultipartUpload(final String uploadId, final String path) {
+        final List<CompletedPart> parts = this.client.listParts(b -> b.bucket(this.config.bucket()).key(path).uploadId(uploadId))
+                .parts()
+                .stream()
+                .map(part -> CompletedPart.builder()
+                        .eTag(part.eTag())
+                        .partNumber(part.partNumber())
+                        .build())
+                .toList();
+
+        this.client.completeMultipartUpload(b -> b.bucket(this.config.bucket())
+                .key(path)
+                .uploadId(uploadId)
+                .multipartUpload(u -> u.parts(parts)));
+    }
+
+    public void abortMultipartUpload(final String uploadId, final String path) {
+        this.client.abortMultipartUpload(b -> b.bucket(this.config.bucket()).key(path).uploadId(uploadId));
+    }
+
+    public void move(final String source, final String destination) {
+        final long contentLength = this.client.headObject(b -> b.bucket(this.config.bucket()).key(source))
+                .contentLength();
+
+        if (contentLength < 5_000_000_000L) {
+            this.client.copyObject(b -> b.sourceBucket(this.config.bucket()).destinationKey(destination).sourceKey(source));
+        } else {
+            final String uploadId = this.createMultipartUpload(destination);
+
+            int part = 1;
+            long offset = 0;
+            while (offset < contentLength) {
+                final long currentOffset = offset;
+                final int currentPart = part++;
+
+                final long partSize = Math.min(OCIRepositoryEndpoint.MIN_CHUNK_LENGTH, contentLength - offset);
+                this.client.uploadPartCopy(b -> b.sourceBucket(this.config.bucket())
+                        .destinationBucket(this.config.bucket())
+                        .sourceKey(source)
+                        .destinationKey(destination)
+                        .uploadId(uploadId)
+                        .partNumber(currentPart)
+                        .copySourceRange("bytes=%d-%d".formatted(currentOffset, currentOffset + partSize - 1)));
+                offset += partSize;
+            }
+
+            this.completeMultipartUpload(uploadId, destination);
+        }
+
+        delete(source);
     }
 
     @Override

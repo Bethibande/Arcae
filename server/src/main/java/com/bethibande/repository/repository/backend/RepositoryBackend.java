@@ -8,6 +8,8 @@ public interface RepositoryBackend {
 
     boolean head(final String path);
 
+    long headSize(final String path);
+
     StreamHandle get(final String path);
 
     void delete(final String path);

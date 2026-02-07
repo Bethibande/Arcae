@@ -4,7 +4,9 @@ import com.bethibande.repository.jpa.repository.PackageManager;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.StreamHandle;
+import com.bethibande.repository.repository.oci.OCIContentInfo;
 import com.bethibande.repository.repository.oci.OCIRepository;
+import com.bethibande.repository.repository.oci.OCIStreamHandle;
 import com.bethibande.repository.repository.oci.UploadSessionHandle;
 import com.bethibande.repository.web.AuthenticatedUser;
 import jakarta.inject.Inject;
@@ -18,11 +20,14 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.UUID;
 
-@Path("/repositories/oci/{repositoryId}/v2/{namespace}")
+@Path("/repositories/oci/{repositoryId}/v2")
 public class OCIRepositoryEndpoint {
 
     // Min length of 5 MB due to limitations of S3 multipart uploads
     public static final long MIN_CHUNK_LENGTH = 5_242_880;
+
+    public static final String HEADER_CONTENT_DIGEST = "Docker-Content-Digest";
+    public static final String HEADER_MIN_CHUNK_LENGTH = "OCI-Chunk-Min-Length";
 
     private final RepositoryManager repositoryManager;
     private final AuthenticatedUser authenticatedUser;
@@ -39,8 +44,97 @@ public class OCIRepositoryEndpoint {
         return repository;
     }
 
+    @GET
+    @Transactional
+    public Response get(final @PathParam("repositoryId") String repositoryId) {
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+
+        if (!repository.canView(user)) throw new ForbiddenException("Unauthorized");
+
+
+        return Response.ok().build();
+    }
+
+    @HEAD
+    @Transactional
+    @Path("/{namespace: .*}/blobs/{digest}")
+    public Response headBlob(final @PathParam("repositoryId") String repositoryId,
+                             final @PathParam("namespace") String namespace,
+                             final @PathParam("digest") String digest) {
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+
+        final OCIContentInfo info = repository.getBlobInfo(user, namespace, digest);
+        if (info == null) throw new NotFoundException("Unknown blob");
+
+        return Response.ok()
+                .header(HttpHeaders.CONTENT_LENGTH, info.size())
+                .header(HEADER_CONTENT_DIGEST, info.digest())
+                .build();
+    }
+
+    @HEAD
+    @Transactional
+    @Path("/{namespace: .*}/manifests/{reference}")
+    public Response headManifest(final @PathParam("repositoryId") String repositoryId,
+                                 final @PathParam("namespace") String namespace,
+                                 final @PathParam("reference") String reference) {
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+
+        final OCIContentInfo info = repository.getManifestInfo(user, namespace, reference);
+        if (info == null) throw new NotFoundException("Unknown manifest");
+
+        return Response.ok()
+                .header(HttpHeaders.CONTENT_LENGTH, info.size())
+                .header(HEADER_CONTENT_DIGEST, info.digest())
+                .build();
+    }
+
+    @GET
+    @Transactional
+    @Path("/{namespace: .*}/blobs/{digest}")
+    public Response getBlob(final @PathParam("repositoryId") String repositoryId,
+                            final @PathParam("namespace") String namespace,
+                            final @PathParam("digest") String digest) {
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+
+        final StreamHandle handle = repository.getBlob(user, namespace, digest);
+        if (handle == null) throw new NotFoundException("Unknown blob");
+
+        return Response.ok(handle.stream())
+                .header(HttpHeaders.CONTENT_TYPE, handle.contentType())
+                .header(HttpHeaders.CONTENT_LENGTH, handle.contentLength())
+                .header(HEADER_CONTENT_DIGEST, digest)
+                .build();
+    }
+
+    @GET
+    @Transactional
+    @Path("/{namespace: .*}/manifests/{reference}")
+    public Response getManifest(final @PathParam("repositoryId") String repositoryId,
+                                final @PathParam("namespace") String namespace,
+                                final @PathParam("reference") String reference) {
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+
+        final OCIStreamHandle handle = repository.getManifest(user, namespace, reference);
+        if (handle == null) throw new NotFoundException("Unknown blob");
+
+        final StreamHandle streamHandle = handle.streamHandle();
+
+        return Response.ok(streamHandle.stream())
+                .header(HttpHeaders.CONTENT_TYPE, streamHandle.contentType())
+                .header(HttpHeaders.CONTENT_LENGTH, streamHandle.contentLength())
+                .header(HEADER_CONTENT_DIGEST, handle.digest())
+                .build();
+    }
+
     @POST
-    @Path("/blobs/uploads")
+    @Transactional
+    @Path("/{namespace: .*}/blobs/uploads")
     public Response createUpload(final @PathParam("repositoryId") String repositoryId,
                                  final @PathParam("namespace") String namespace,
                                  final @QueryParam("digest") String digest,
@@ -75,7 +169,7 @@ public class OCIRepositoryEndpoint {
             final String url = "/v2/%s/blobs/uploads/%s?uploadId=%s&part=%d".formatted(namespace, session.sessionId(), session.uploadId(), nextPart);
             return Response.accepted()
                     .location(URI.create(url))
-                    .header("OCI-Chunk-Min-Length", MIN_CHUNK_LENGTH)
+                    .header(HEADER_MIN_CHUNK_LENGTH, MIN_CHUNK_LENGTH)
                     .header("Range", range)
                     .build();
         }
@@ -83,7 +177,7 @@ public class OCIRepositoryEndpoint {
 
     @PATCH
     @Transactional
-    @Path("/blobs/uploads/{sessionId}")
+    @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response uploadChunk(final @PathParam("repositoryId") String repositoryId,
                                 final @QueryParam("namespace") String namespace,
                                 final @PathParam("sessionId") UUID sessionId,
@@ -109,7 +203,7 @@ public class OCIRepositoryEndpoint {
         final String url = "/v2/%s/blobs/uploads/%s?uploadId=%s&part=%d".formatted(namespace, sessionId, uploadId, partNumber + 1);
 
         return Response.accepted()
-                .header("OCI-Chunk-Min-Length", MIN_CHUNK_LENGTH)
+                .header(HEADER_MIN_CHUNK_LENGTH, MIN_CHUNK_LENGTH)
                 .header("Range", "0-%d".formatted(rangeEnd))
                 .location(URI.create(url))
                 .build();
@@ -117,7 +211,7 @@ public class OCIRepositoryEndpoint {
 
     @PUT
     @Transactional
-    @Path("/blobs/uploads/{sessionId}")
+    @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response completeUpload(final @PathParam("repositoryId") String repositoryId,
                                    final @QueryParam("namespace") String namespace,
                                    final @PathParam("sessionId") UUID sessionId,
@@ -142,9 +236,27 @@ public class OCIRepositoryEndpoint {
                 .build();
     }
 
+    @PUT
+    @Transactional
+    @Path("/{namespace: .*}/manifests/{reference}")
+    public Response putManifest(final @PathParam("repositoryId") String repositoryId,
+                                final @PathParam("namespace") String namespace,
+                                final @PathParam("reference") String reference,
+                                final @HeaderParam(HttpHeaders.CONTENT_TYPE) String contentType,
+                                final @HeaderParam(HttpHeaders.CONTENT_LENGTH) long contentLength,
+                                final InputStream data) {
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+
+        repository.putManifest(user, namespace, reference, new StreamHandle(data, contentType, contentLength));
+        final String url = "/v2/%s/manifests/%s".formatted(namespace, reference);
+        return Response.created(URI.create(url))
+                .build();
+    }
+
     @DELETE
     @Transactional
-    @Path("/blobs/uploads/{sessionId}")
+    @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response abortUpload(final @PathParam("repositoryId") String repositoryId,
                                 final @QueryParam("namespace") String namespace,
                                 final @PathParam("sessionId") UUID sessionId,

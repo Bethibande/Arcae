@@ -47,6 +47,9 @@ public class ArtifactVersion extends PanacheEntity {
     @Type(JsonBinaryType.class)
     public ArtifactDetails details;
 
+    @ManyToOne
+    public StoredFile manifest;
+
     @ManyToMany
     @JoinTable(name = "ArtifactVersion_files")
     public List<StoredFile> files;

@@ -54,6 +54,11 @@ public class MavenRepository implements ManagedRepository {
         this.fileIndexer = new MavenFileIndexer(info, this);
     }
 
+    @Override
+    public Repository getInfo() {
+        return info;
+    }
+
     protected StreamHandle mirrorGet(final User user, final String path, final MirrorConnectionSettings mirror) {
         try (final HttpClient client = HttpClient.newHttpClient()) {
             final String remoteUrl = "%s/%s".formatted(mirror.url(), path).replaceAll("//", "/");

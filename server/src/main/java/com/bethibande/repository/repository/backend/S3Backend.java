@@ -112,6 +112,15 @@ public class S3Backend implements RepositoryBackend {
     }
 
     @Override
+    public long headSize(final String path) {
+        try {
+            return this.client.headObject(b -> b.bucket(this.config.bucket()).key(path)).contentLength();
+        } catch (final NoSuchKeyException ex) {
+            return -1;
+        }
+    }
+
+    @Override
     public boolean head(final String path) {
         try {
             final HeadObjectRequest request = HeadObjectRequest.builder()

@@ -215,6 +215,12 @@ public class OCIRepositoryEndpoint {
         // Doing this for each request is suboptimal, find a better way to track this
         final MultipartUploadStatus status = repository.getUploadStatus(user, namespace, sessionHandle);
         if (status.partNumber() + 1 != partNumber) throw new RangeNotSatisfiableException();
+        if (contentRange != null) {
+            final String[] parts = contentRange.split("-");
+            final long offset = Long.parseLong(parts[0]);
+
+            if (offset != status.offset()) throw new RangeNotSatisfiableException();
+        }
 
         final StreamHandle streamHandle = new StreamHandle(
                 content,
@@ -224,12 +230,11 @@ public class OCIRepositoryEndpoint {
 
         repository.uploadPart(user, namespace, sessionHandle, partNumber, streamHandle);
 
-        final long rangeEnd = Long.parseLong(contentRange.substring(contentRange.lastIndexOf("-") + 1));
         final String url = "/v2/%s/blobs/uploads/%s?uploadId=%s&part=%d".formatted(namespace, sessionId, uploadId, partNumber + 1);
 
         return Response.accepted()
                 .header(HEADER_MIN_CHUNK_LENGTH, MIN_CHUNK_LENGTH)
-                .header("Range", "0-%d".formatted(rangeEnd))
+                .header("Range", "0-%d".formatted(status.offset() + contentLength - 1))
                 .location(URI.create(url))
                 .build();
     }
@@ -288,9 +293,10 @@ public class OCIRepositoryEndpoint {
 
         return Response.noContent()
                 .location(URI.create(url))
-                .header(HttpHeaders.RANGE, "0-%d".formatted(status.offset()))
+                .header(HttpHeaders.RANGE, "0-%d".formatted(status.offset() - 1))
                 .build();
     }
+
     @PUT
     @Transactional
     @Path("/{namespace: .*}/manifests/{reference}")
@@ -330,7 +336,7 @@ public class OCIRepositoryEndpoint {
         final User user = authenticatedUser.getSelf();
 
         final Artifact artifact = repository.getArtifact(user, namespace);
-        final List<ArtifactVersion> versions = ArtifactVersion.list("artifact = ?1 order by version desc", artifact);
+        final List<ArtifactVersion> versions = ArtifactVersion.list("artifact = ?1 order by version asc", artifact);
 
         if (n != null && n == 0) return new TagList(namespace, List.of());
 
@@ -353,7 +359,7 @@ public class OCIRepositoryEndpoint {
             final OCISubject subject = subjects.get(i);
             ObjectNode descriptor = mapper.createObjectNode();
             descriptor.put("mediaType", subject.source.contentType);
-            descriptor.put("digest", subject.subjectDigest);
+            descriptor.put("digest", subject.sourceDigest);
             descriptor.put("size", subject.source.contentLength);
             descriptor.put("artifactType", subject.artifactType);
 
@@ -418,6 +424,19 @@ public class OCIRepositoryEndpoint {
         final User user = authenticatedUser.getSelf();
 
         repository.deleteManifest(user, namespace, reference);
+        return Response.accepted().build();
+    }
+
+    @DELETE
+    @Transactional
+    @Path("/{namespace: .*}/blobs/{digest}")
+    public Response deleteBlob(final @PathParam("repositoryId") String repositoryId,
+                               final @PathParam("namespace") String namespace,
+                               final @PathParam("digest") String digest) {
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+
+        repository.deleteBlob(user, namespace, digest);
         return Response.accepted().build();
     }
 

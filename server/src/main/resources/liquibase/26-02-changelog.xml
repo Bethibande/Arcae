@@ -349,4 +349,24 @@
                     type="varchar(255)"/>
         </addColumn>
     </changeSet>
+
+    <changeSet id="1770569959963-2"
+               author="bethibande">
+        <addColumn tableName="OCISubject">
+            <column name="sourceDigest"
+                    type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1770569959963-3"
+               author="bethibande">
+        <addNotNullConstraint columnName="sourceDigest"
+                              tableName="OCISubject"/>
+    </changeSet>
+    <changeSet id="1770569959963-1"
+               author="bethibande">
+        <addNotNullConstraint columnDataType="varchar(255)"
+                              columnName="namespace"
+                              tableName="OCISubject"
+                              validate="true"/>
+    </changeSet>
 </databaseChangeLog>

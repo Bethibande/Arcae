@@ -164,8 +164,11 @@ public class OCIRepository implements ManagedRepository {
         if (!info.canView(user)) throw new UnauthorizedException();
 
         if (isDigest(reference)) {
+            final StreamHandle handle = this.backend.get(toManifestKey(namespace, reference));
+            if (handle == null) return null;
+
             return new OCIStreamHandle(
-                    this.backend.get(toManifestKey(namespace, reference)),
+                    handle,
                     reference
             );
         } else {
@@ -357,8 +360,8 @@ public class OCIRepository implements ManagedRepository {
         if (file.usages() > 0) return;
 
         OCISubject.delete("source = ?1 OR subject = ?1", file);
-        file.delete();
 
+        StoredFile.deleteById(file.id);
         this.backend.delete(file.key);
     }
 
@@ -551,6 +554,7 @@ public class OCIRepository implements ManagedRepository {
                         .orElseGet(OCISubject::new);
 
                 subject.source = source;
+                subject.sourceDigest = source.key.substring(source.key.lastIndexOf('/') + 1);
                 subject.namespace = namespace;
 
                 subject.subjectDigest = root.get("subject").get("digest").textValue();

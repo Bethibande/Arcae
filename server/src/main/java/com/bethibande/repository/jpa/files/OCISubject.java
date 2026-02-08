@@ -15,6 +15,9 @@ public class OCISubject extends PanacheEntity {
     @OneToOne(optional = false)
     public StoredFile source;
 
+    @Column(nullable = false, columnDefinition = "varchar(255)")
+    public String sourceDigest;
+
     @OneToOne
     public StoredFile subject;
 

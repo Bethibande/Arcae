@@ -56,6 +56,7 @@ export const cleanupPoliciesSchema = z.object({
 export const dynamicFormSchema = z.object({
     name: z.string().min(3).max(64),
     packageManager: z.nativeEnum(PackageManager),
+    externalHost: z.string().min(1, "External host is required").optional(), // Added here for OCI
     mavenConfig: mavenSchema,
     ociConfig: ociSchema,
     permissions: z.array(permissionSchema),

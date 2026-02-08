@@ -1,14 +1,17 @@
 package com.bethibande.repository.repository.oci;
 
-import com.bethibande.repository.jpa.StoredFile;
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactDetails;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
+import com.bethibande.repository.jpa.files.OCISubject;
+import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.ArtifactAndGroupId;
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.StreamHandle;
+import com.bethibande.repository.repository.backend.MultipartUploadStatus;
+import com.bethibande.repository.repository.backend.ObjectInfo;
 import com.bethibande.repository.repository.backend.S3Backend;
 import com.bethibande.repository.repository.oci.details.OCILayerReference;
 import com.bethibande.repository.repository.oci.details.OCIManifestDetails;
@@ -18,10 +21,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.UnauthorizedException;
-import jakarta.persistence.LockModeType;
 import jakarta.ws.rs.BadRequestException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -36,6 +40,8 @@ import java.util.*;
 public class OCIRepository implements ManagedRepository {
 
     public static final long MAX_MANIFEST_SIZE = 10_000_000L;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OCIRepository.class);
 
     private final Repository info;
     private final OCIRepositoryConfig config;
@@ -58,6 +64,56 @@ public class OCIRepository implements ManagedRepository {
         return info;
     }
 
+    public Artifact getArtifact(final User user, final String namespace) {
+        if (!info.canView(user)) throw new UnauthorizedException();
+
+        final ArtifactAndGroupId artifactAndGroupId = extractArtifactAndGroupId(namespace);
+        return Artifact.find(
+                "groupId = ?1 and artifactId = ?2 and repository.id = ?3",
+                artifactAndGroupId.groupId(),
+                artifactAndGroupId.artifactId(),
+                info.id
+        ).firstResult();
+    }
+
+    public void deleteBlob(final User user, final String namespace, final String digest) {
+        if (!info.canWrite(user)) throw new UnauthorizedException();
+
+        final String key = toBlobKey(namespace, digest);
+        final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", key, info.id).firstResult();
+        if (file == null) return;
+
+        file.clearOwners();
+        tryDeleteFile(file);
+    }
+
+    public void deleteManifest(final User user, final String namespace, final String reference) {
+        if (!info.canWrite(user)) throw new UnauthorizedException();
+
+        final StoredFile file = findManifestFileByReference(namespace, reference);
+        if (file == null) return;
+
+        if (!isDigest(reference)) {
+            final ArtifactAndGroupId artifactAndGroupId = extractArtifactAndGroupId(namespace);
+            final Artifact artifact = Artifact.find(
+                    "groupId = ?1 and artifactId = ?2 and repository.id = ?3",
+                    artifactAndGroupId.groupId(),
+                    artifactAndGroupId.artifactId(),
+                    info.id
+            ).firstResult();
+            if (artifact == null) return;
+
+            final ArtifactVersion version = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, reference).firstResult();
+            if (version == null) return;
+
+            delete(user, version, true);
+        } else {
+            file.clearOwners();
+        }
+
+        tryDeleteFile(file);
+    }
+
     protected String toBlobKey(final String namespace, final String path) {
         return "%s/%s/blobs/%s".formatted(info.name, namespace, path);
     }
@@ -75,6 +131,15 @@ public class OCIRepository implements ManagedRepository {
         final String groupId = namespace.lastIndexOf('/') > 0 ? namespace.substring(0, namespace.lastIndexOf('/')) : "";
 
         return new ArtifactAndGroupId(artifactId, groupId);
+    }
+
+    protected StoredFile findManifestFileByReference(final String namespace, final String reference) {
+        if (isDigest(reference)) {
+            final String key = toManifestKey(namespace, reference);
+            return StoredFile.find("key = ?1 and repository.id = ?2", key, info.id).firstResult();
+        } else {
+            return findManifestFileByTag(namespace, reference);
+        }
     }
 
     protected StoredFile findManifestFileByTag(final String namespace, final String tag) {
@@ -120,21 +185,24 @@ public class OCIRepository implements ManagedRepository {
         if (!info.canView(user)) throw new UnauthorizedException();
 
         if (reference.matches("^sha256:[0-9a-fA-F]{64}$|^sha512:[0-9a-fA-F]{128}$")) {
-            final long size = this.backend.headSize(toManifestKey(namespace, reference));
-            if (size < 0) return null;
+            final ObjectInfo info = this.backend.headObject(toManifestKey(namespace, reference));
+            if (info == null) return null;
             return new OCIContentInfo(
                     reference,
-                    size
+                    info.contentLength(),
+                    info.contentType()
             );
         } else {
             final StoredFile file = findManifestFileByTag(namespace, reference);
             if (file == null) return null;
 
             final String digest = file.key.substring(file.key.lastIndexOf('/') + 1);
+            final ObjectInfo info = this.backend.headObject(file.key);
 
             return new OCIContentInfo(
                     digest,
-                    this.backend.headSize(file.key)
+                    info.contentLength(),
+                    info.contentType()
             );
         }
     }
@@ -142,9 +210,9 @@ public class OCIRepository implements ManagedRepository {
     public OCIContentInfo getBlobInfo(final User user, final String namespace, final String digest) {
         if (!info.canView(user)) throw new UnauthorizedException();
 
-        final long size = this.backend.headSize(toBlobKey(namespace, digest));
-        if (size < 0) return null;
-        return new OCIContentInfo(digest, size);
+        final ObjectInfo info = this.backend.headObject(toBlobKey(namespace, digest));
+        if (info == null) return null;
+        return new OCIContentInfo(digest, info.contentLength(), info.contentType());
     }
 
     public StreamHandle getBlob(final User user, final String namespace, final String digest) {
@@ -176,6 +244,14 @@ public class OCIRepository implements ManagedRepository {
         if (!info.canWrite(user)) throw new UnauthorizedException();
 
         this.backend.uploadPart(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()), number, stream);
+    }
+
+    public MultipartUploadStatus getUploadStatus(final User user,
+                                                 final String namespace,
+                                                 final UploadSessionHandle handle) {
+        if (!info.canWrite(user)) throw new UnauthorizedException();
+
+        return this.backend.headUpload(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()));
     }
 
     public byte[] moveAndDigest(final String source,
@@ -225,11 +301,15 @@ public class OCIRepository implements ManagedRepository {
             throw new BadRequestException("Digest mismatch");
         }
 
+        final ObjectInfo blobInfo = this.backend.headObject(blobKey);
+
         final StoredFile file = new StoredFile();
         file.key = toBlobKey(namespace, digest);
         file.repository = info;
         file.created = Instant.now();
         file.updated = Instant.now();
+        file.contentType = "application/octet-stream";
+        file.contentLength = blobInfo.contentLength();
         file.hashes = Map.of(algorithm, hash);
         file.persist();
     }
@@ -249,10 +329,7 @@ public class OCIRepository implements ManagedRepository {
         version.manifest = null;
         for (int i = 0; i < files.size(); i++) {
             final StoredFile file = files.get(i);
-            if (file.usages() > 0) continue;
-
-            this.backend.delete(file.key);
-            file.delete();
+            tryDeleteFile(file);
         }
 
         version.delete();
@@ -276,6 +353,15 @@ public class OCIRepository implements ManagedRepository {
         this.backend.put(key, new StreamHandle(stream, contentType, contents.length));
     }
 
+    protected void tryDeleteFile(final StoredFile file) {
+        if (file.usages() > 0) return;
+
+        OCISubject.delete("source = ?1 OR subject = ?1", file);
+        file.delete();
+
+        this.backend.delete(file.key);
+    }
+
     protected ArtifactVersion updateOrCreateArtifactAndVersion(final Instant now, final String namespace, final String reference) {
         final ArtifactAndGroupId artifactAndGroupId = extractArtifactAndGroupId(namespace);
         final String groupId = artifactAndGroupId.groupId();
@@ -285,7 +371,13 @@ public class OCIRepository implements ManagedRepository {
         final ArtifactVersion version = getOrCreateArtifactVersion(artifact, reference, now);
 
         if (version.files != null) {
+            final List<StoredFile> oldFiles = new ArrayList<>(version.files);
             version.files.clear();
+
+            for (int i = 0; i < oldFiles.size(); i++) {
+                final StoredFile file = oldFiles.get(i);
+                tryDeleteFile(file);
+            }
         } else {
             version.files = new ArrayList<>();
         }
@@ -316,7 +408,11 @@ public class OCIRepository implements ManagedRepository {
         return hash;
     }
 
-    public StoredFile storeOrUpdateFileReference(final String fileKey, final Instant now, final String hash) {
+    public StoredFile storeOrUpdateFileReference(final String fileKey,
+                                                 final Instant now,
+                                                 final String hash,
+                                                 final String contentType,
+                                                 final long contentLength) {
         StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", fileKey, info.id).firstResult();
         if (file == null) {
             file = new StoredFile();
@@ -324,10 +420,14 @@ public class OCIRepository implements ManagedRepository {
             file.repository = info;
             file.created = now;
             file.updated = now;
+            file.contentType = contentType;
+            file.contentLength = contentLength;
             file.hashes = Map.of("sha256", hash);
             file.persist();
         } else {
             file.updated = now;
+            file.contentType = contentType;
+            file.contentLength = contentLength;
             file.hashes = Map.of("sha256", hash);
         }
 
@@ -405,8 +505,7 @@ public class OCIRepository implements ManagedRepository {
         );
     }
 
-    protected List<StoredFile> collectAdditionalFileReferences(final ArtifactVersion version,
-                                                               final String namespace,
+    protected List<StoredFile> collectAdditionalFileReferences(final String namespace,
                                                                final OCIManifestDetails details) {
         final List<StoredFile> files = new ArrayList<>();
 
@@ -415,7 +514,16 @@ public class OCIRepository implements ManagedRepository {
             final String key = toManifestKey(namespace, manifestReference.digest());
 
             final StoredFile manifestFile = StoredFile.find("key = ?1 and repository.id = ?2", key, info.id).firstResult();
-            if (manifestFile != null) version.files.add(manifestFile);
+            if (manifestFile != null) {
+                files.add(manifestFile);
+
+                try (final StreamHandle handle = this.backend.get(manifestFile.key)) {
+                    final ArtifactDetails childDetails = parseDetails(handle.readAllBytes());
+                    files.addAll(collectAdditionalFileReferences(namespace, (OCIManifestDetails) childDetails.additionalData()));
+                } catch (final IOException ex) {
+                    LOGGER.error("Failed to parse manifest details for {}", manifestFile.key, ex);
+                }
+            }
         }
 
         for (int i = 0; i < details.layers().size(); i++) {
@@ -423,21 +531,70 @@ public class OCIRepository implements ManagedRepository {
             final String key = toBlobKey(namespace, layerReference.digest());
 
             final StoredFile layerFile = StoredFile.find("key = ?1 and repository.id = ?2", key, info.id).firstResult();
-            if (layerFile != null) version.files.add(layerFile);
+            if (layerFile != null) files.add(layerFile);
         }
+
+        final StoredFile configFile = StoredFile.find("key = ?1 and repository.id = ?2", toBlobKey(namespace, details.configDigest()), info.id).firstResult();
+        if (configFile != null) files.add(configFile);
 
         return files;
     }
 
-    public void putManifest(final User user,
-                            final String namespace,
-                            final String reference,
-                            final StreamHandle stream) {
+    protected OCISubject createSubjectInfo(final String namespace, final StoredFile source, final byte[] contents) {
+        try {
+            final JsonNode root = new ObjectMapper().readTree(contents);
+
+            if (root.has("subject")) {
+                // Check if we already have metadata for this source file to avoid duplicates
+                final OCISubject subject = OCISubject.<OCISubject>find("source = ?1", source)
+                        .firstResultOptional()
+                        .orElseGet(OCISubject::new);
+
+                subject.source = source;
+                subject.namespace = namespace;
+
+                subject.subjectDigest = root.get("subject").get("digest").textValue();
+                final String subjectKey = toManifestKey(namespace, subject.subjectDigest);
+                subject.subject = StoredFile.find("key = ?1 and repository.id = ?2", subjectKey, info.id).firstResult();
+
+                if (subject.subject == null) {
+                    LOGGER.warn("Subject file {} not found for referrer {}", subjectKey, source.key);
+                }
+
+                if (root.has("artifactType")) {
+                    subject.artifactType = root.get("artifactType").textValue();
+                } else if (root.has("config") && root.get("config").has("mediaType")) {
+                    subject.artifactType = root.get("config").get("mediaType").textValue();
+                } else {
+                    subject.artifactType = source.contentType;
+                }
+
+                if (root.has("annotations")) {
+                    if (subject.annotations == null) {
+                        subject.annotations = new HashMap<>();
+                    } else {
+                        subject.annotations.clear();
+                    }
+                    root.get("annotations").properties().forEach(entry -> {
+                        subject.annotations.put(entry.getKey(), entry.getValue().asText());
+                    });
+                }
+
+                subject.persist();
+                return subject;
+            }
+        } catch (final IOException ex) {
+            LOGGER.error("Failed to parse manifest JSON for {}", source.key, ex);
+        }
+        return null;
+    }
+
+    public PutOCIManifestResult putManifest(final User user,
+                                            final String namespace,
+                                            final String reference,
+                                            final StreamHandle stream) {
         if (!info.canWrite(user)) throw new UnauthorizedException();
         if (stream.contentLength() > MAX_MANIFEST_SIZE) throw new RequestTooLongException();
-
-        final Instant now = Instant.now();
-        final ArtifactVersion version = updateOrCreateArtifactAndVersion(now, namespace, reference);
 
         final byte[] contents = stream.readAllBytes();
 
@@ -445,19 +602,38 @@ public class OCIRepository implements ManagedRepository {
         final String fileKey = toManifestKey(namespace, "sha256:" + hash);
         putFile(fileKey, contents, stream.contentType());
 
-        final StoredFile file = storeOrUpdateFileReference(fileKey, now, hash);
-        version.files.add(file);
-        version.manifest = file;
+        final Instant now = Instant.now();
+        final StoredFile file = storeOrUpdateFileReference(
+                fileKey,
+                now,
+                hash,
+                stream.contentType(),
+                stream.contentLength()
+        );
+        final OCISubject subject = createSubjectInfo(namespace, file, contents);
 
-        try {
-            version.details = parseDetails(contents);
+        if (!isDigest(reference)) {
+            final ArtifactVersion version = updateOrCreateArtifactAndVersion(now, namespace, reference);
+            version.files.add(file);
+            version.manifest = file;
 
-            if (version.details.additionalData() instanceof OCIManifestDetails manifestDetails) {
-                final List<StoredFile> references = collectAdditionalFileReferences(version, namespace, manifestDetails);
-                version.files.addAll(references);
+            try {
+                version.details = parseDetails(contents);
+
+                if (version.details.additionalData() instanceof OCIManifestDetails manifestDetails) {
+                    version.files.addAll(collectAdditionalFileReferences(namespace, manifestDetails));
+                }
+            } catch (final IOException ex) {
+                throw new RuntimeException(ex);
             }
-        } catch (final IOException ex) {
-            throw new RuntimeException(ex);
+
+            return new PutOCIManifestResult(
+                    file,
+                    version,
+                    subject
+            );
         }
+
+        return new PutOCIManifestResult(file, null, subject);
     }
 }

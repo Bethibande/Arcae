@@ -2,7 +2,7 @@ import {Navigate, useNavigate, useParams} from "react-router";
 import {useEffect, useRef, useState} from "react";
 import {PackageManager, RepositoryEndpointApi, RepositoryPermissionEndpointApi, UserRole} from "@/generated";
 import {showError} from "@/lib/errors.ts";
-import {ChevronRight, Cloud, Lock, RefreshCw, Save, Settings, Trash2} from "lucide-react";
+import {ChevronRight, Cloud, Globe, Lock, RefreshCw, Save, Settings, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
 import {Card, CardContent} from "@/components/ui/card.tsx";
 import {Input} from "@/components/ui/input.tsx";
@@ -90,6 +90,10 @@ export default function RepositoryEditView() {
                         form.setValue("permissions", mappedPermissions);
                         setInitialPermissions([...mappedPermissions]);
 
+                        if (repo.metadata) {
+                            form.setValue("externalHost", repo.metadata["HOST_NAME"]);
+                        }
+
                         if (repo.settings) {
                             try {
                                 const settings = JSON.parse(repo.settings);
@@ -138,6 +142,9 @@ export default function RepositoryEditView() {
         const config = currentPmConfig ? data[currentPmConfig.configKey as keyof DynamicFormValues] : undefined;
 
         const settings = config ? JSON.stringify(config) : undefined;
+        const metadata = data.packageManager === PackageManager.Oci ? {
+            "HOST_NAME": data.externalHost
+        } : undefined;
 
         try {
             let repoId: number;
@@ -149,6 +156,7 @@ export default function RepositoryEditView() {
                         name: data.name,
                         packageManager: data.packageManager,
                         settings,
+                        metadata,
                         cleanupPolicies: data.cleanupPolicies
                     }
                 });
@@ -158,6 +166,7 @@ export default function RepositoryEditView() {
                         name: data.name,
                         packageManager: data.packageManager,
                         settings,
+                        metadata,
                         cleanupPolicies: data.cleanupPolicies
                     }
                 });
@@ -211,6 +220,7 @@ export default function RepositoryEditView() {
         {id: "general", label: "General", icon: Settings},
         ...(selectedPackageManager === PackageManager.Maven ? [{id: "replication", label: "Replication/Mirroring", icon: RefreshCw}] : []),
         {id: "storage", label: "Storage (S3)", icon: Cloud},
+        ...(selectedPackageManager === PackageManager.Oci ? [{id: "external-access", label: "External Access", icon: Globe}] : []),
         {id: "cleanup", label: "Cleanup Policies", icon: Trash2},
         {id: "permissions", label: "Permissions", icon: Lock},
     ];

@@ -2,7 +2,7 @@ package com.bethibande.repository.jpa.artifact;
 
 import com.bethibande.process.annotation.EntityDTO;
 import com.bethibande.process.annotation.VirtualDTOField;
-import com.bethibande.repository.jpa.StoredFile;
+import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.panache.common.Sort;

@@ -1,7 +1,7 @@
 package com.bethibande.repository.jpa.artifact;
 
 import com.bethibande.process.annotation.EntityDTO;
-import com.bethibande.repository.jpa.StoredFile;
+import com.bethibande.repository.jpa.files.StoredFile;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import io.quarkus.panache.common.Sort;

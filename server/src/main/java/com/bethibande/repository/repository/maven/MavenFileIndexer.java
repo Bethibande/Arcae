@@ -1,6 +1,6 @@
 package com.bethibande.repository.repository.maven;
 
-import com.bethibande.repository.jpa.StoredFile;
+import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactDetails;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
@@ -119,11 +119,15 @@ public class MavenFileIndexer {
                 newFile.repository = info;
                 newFile.created = now;
                 newFile.updated = now;
+                newFile.contentType = handle.contentType();
+                newFile.contentLength = handle.contentLength();
                 newFile.persist();
 
                 tryLinkFile(path, newFile);
             } else {
                 file.updated = now;
+                file.contentType = handle.contentType();
+                file.contentLength = handle.contentLength();
             }
         }
         return false;

@@ -1,4 +1,4 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.files;
 
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
@@ -28,6 +28,12 @@ public class StoredFile extends PanacheEntity {
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant updated;
 
+    @Column
+    public Long contentLength;
+
+    @Column(columnDefinition = "varchar(255)")
+    public String contentType;
+
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     public Map<String, String> hashes;
@@ -37,6 +43,20 @@ public class StoredFile extends PanacheEntity {
         final long artifacts = Artifact.count("join files f on f.id = ?1", id);
 
         return versions + artifacts;
+    }
+
+    public void clearOwners() {
+        ArtifactVersion.getEntityManager()
+                .createNativeQuery("delete from artifactversion_files f where f.files_id = ?1")
+                .setParameter(1, this.id)
+                .executeUpdate();
+
+        Artifact.getEntityManager()
+                .createNativeQuery("delete from artifact_files f where f.files_id = ?1")
+                .setParameter(1, this.id)
+                .executeUpdate();
+
+        StoredFile.getEntityManager().flush();
     }
 
 }

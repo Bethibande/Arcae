@@ -63,6 +63,22 @@ public class S3Backend implements RepositoryBackend {
                 .multipartUpload(u -> u.parts(parts)));
     }
 
+    public MultipartUploadStatus headUpload(final String uploadId, final String path) {
+        // TODO: Handle truncated responses
+        final ListPartsResponse response = this.client.listParts(b -> b.bucket(this.config.bucket())
+                .key(path)
+                .uploadId(uploadId));
+
+        final long offset = response.parts()
+                .stream()
+                .mapToLong(Part::size)
+                .sum();
+
+        final int partNumber = response.parts().size();
+
+        return new MultipartUploadStatus(offset, partNumber);
+    }
+
     public void abortMultipartUpload(final String uploadId, final String path) {
         this.client.abortMultipartUpload(b -> b.bucket(this.config.bucket()).key(path).uploadId(uploadId));
     }
@@ -117,11 +133,12 @@ public class S3Backend implements RepositoryBackend {
     }
 
     @Override
-    public long headSize(final String path) {
+    public ObjectInfo headObject(final String path) {
         try {
-            return this.client.headObject(b -> b.bucket(this.config.bucket()).key(path)).contentLength();
+            final HeadObjectResponse response = this.client.headObject(b -> b.bucket(this.config.bucket()).key(path));
+            return new ObjectInfo(response.contentLength(), response.contentType());
         } catch (final NoSuchKeyException ex) {
-            return -1;
+            return null;
         }
     }
 

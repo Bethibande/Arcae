@@ -13,6 +13,7 @@ import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @EntityDTO(excludeProperties = "permissions", name = "RepositoryDTO")
@@ -38,10 +39,23 @@ public class Repository extends PanacheEntityBase {
 
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
+    public Map<RepositoryMetadataKey, Object> metadata;
+
+    @Type(JsonBinaryType.class)
+    @Column(columnDefinition = "jsonb")
     public CleanupPolicies cleanupPolicies;
 
     @OneToMany(mappedBy = "repository", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<PermissionScope> permissions;
+
+    @SuppressWarnings("unchecked")
+    public <T> T getMetadata(final RepositoryMetadataKey key) {
+        return (T) metadata.get(key);
+    }
+
+    public void setMetadata(final RepositoryMetadataKey key, final Object value) {
+        metadata.put(key, value);
+    }
 
     public boolean canView(final User user) {
         if (user != null && user.roles.contains(UserRole.ADMIN)) return true;

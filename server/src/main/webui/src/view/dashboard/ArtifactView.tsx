@@ -32,6 +32,7 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx
 import {ConfirmDialog} from "@/components/confirm-dialog.tsx";
 import {toast} from "sonner";
 import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";
+import {OCIManifestsCard} from "@/components/artifact/OCIManifestsCard.tsx";
 
 interface DependencySnippet {
     name: string;
@@ -39,7 +40,7 @@ interface DependencySnippet {
     content: string;
 }
 
-function UsageDetails({ artifact, version, packageManager }: { artifact: ArtifactDTO, version: ArtifactVersionDTO, packageManager: string }) {
+function UsageDetails({ artifact, version, packageManager, repository }: { artifact: ArtifactDTO, version: ArtifactVersionDTO, packageManager: string, repository: RepositoryOverviewDTO }) {
     const [copied, setCopied] = useState<string | null>(null);
 
     const getSnippets = (): DependencySnippet[] => {
@@ -67,6 +68,30 @@ function UsageDetails({ artifact, version, packageManager }: { artifact: Artifac
                 }
             ];
         }
+
+        if (packageManager === PackageManager.Oci) {
+            const externalHost = repository.repository.metadata?.["HOST_NAME"] || "oci.example.com";
+            const imageRef = `${externalHost}/${artifact.groupId ? `${artifact.groupId}/` : ""}${artifact.artifactId}:${version.version}`;
+            
+            return [
+                {
+                    name: "Image Reference",
+                    language: "text",
+                    content: imageRef
+                },
+                {
+                    name: "Docker Pull",
+                    language: "shell",
+                    content: `docker pull ${imageRef}`
+                },
+                {
+                    name: "Podman Pull",
+                    language: "shell",
+                    content: `podman pull ${imageRef}`
+                }
+            ];
+        }
+
         return [];
     };
 
@@ -475,8 +500,11 @@ export default function ArtifactView() {
                                     artifact={artifact} 
                                     version={selectedVersion} 
                                     packageManager={repository.repository.packageManager} 
+                                    repository={repository}
                                 />
                             )}
+
+                            <OCIManifestsCard version={selectedVersion} />
                         </>
                     ) : (
                         <Card className="h-full flex items-center justify-center border-dashed">

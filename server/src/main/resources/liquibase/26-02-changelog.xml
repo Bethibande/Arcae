@@ -250,4 +250,103 @@
     <changeSet id="1770548189574-1" author="bethibande">
         <addUniqueConstraint tableName="ArtifactVersion" columnNames="artifact_id,version"/>
     </changeSet>
+
+    <changeSet id="1770553614979-1"
+               author="bethibande">
+        <addColumn tableName="Repository">
+            <column name="metadata"
+                    type="jsonb"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1770558297378-1"
+               author="bethibande">
+        <addColumn tableName="StoredFile">
+            <column name="contentLength"
+                    type="BIGINT"/>
+            <column name="contentType"
+                    type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="1770559887302-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="OCISubject_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1770559887302-2"
+               author="bethibande">
+        <createTable tableName="OCISubject">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_ocisubject"/>
+            </column>
+            <column name="source_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject_id"
+                    type="BIGINT"/>
+            <column name="subjectDigest"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="artifactType"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1770559887302-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="source_id"
+                                 baseTableName="OCISubject"
+                                 constraintName="FK_OCISUBJECT_ON_SOURCE"
+                                 referencedColumnNames="id"
+                                 referencedTableName="StoredFile"/>
+    </changeSet>
+    <changeSet id="1770559887302-4"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="subject_id"
+                                 baseTableName="OCISubject"
+                                 constraintName="FK_OCISUBJECT_ON_SUBJECT"
+                                 referencedColumnNames="id"
+                                 referencedTableName="StoredFile"/>
+    </changeSet>
+    <changeSet id="1770564855803-1"
+               author="bethibande">
+        <createTable tableName="OCISubject_annotations">
+            <column name="OCISubject_id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_ocisubject_annotations"/>
+            </column>
+            <column name="annotations"
+                    type="VARCHAR(255)"/>
+            <column name="annotations_key"
+                    type="VARCHAR(255)">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_ocisubject_annotations"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1770564855803-2"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="OCISubject_id"
+                                 baseTableName="OCISubject_annotations"
+                                 constraintName="fk_ocisubject_annotations_on_o_c_i_subject"
+                                 referencedColumnNames="id"
+                                 referencedTableName="OCISubject"/>
+    </changeSet>
+    <changeSet id="1770565242970-2"
+               author="bethibande">
+        <addColumn tableName="OCISubject">
+            <column name="namespace"
+                    type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

@@ -244,4 +244,10 @@
                                  referencedColumnNames="id"
                                  referencedTableName="StoredFile"/>
     </changeSet>
+    <changeSet id="1770544181642-1" author="bethibande">
+        <addUniqueConstraint tableName="Artifact" columnNames="repository_id,artifactId,groupId"/>
+    </changeSet>
+    <changeSet id="1770548189574-1" author="bethibande">
+        <addUniqueConstraint tableName="ArtifactVersion" columnNames="artifact_id,version"/>
+    </changeSet>
 </databaseChangeLog>

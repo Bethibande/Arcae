@@ -18,6 +18,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.UnauthorizedException;
+import jakarta.persistence.LockModeType;
 import jakarta.ws.rs.BadRequestException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -280,31 +281,15 @@ public class OCIRepository implements ManagedRepository {
         final String groupId = artifactAndGroupId.groupId();
         final String artifactId = artifactAndGroupId.artifactId();
 
-        Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
-        if (artifact == null) {
-            artifact = new Artifact();
-            artifact.groupId = groupId;
-            artifact.artifactId = artifactId;
-            artifact.repository = info;
-            artifact.lastUpdated = now;
-            artifact.persist();
+        final Artifact artifact = getOrCreateArtifact(groupId, artifactId, now);
+        final ArtifactVersion version = getOrCreateArtifactVersion(artifact, reference, now);
+
+        if (version.files != null) {
+            version.files.clear();
         } else {
-            artifact.lastUpdated = now;
+            version.files = new ArrayList<>();
         }
 
-        ArtifactVersion version = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, reference).firstResult();
-        if (version == null) {
-            version = new ArtifactVersion();
-            version.artifact = artifact;
-            version.version = reference;
-            version.created = now;
-            version.updated = now;
-            version.persist();
-        } else {
-            version.updated = now;
-        }
-
-        version.files = new ArrayList<>();
         return version;
     }
 

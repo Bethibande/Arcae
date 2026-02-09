@@ -177,6 +177,26 @@ public class S3Backend implements RepositoryBackend {
     }
 
     @Override
+    public StreamHandle get(final String path, final long offset, final long length) {
+        final long end = offset + length;
+        final String range = "bytes=%d-%d".formatted(offset, end - 1);
+
+        try {
+            final ResponseBytes<GetObjectResponse> response = this.client.getObjectAsBytes(b -> b.bucket(this.config.bucket())
+                    .key(path)
+                    .range(range));
+
+            return new StreamHandle(
+                    response.asInputStream(),
+                    response.response().contentType(),
+                    response.response().contentLength()
+            );
+        } catch (final NoSuchKeyException ex) {
+            return null;
+        }
+    }
+
+    @Override
     public void delete(final String path) {
         this.client.deleteObject(b -> b.bucket(this.config.bucket()).key(path));
     }

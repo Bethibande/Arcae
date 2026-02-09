@@ -13,6 +13,8 @@ import com.bethibande.repository.repository.oci.*;
 import com.bethibande.repository.security.BearerTokenIdentityProvider;
 import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.exception.RangeNotSatisfiableException;
+import com.bethibande.repository.web.repositories.oci.OCIError;
+import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,6 +76,10 @@ public class OCIRepositoryEndpoint {
             final String service = uriInfo.getBaseUri().getHost();
 
             context.getHeaders().add("WWW-Authenticate", "Bearer realm=\"%s\",service=\"%s\"".formatted(realm, service));
+            context.setEntity(OCIError.of(OCIErrorCodes.UNAUTHORIZED, "Not authenticated", "You are not authenticated or not permitted to perform the requested action"));
+        }
+        if (context.getStatus() == 403) {
+            context.setEntity(OCIError.of(OCIErrorCodes.DENIED, "Access denied", "You are not permitted to perform the requested action"));
         }
     }
 
@@ -85,7 +91,11 @@ public class OCIRepositoryEndpoint {
 
     protected OCIRepository repositoryOrThrow(final String repositoryId) {
         final OCIRepository repository = repositoryManager.findRepository(repositoryId, PackageManager.OCI);
-        if (repository == null) throw new NotFoundException("Unknown repository");
+        if (repository == null) throw new NotFoundException(
+                Response.status(Response.Status.NOT_FOUND)
+                        .entity(OCIError.of(OCIErrorCodes.NAME_UNKNOWN, "Unknown repository", "The specified repository does not exist"))
+                        .build()
+        );
         return repository;
     }
 
@@ -175,16 +185,33 @@ public class OCIRepositoryEndpoint {
                 .build();
     }
 
+    protected StreamHandle getBlob(final OCIRepository repository,
+                                   final User user,
+                                   final String namespace,
+                                   final String digest,
+                                   final String rangeHeader) {
+        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+            final String[] parts = rangeHeader.substring(6).split("-");
+            final long offset = Long.parseLong(parts[0]);
+            final long length = parts.length == 2
+                    ? Long.parseLong(parts[1]) - offset + 1
+                    : Long.MAX_VALUE;
+            return repository.getBlob(user, namespace, digest, offset, length);
+        }
+        return repository.getBlob(user, namespace, digest);
+    }
+
     @GET
     @Transactional
     @Path("/{namespace: .*}/blobs/{digest}")
     public Response getBlob(final @PathParam("repositoryId") String repositoryId,
                             final @PathParam("namespace") String namespace,
-                            final @PathParam("digest") String digest) {
+                            final @PathParam("digest") String digest,
+                            final @HeaderParam(HttpHeaders.RANGE) String rangeHeader) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final StreamHandle handle = repository.getBlob(user, namespace, digest);
+        final StreamHandle handle = getBlob(repository, user, namespace, digest, rangeHeader);
         if (handle == null) throw new NotFoundException("Unknown blob");
 
         return Response.ok(handle.stream())

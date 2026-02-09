@@ -12,6 +12,8 @@ public interface RepositoryBackend {
 
     StreamHandle get(final String path);
 
+    StreamHandle get(final String path, final long offset, final long length);
+
     void delete(final String path);
 
 }

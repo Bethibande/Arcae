@@ -17,12 +17,15 @@ import com.bethibande.repository.repository.oci.details.OCILayerReference;
 import com.bethibande.repository.repository.oci.details.OCIManifestDetails;
 import com.bethibande.repository.repository.oci.details.OCIManifestReference;
 import com.bethibande.repository.web.exception.RequestTooLongException;
+import com.bethibande.repository.web.repositories.oci.OCIError;
+import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
@@ -238,6 +241,15 @@ public class OCIRepository implements ManagedRepository {
         return this.backend.get(toBlobKey(namespace, digest));
     }
 
+    public StreamHandle getBlob(final User user,
+                                final String namespace,
+                                final String digest,
+                                final long offset,
+                                final long length) {
+        checkViewAccess(user);
+        return this.backend.get(toBlobKey(namespace, digest), offset, length);
+    }
+
     public void uploadBlob(final User user, final String namespace, final String digest, final StreamHandle stream) {
         checkWriteAccess(user);
 
@@ -316,7 +328,9 @@ public class OCIRepository implements ManagedRepository {
         final String digestString = Hex.encodeHexString(finalDigest);
         if (!Objects.equals(hash, digestString)) {
             abortUpload(user, handle.uploadId(), namespace, handle.sessionId());
-            throw new BadRequestException("Digest mismatch");
+            throw new BadRequestException(Response.status(Response.Status.BAD_REQUEST)
+                    .entity(OCIError.of(OCIErrorCodes.DIGEST_INVALID, "Digest mismatch", "The provided digest does not match the actual digest of the uploaded data"))
+                    .build());
         }
 
         final ObjectInfo blobInfo = this.backend.headObject(blobKey);

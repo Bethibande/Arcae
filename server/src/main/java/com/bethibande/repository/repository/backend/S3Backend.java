@@ -7,15 +7,17 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.http.auth.aws.signer.SignerConstant;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
 public class S3Backend implements RepositoryBackend {
+
+    public static final long MAX_UPLOAD_SIZE = 5_000_000_000L;
 
     private final S3Config config;
     private final S3Client client;
@@ -120,16 +122,42 @@ public class S3Backend implements RepositoryBackend {
 
     @Override
     public void put(final String path, final StreamHandle handle) {
-        final PutObjectRequest request = PutObjectRequest.builder()
-                .bucket(this.config.bucket())
-                .contentType(handle.contentType())
-                .contentLength(handle.contentLength())
-                .key(path)
-                .build();
+        if (handle.contentLength() > MAX_UPLOAD_SIZE) {
+            final String uploadId = this.createMultipartUpload(path);
+            long written = 0;
+            int partNumber = 1;
+            while (written < handle.contentLength()) {
+                final long partSize = Math.min(100_000_000, handle.contentLength() - written);
 
-        final RequestBody body = RequestBody.fromInputStream(handle.stream(), handle.contentLength());
+                final RequestBody body = RequestBody.fromInputStream(new NoCloseInputStream(handle.stream()), partSize);
+                final int partNumberFinal = partNumber;
+                this.client.uploadPart(
+                        b -> b.bucket(this.config.bucket())
+                                .key(path)
+                                .uploadId(uploadId)
+                                .partNumber(partNumberFinal),
+                        body);
 
-        this.client.putObject(request, body);
+                written += partSize;
+                partNumber++;
+            }
+            try {
+                handle.stream().close();
+            } catch (final IOException ex) {
+                throw new RuntimeException(ex);
+            }
+
+            this.completeMultipartUpload(uploadId, path);
+        } else {
+            final RequestBody body = RequestBody.fromInputStream(handle.stream(), handle.contentLength());
+            this.client.putObject(
+                    b -> b.bucket(this.config.bucket())
+                            .key(path)
+                            .contentType(handle.contentType())
+                            .contentLength(handle.contentLength()),
+                    body
+            );
+        }
     }
 
     @Override

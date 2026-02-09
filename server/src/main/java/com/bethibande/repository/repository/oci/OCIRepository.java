@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ForbiddenException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
@@ -64,8 +65,22 @@ public class OCIRepository implements ManagedRepository {
         return info;
     }
 
+    protected void checkViewAccess(final User user) {
+        if (!info.canView(user)) {
+            if (user == null) throw new UnauthorizedException();
+            throw new ForbiddenException();
+        }
+    }
+
+    protected void checkWriteAccess(final User user) {
+        if (!info.canWrite(user)) {
+            if (user == null) throw new UnauthorizedException();
+            throw new ForbiddenException();
+        }
+    }
+
     public Artifact getArtifact(final User user, final String namespace) {
-        if (!info.canView(user)) throw new UnauthorizedException();
+        checkViewAccess(user);
 
         final ArtifactAndGroupId artifactAndGroupId = extractArtifactAndGroupId(namespace);
         return Artifact.find(
@@ -77,7 +92,7 @@ public class OCIRepository implements ManagedRepository {
     }
 
     public void deleteBlob(final User user, final String namespace, final String digest) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         final String key = toBlobKey(namespace, digest);
         final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", key, info.id).firstResult();
@@ -88,7 +103,7 @@ public class OCIRepository implements ManagedRepository {
     }
 
     public void deleteManifest(final User user, final String namespace, final String reference) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         final StoredFile file = findManifestFileByReference(namespace, reference);
         if (file == null) return;
@@ -161,7 +176,7 @@ public class OCIRepository implements ManagedRepository {
     }
 
     public OCIStreamHandle getManifest(final User user, final String namespace, final String reference) {
-        if (!info.canView(user)) throw new UnauthorizedException();
+        checkViewAccess(user);
 
         if (isDigest(reference)) {
             final StreamHandle handle = this.backend.get(toManifestKey(namespace, reference));
@@ -185,7 +200,7 @@ public class OCIRepository implements ManagedRepository {
     }
 
     public OCIContentInfo getManifestInfo(final User user, final String namespace, final String reference) {
-        if (!info.canView(user)) throw new UnauthorizedException();
+        checkViewAccess(user);
 
         if (reference.matches("^sha256:[0-9a-fA-F]{64}$|^sha512:[0-9a-fA-F]{128}$")) {
             final ObjectInfo info = this.backend.headObject(toManifestKey(namespace, reference));
@@ -211,7 +226,7 @@ public class OCIRepository implements ManagedRepository {
     }
 
     public OCIContentInfo getBlobInfo(final User user, final String namespace, final String digest) {
-        if (!info.canView(user)) throw new UnauthorizedException();
+        checkViewAccess(user);
 
         final ObjectInfo info = this.backend.headObject(toBlobKey(namespace, digest));
         if (info == null) return null;
@@ -219,18 +234,18 @@ public class OCIRepository implements ManagedRepository {
     }
 
     public StreamHandle getBlob(final User user, final String namespace, final String digest) {
-        if (!info.canView(user)) throw new UnauthorizedException();
+        checkViewAccess(user);
         return this.backend.get(toBlobKey(namespace, digest));
     }
 
     public void uploadBlob(final User user, final String namespace, final String digest, final StreamHandle stream) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         this.backend.put(toBlobKey(namespace, digest), stream);
     }
 
     public UploadSessionHandle startUploadSession(final User user, final String namespace) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         final UUID sessionId = UUID.randomUUID();
         final String filePath = toPendingBlobKey(namespace, sessionId.toString());
@@ -244,7 +259,7 @@ public class OCIRepository implements ManagedRepository {
                            final UploadSessionHandle handle,
                            final int number,
                            final StreamHandle stream) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         this.backend.uploadPart(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()), number, stream);
     }
@@ -252,7 +267,7 @@ public class OCIRepository implements ManagedRepository {
     public MultipartUploadStatus getUploadStatus(final User user,
                                                  final String namespace,
                                                  final UploadSessionHandle handle) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         return this.backend.headUpload(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()));
     }
@@ -286,7 +301,7 @@ public class OCIRepository implements ManagedRepository {
                                       final String namespace,
                                       final String digest,
                                       final UploadSessionHandle handle) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         final String pendingKey = toPendingBlobKey(namespace, handle.sessionId().toString());
         final String blobKey = toBlobKey(namespace, digest);
@@ -318,7 +333,7 @@ public class OCIRepository implements ManagedRepository {
     }
 
     public void abortUpload(final User user, final String uploadId, final String namespace, final UUID sessionId) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
 
         this.backend.abortMultipartUpload(uploadId, toPendingBlobKey(namespace, sessionId.toString()));
     }
@@ -597,7 +612,7 @@ public class OCIRepository implements ManagedRepository {
                                             final String namespace,
                                             final String reference,
                                             final StreamHandle stream) {
-        if (!info.canWrite(user)) throw new UnauthorizedException();
+        checkWriteAccess(user);
         if (stream.contentLength() > MAX_MANIFEST_SIZE) throw new RequestTooLongException();
 
         final byte[] contents = stream.readAllBytes();

@@ -5,10 +5,12 @@ import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.files.OCISubject;
 import com.bethibande.repository.jpa.repository.PackageManager;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
+import com.bethibande.repository.jpa.security.AccessToken;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.backend.MultipartUploadStatus;
 import com.bethibande.repository.repository.oci.*;
+import com.bethibande.repository.security.BearerTokenIdentityProvider;
 import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.exception.RangeNotSatisfiableException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -17,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import io.quarkus.security.UnauthorizedException;
 import jakarta.inject.Inject;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -24,16 +27,19 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import org.apache.http.HttpHeaders;
 import org.apache.http.entity.ContentType;
+import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 
 import java.io.InputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
 
 @Path("/repositories/oci/{repositoryId}/v2")
 public class OCIRepositoryEndpoint {
@@ -52,6 +58,25 @@ public class OCIRepositoryEndpoint {
     @Inject
     protected ObjectMapper mapper;
 
+    @Context
+    protected UriInfo uriInfo;
+
+    @ServerResponseFilter
+    public void authResponseInterceptor(final ContainerResponseContext context) {
+        if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
+        if (context.getStatus() == 401) {
+            String baseUri = uriInfo.getBaseUri().toString();
+            if (baseUri.endsWith("/")) {
+                baseUri = baseUri.substring(0, baseUri.length() - 1);
+            }
+
+            final String realm = "%s/v2/auth".formatted(baseUri);
+            final String service = uriInfo.getBaseUri().getHost();
+
+            context.getHeaders().add("WWW-Authenticate", "Bearer realm=\"%s\",service=\"%s\"".formatted(realm, service));
+        }
+    }
+
     @Inject
     public OCIRepositoryEndpoint(final RepositoryManager repositoryManager, final AuthenticatedUser authenticatedUser) {
         this.repositoryManager = repositoryManager;
@@ -65,12 +90,49 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
+    @Path("/auth")
+    @Transactional
+    public Response authenticate() {
+        final User user = authenticatedUser.getSelf();
+
+        if (user == null) {
+            return createTokenResponse(
+                    BearerTokenIdentityProvider.ANONYMOUS_TOKEN,
+                    Duration.ofHours(1),
+                    Instant.now()
+            );
+        }
+
+        final Instant now = Instant.now();
+        final AccessToken accessToken = authenticatedUser.getAccessToken();
+        final Duration duration = accessToken.expiresAfter == null
+                ? Duration.ofDays(7)
+                : Duration.between(now, accessToken.expiresAfter);
+
+        return createTokenResponse(accessToken.token, duration, now);
+    }
+
+    protected Response createTokenResponse(final String token, final Duration duration, final Instant now) {
+        return Response.ok()
+                .entity(Map.of(
+                        "token", token,
+                        "access_token", token,
+                        "expires_in", duration.toSeconds(),
+                        "issued_at", now.toString()
+                ))
+                .build();
+    }
+
+    @GET
     @Transactional
     public Response get(final @PathParam("repositoryId") String repositoryId) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        if (!repository.canView(user)) throw new ForbiddenException("Unauthorized");
+        if (!repository.canView(user)) {
+            if (user == null) throw new UnauthorizedException();
+            throw new ForbiddenException("Unauthorized");
+        }
 
         return Response.ok().build();
     }

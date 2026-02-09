@@ -9,6 +9,8 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import java.security.Principal;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Indexed
@@ -37,6 +39,12 @@ public class User extends PanacheEntity implements Principal {
     @Override
     public String getName() {
         return this.name;
+    }
+
+    public Set<String> getRolesAsString() {
+        return roles.stream()
+                .map(UserRole::toString)
+                .collect(Collectors.toSet());
     }
 
     @Override

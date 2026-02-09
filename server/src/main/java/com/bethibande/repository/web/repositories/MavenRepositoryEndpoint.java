@@ -2,10 +2,11 @@ package com.bethibande.repository.web.repositories;
 
 import com.bethibande.repository.jpa.repository.PackageManager;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
-import com.bethibande.repository.jpa.user.AccessToken;
+import com.bethibande.repository.jpa.security.AccessToken;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.maven.MavenRepository;
+import io.quarkus.security.UnauthorizedException;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -39,7 +40,7 @@ public class MavenRepositoryEndpoint {
             final AccessToken token = AccessToken.find("token = ?1", tokenString).firstResult();
             if (token == null
                     || !Objects.equals(token.owner.name, username)
-                    || token.isExpired(Instant.now())) throw new ForbiddenException("Invalid token");
+                    || token.isExpired(Instant.now())) throw new UnauthorizedException("Invalid token");
 
             user = token.owner;
         }

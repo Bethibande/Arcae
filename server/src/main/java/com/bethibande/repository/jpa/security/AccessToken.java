@@ -1,6 +1,7 @@
-package com.bethibande.repository.jpa.user;
+package com.bethibande.repository.jpa.security;
 
 import com.bethibande.process.annotation.EntityDTO;
+import com.bethibande.repository.jpa.user.User;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

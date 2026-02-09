@@ -9,7 +9,7 @@ For now only maven repositories are supported. Other repository types will be ad
 
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [Installation](#install)
+- [Installation](#installation)
 
 ### Features
 - Maven repository support

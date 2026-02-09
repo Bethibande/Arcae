@@ -19,7 +19,6 @@ services:
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
-      - "9300:9300"
     volumes:
       - elastic:/usr/share/elasticsearch/data
   minio:
@@ -34,7 +33,7 @@ services:
     volumes:
       - minio:/data
   repository:
-    image: ocr.bethibande.com/bethibande/repository:1.0-SNAPSHOT
+    image: bethibande/repository:1.0
     restart: unless-stopped
     ports:
       - "8080:8080"

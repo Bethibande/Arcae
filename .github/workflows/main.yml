@@ -53,6 +53,7 @@ jobs:
       - name: Build and Push Arch-Specific Image
         run: |
           ./gradlew :server:build \
+            "-Dquarkus.quinoa.verbose=true" \
             "-Dquarkus.native.container-build=true" \
             "-Dquarkus.container-image.builder=docker" \
             "-Dquarkus.native.enabled=true" \

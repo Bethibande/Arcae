@@ -36,6 +36,8 @@ import jakarta.ws.rs.core.UriInfo;
 import org.apache.http.HttpHeaders;
 import org.apache.http.entity.ContentType;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -45,6 +47,8 @@ import java.util.*;
 
 @Path("/repositories/oci/{repositoryId}/v2")
 public class OCIRepositoryEndpoint {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OCIRepositoryEndpoint.class);
 
     // Min length of 5 MB due to limitations of S3 multipart uploads
     public static final long MIN_CHUNK_LENGTH = 5_242_880;
@@ -102,8 +106,11 @@ public class OCIRepositoryEndpoint {
     @GET
     @Path("/auth")
     @Transactional
-    public Response authenticate() {
+    // We need to use the repositoryId parameter here, otherwise the OpenAPI generator will complain...
+    public Response authenticate(final @PathParam("repositoryId") String repositoryId) {
         final User user = authenticatedUser.getSelf();
+
+        LOGGER.debug("Login for repository {} and user: {}", repositoryId, user != null ? user.name : "anonymous");
 
         if (user == null) {
             return createTokenResponse(

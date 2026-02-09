@@ -59,7 +59,6 @@ public class RepositoryEndpoint {
         if (repository == null) throw new NotFoundException("Unknown repository");
 
         repository.name = dto.name();
-        repository.packageManager = dto.packageManager();
         repository.settings = dto.settings();
         repository.metadata = dto.metadata();
         repository.cleanupPolicies = dto.cleanupPolicies();

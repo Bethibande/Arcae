@@ -22,6 +22,7 @@ import {cn} from "@/lib/utils.ts";
 import {PermissionsForm} from "@/components/repository/PermissionsForm.tsx";
 import {useAuth} from "@/lib/auth.tsx";
 import {CleanupPoliciesForm} from "@/components/repository/CleanupPoliciesForm.tsx";
+import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";
 
 export default function RepositoryEditView() {
     const {user} = useAuth();
@@ -29,7 +30,7 @@ export default function RepositoryEditView() {
     const navigate = useNavigate();
 
     if (!user?.roles?.includes(UserRole.Admin)) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/" replace/>;
     }
     const isEdit = id !== undefined;
 
@@ -218,9 +219,17 @@ export default function RepositoryEditView() {
 
     const sections = [
         {id: "general", label: "General", icon: Settings},
-        ...(selectedPackageManager === PackageManager.Maven ? [{id: "replication", label: "Replication/Mirroring", icon: RefreshCw}] : []),
+        ...(selectedPackageManager === PackageManager.Maven ? [{
+            id: "replication",
+            label: "Replication/Mirroring",
+            icon: RefreshCw
+        }] : []),
         {id: "storage", label: "Storage (S3)", icon: Cloud},
-        ...(selectedPackageManager === PackageManager.Oci ? [{id: "external-access", label: "External Access", icon: Globe}] : []),
+        ...(selectedPackageManager === PackageManager.Oci ? [{
+            id: "external-access",
+            label: "External Access",
+            icon: Globe
+        }] : []),
         {id: "cleanup", label: "Cleanup Policies", icon: Trash2},
         {id: "permissions", label: "Permissions", icon: Lock},
     ];
@@ -339,18 +348,32 @@ export default function RepositoryEditView() {
                                             fieldName="packageManager"
                                             label="Artifact Type"
                                             Input={({value, onChange}) => (
-                                                <Select value={value} onValueChange={onChange}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select package manager"/>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {Object.values(PackageManager).map((pm) => (
-                                                            <SelectItem key={pm} value={pm}>
-                                                                {pm}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div>
+                                                            <Select value={value}
+                                                                    onValueChange={onChange}
+                                                                    disabled={isEdit}>
+                                                                <SelectTrigger className={"w-full"}>
+                                                                    <SelectValue placeholder="Select package manager"/>
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {Object.values(PackageManager).map((pm) => (
+                                                                        <SelectItem key={pm} value={pm}>
+                                                                            {pm}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    {isEdit && (
+                                                        <TooltipContent>
+                                                            The artifact type cannot be changed after the repository has
+                                                            been created.
+                                                        </TooltipContent>
+                                                    )}
+                                                </Tooltip>
                                             )}
                                             control={form.control}
                                         />

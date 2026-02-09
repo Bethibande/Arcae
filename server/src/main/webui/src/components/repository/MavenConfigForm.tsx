@@ -1,20 +1,12 @@
 import { z } from "zod";
 import { FormField } from "@/components/form-field.tsx";
-import { S3ConfigForm } from "@/components/repository/S3ConfigForm.tsx";
+import { s3Schema, S3ConfigForm } from "@/components/repository/S3ConfigForm.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import {type Control, type FieldPath, type FieldValues, useFieldArray, useFormContext} from "react-hook-form";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {Plus, Trash2} from "lucide-react";
-
-export const s3Schema = z.object({
-    url: z.string().url().or(z.string().startsWith("http://")).or(z.string().length(0)),
-    region: z.string(),
-    bucket: z.string(),
-    accessKey: z.string(),
-    secretKey: z.string(),
-});
 
 export const connectionSchema = z.object({
     url: z.string().url().or(z.string().startsWith("http://")).or(z.string().length(0)),

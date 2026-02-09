@@ -38,7 +38,7 @@ dependencies {
     implementation("io.quarkus:quarkus-scheduler")
     implementation("com.cronutils:cron-utils:9.2.1")
 
-    implementation("software.amazon.awssdk:s3:2.34.0")
+    implementation("software.amazon.awssdk:s3:2.41.24")
 
     implementation("io.hypersistence:hypersistence-utils-hibernate-71:3.14.1")
 

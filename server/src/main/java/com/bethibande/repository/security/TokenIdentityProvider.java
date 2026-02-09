@@ -1,7 +1,6 @@
 package com.bethibande.repository.security;
 
 import com.bethibande.repository.jpa.security.UserSession;
-import com.bethibande.repository.jpa.user.UserRole;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
@@ -12,13 +11,15 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import java.util.stream.Collectors;
-
 @ApplicationScoped
-public class CustomTokenIdentityProvider implements IdentityProvider<TokenAuthenticationRequest> {
+public class TokenIdentityProvider implements IdentityProvider<TokenAuthenticationRequest> {
+
+    private final UserSessionService userSessionService;
 
     @Inject
-    protected UserSessionService userSessionService;
+    public TokenIdentityProvider(final UserSessionService userSessionService) {
+        this.userSessionService = userSessionService;
+    }
 
     @Override
     public Class<TokenAuthenticationRequest> getRequestType() {
@@ -26,7 +27,8 @@ public class CustomTokenIdentityProvider implements IdentityProvider<TokenAuthen
     }
 
     @Override
-    public Uni<SecurityIdentity> authenticate(final TokenAuthenticationRequest request, final AuthenticationRequestContext context) {
+    public Uni<SecurityIdentity> authenticate(final TokenAuthenticationRequest request,
+                                              final AuthenticationRequestContext context) {
         return context.runBlocking(() -> {
             final String token = request.getToken().getToken();
 
@@ -35,9 +37,7 @@ public class CustomTokenIdentityProvider implements IdentityProvider<TokenAuthen
 
             return QuarkusSecurityIdentity.builder()
                     .setPrincipal(session.user)
-                    .addRoles(session.user.roles.stream()
-                            .map(UserRole::toString)
-                            .collect(Collectors.toSet()))
+                    .addRoles(session.user.getRolesAsString())
                     .addAttribute(SecurityAttributes.SESSION, session)
                     .build();
         });

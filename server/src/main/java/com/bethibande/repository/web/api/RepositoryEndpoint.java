@@ -11,7 +11,6 @@ import com.bethibande.repository.jpa.repository.permissions.UserSelectionType;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.web.AuthenticatedUser;
-import com.bethibande.repository.web.CRUDResponse;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -45,6 +44,7 @@ public class RepositoryEndpoint {
         repository.name = dto.name();
         repository.packageManager = dto.packageManager();
         repository.settings = dto.settings();
+        repository.metadata = dto.metadata();
         repository.cleanupPolicies = dto.cleanupPolicies();
 
         repository.persist();
@@ -61,6 +61,7 @@ public class RepositoryEndpoint {
         repository.name = dto.name();
         repository.packageManager = dto.packageManager();
         repository.settings = dto.settings();
+        repository.metadata = dto.metadata();
         repository.cleanupPolicies = dto.cleanupPolicies();
         repository.persist();
 
@@ -146,7 +147,8 @@ public class RepositoryEndpoint {
 
         final Comparator<RepositoryOverviewDTO> comparator = switch (order) {
             case ALPHABETICAL -> Comparator.comparing(dto -> dto.repository.name());
-            case LAST_UPDATED -> Comparator.comparing(RepositoryOverviewDTO::lastUpdated, Comparator.nullsLast(Comparator.reverseOrder()));
+            case LAST_UPDATED ->
+                    Comparator.comparing(RepositoryOverviewDTO::lastUpdated, Comparator.nullsLast(Comparator.reverseOrder()));
             case ARTIFACT_COUNT -> Comparator.comparing(RepositoryOverviewDTO::artifactsCount).reversed();
         };
 

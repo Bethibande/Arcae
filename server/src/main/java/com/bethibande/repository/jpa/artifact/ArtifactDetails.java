@@ -6,11 +6,14 @@ public record ArtifactDetails(
         String description,
         String url,
         List<Author> authors,
-        List<License> licenses
+        List<License> licenses,
+        Object additionalData
 ) {
 
-    public record Author(String name, String email) {}
+    public record Author(String name, String email) {
+    }
 
-    public record License(String name, String url) {}
+    public record License(String name, String url) {
+    }
 
 }

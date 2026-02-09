@@ -1,6 +1,6 @@
 package com.bethibande.repository.repository.maven;
 
-import com.bethibande.repository.jpa.StoredFile;
+import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.repository.Repository;
@@ -52,6 +52,11 @@ public class MavenRepository implements ManagedRepository {
         this.config = config;
         this.backend = new S3Backend(config.s3Config());
         this.fileIndexer = new MavenFileIndexer(info, this);
+    }
+
+    @Override
+    public Repository getInfo() {
+        return info;
     }
 
     protected StreamHandle mirrorGet(final User user, final String path, final MirrorConnectionSettings mirror) {

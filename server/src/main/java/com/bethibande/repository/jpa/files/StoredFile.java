@@ -1,4 +1,4 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.files;
 
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
@@ -28,15 +28,38 @@ public class StoredFile extends PanacheEntity {
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant updated;
 
+    @Column
+    public Long contentLength;
+
+    @Column(columnDefinition = "varchar(255)")
+    public String contentType;
+
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     public Map<String, String> hashes;
 
     public long usages() {
-        final long versions = ArtifactVersion.count("files.id = ?", id);
-        final long artifacts = Artifact.count("files.id = ?", id);
+        final long manifests = ArtifactVersion.count("manifest = ?1", this);
+        final long versions = ArtifactVersion.count("join files f on f.id = ?1", id);
+        final long artifacts = Artifact.count("join files f on f.id = ?1", id);
 
-        return versions + artifacts;
+        return versions + artifacts + manifests;
+    }
+
+    public void clearOwners() {
+        ArtifactVersion.getEntityManager()
+                .createNativeQuery("delete from artifactversion_files f where f.files_id = ?1")
+                .setParameter(1, this.id)
+                .executeUpdate();
+
+        Artifact.getEntityManager()
+                .createNativeQuery("delete from artifact_files f where f.files_id = ?1")
+                .setParameter(1, this.id)
+                .executeUpdate();
+
+        ArtifactVersion.update("manifest = null where manifest = ?1", this);
+
+        StoredFile.getEntityManager().flush();
     }
 
 }

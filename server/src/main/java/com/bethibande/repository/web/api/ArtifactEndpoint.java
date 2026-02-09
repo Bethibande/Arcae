@@ -7,6 +7,7 @@ import com.bethibande.repository.jpa.artifact.ArtifactVersionDTO;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
 import com.bethibande.repository.jpa.user.User;
+import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.maven.MavenRepository;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.panache.common.Sort;
@@ -141,7 +142,7 @@ public class ArtifactEndpoint {
         if (artifact == null) throw new NotFoundException("Unknown artifact");
 
         final Repository repositoryEntity = artifact.repository;
-        final MavenRepository repository = repositoryManager.findRepository(repositoryEntity.name, repositoryEntity.packageManager);
+        final ManagedRepository repository = repositoryManager.findRepository(repositoryEntity.name, repositoryEntity.packageManager);
 
         final User self = authenticatedUser.getSelf();
 
@@ -156,11 +157,11 @@ public class ArtifactEndpoint {
         if (version == null) throw new NotFoundException("Unknown version");
 
         final Repository repositoryEntity = version.artifact.repository;
-        final MavenRepository repository = repositoryManager.findRepository(repositoryEntity.name, repositoryEntity.packageManager);
+        final ManagedRepository repository = repositoryManager.findRepository(repositoryEntity.name, repositoryEntity.packageManager);
 
         final User self = authenticatedUser.getSelf();
 
-        repository.delete(self, version, true, false);
+        repository.delete(self, version, true);
     }
 
 }

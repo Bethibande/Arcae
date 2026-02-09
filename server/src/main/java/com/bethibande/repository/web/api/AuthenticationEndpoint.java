@@ -91,7 +91,7 @@ public class AuthenticationEndpoint {
     @Path("/logout")
     public Response logout() {
         final UserSession session = identity.getAttribute(SecurityAttributes.SESSION);
-        userSessionService.invalidateSession(session.token);
+        if (session != null) userSessionService.invalidateSession(session.token);
 
         return Response.ok()
                 .cookie(new NewCookie.Builder(UserAuthenticationMechanism.COOKIE_NAME)

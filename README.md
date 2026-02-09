@@ -13,6 +13,7 @@ For now only maven repositories are supported. Other repository types will be ad
 
 ### Features
 - Maven repository support
+- Docker/OCI repository support
 - Cleanup policies
 - Mirroring of remote repositories
 - User permissions for repository access

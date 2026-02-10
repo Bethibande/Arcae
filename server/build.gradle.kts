@@ -87,6 +87,11 @@ tasks.register<Sync>("copyOpenAPITypes") {
         kotlin.io.path.Path("${layout.projectDirectory}/src/main/webui/src/generated")
             .walk()
             .forEach { path -> path.writeText("// @ts-nocheck\n" + path.readText()) }
+
+        // Yeah, the open-api-generator sucks...
+        // Adding a server with the url "/" still doesn't result in an empty base path...
+        val runtime = kotlin.io.path.Path("${layout.projectDirectory}/src/main/webui/src/generated/runtime.ts")
+        runtime.writeText(runtime.readText().replace("export const BASE_PATH = \"http://localhost\".replace(/\\/+\$/, \"\");", "export const BASE_PATH = \"\";"))
     }
 }
 

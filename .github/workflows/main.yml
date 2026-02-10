@@ -34,7 +34,7 @@ jobs:
         with:
           cache-read-only: false
 
-      - name: Cache NPM dependencies
+      - name: Cache Node and NPM dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -52,11 +52,19 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+        # This will fail due to the front-end build missing files.
+        # The next step will generate these files.
+        # This order is necessary since this step will generate the openapi-spec.
+      - name: Quarkus App Parts Build
+        run: ./gradlew :server:quarkusAppPartsBuild
+        continue-on-error: true
+
+      - name: Generate OpenAPI
+        run: ./gradlew :server:openApiGenerate
+
       - name: Build and Push Arch-Specific Image
         run: |
           ./gradlew :server:build \
-            "-Dquarkus.quinoa.package-manager-install=true" \
-            "-Dquarkus.quinoa.log-external-output=true" \
             "-Dquarkus.native.container-build=true" \
             "-Dquarkus.container-image.builder=docker" \
             "-Dquarkus.native.enabled=true" \

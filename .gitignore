@@ -1,4 +1,5 @@
 .gradle
+.quinoa
 **/build/
 **/node_moduls/
 !gradle/wrapper/gradle-wrapper.jar

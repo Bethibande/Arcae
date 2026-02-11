@@ -33,7 +33,7 @@ services:
     volumes:
       - minio:/data
   repository:
-    image: bethibande/repository:1.0
+    image: maxbb/server:1.0-SNAPSHOT
     restart: unless-stopped
     ports:
       - "8080:8080"

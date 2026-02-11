@@ -21,6 +21,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.inject.Inject;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -35,6 +37,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import org.apache.http.HttpHeaders;
 import org.apache.http.entity.ContentType;
+import org.hibernate.Hibernate;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,13 +97,19 @@ public class OCIRepositoryEndpoint {
     }
 
     protected OCIRepository repositoryOrThrow(final String repositoryId) {
-        final OCIRepository repository = repositoryManager.findRepository(repositoryId, PackageManager.OCI);
-        if (repository == null) throw new NotFoundException(
-                Response.status(Response.Status.NOT_FOUND)
-                        .entity(OCIError.of(OCIErrorCodes.NAME_UNKNOWN, "Unknown repository", "The specified repository does not exist"))
-                        .build()
-        );
-        return repository;
+        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+            final OCIRepository repository = repositoryManager.findRepository(repositoryId, PackageManager.OCI);
+            if (repository == null) throw new NotFoundException(
+                    Response.status(Response.Status.NOT_FOUND)
+                            .entity(OCIError.of(OCIErrorCodes.NAME_UNKNOWN, "Unknown repository", "The specified repository does not exist"))
+                            .build()
+            );
+
+            Hibernate.initialize(repository.getInfo().permissions);
+            return repository;
+        });
+
+
     }
 
     @GET
@@ -141,7 +150,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Transactional
     public Response get(final @PathParam("repositoryId") String repositoryId) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
@@ -209,7 +217,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Transactional
     @Path("/{namespace: .*}/blobs/{digest}")
     public Response getBlob(final @PathParam("repositoryId") String repositoryId,
                             final @PathParam("namespace") String namespace,
@@ -229,7 +236,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Transactional
     @Path("/{namespace: .*}/manifests/{reference}")
     public Response getManifest(final @PathParam("repositoryId") String repositoryId,
                                 final @PathParam("namespace") String namespace,
@@ -250,7 +256,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @POST
-    @Transactional
     @Path("/{namespace: .*}/blobs/uploads")
     public Response createUpload(final @PathParam("repositoryId") String repositoryId,
                                  final @PathParam("namespace") String namespace,
@@ -293,7 +298,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @PATCH
-    @Transactional
     @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response uploadChunk(final @PathParam("repositoryId") String repositoryId,
                                 final @PathParam("namespace") String namespace,
@@ -336,7 +340,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @PUT
-    @Transactional
     @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response completeUpload(final @PathParam("repositoryId") String repositoryId,
                                    final @PathParam("namespace") String namespace,
@@ -368,12 +371,11 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Transactional
     @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
-    public Response completeUpload(final @PathParam("repositoryId") String repositoryId,
-                                   final @PathParam("namespace") String namespace,
-                                   final @PathParam("sessionId") UUID sessionId,
-                                   final @QueryParam("uploadId") String uploadId) {
+    public Response getUploadStatus(final @PathParam("repositoryId") String repositoryId,
+                                    final @PathParam("namespace") String namespace,
+                                    final @PathParam("sessionId") UUID sessionId,
+                                    final @QueryParam("uploadId") String uploadId) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 

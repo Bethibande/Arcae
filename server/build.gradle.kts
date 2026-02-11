@@ -39,10 +39,12 @@ dependencies {
     implementation("com.cronutils:cron-utils:9.2.1")
 
     implementation("software.amazon.awssdk:s3:2.41.24")
+    implementation("software.amazon.awssdk:apache-client:2.41.26")
 
     implementation("io.hypersistence:hypersistence-utils-hibernate-71:3.14.1")
 
     implementation("com.bethibande.process:annotations:1.5")
+    implementation("io.quarkus:quarkus-kubernetes-client")
     annotationProcessor("com.bethibande.process:processor:1.5")
 
     // Jackson & Hibernate Search ORM

@@ -54,6 +54,7 @@ export default function RepositoryEditView() {
     const pmConfig = CONFIG_MAPPING[selectedPackageManager];
 
     const [initialPermissions, setInitialPermissions] = useState<PermissionValues[]>([]);
+    const [initialMetadata, setInitialMetadata] = useState<Record<string, any>>({});
 
     useEffect(() => {
         if (isEdit) {
@@ -92,7 +93,12 @@ export default function RepositoryEditView() {
                         setInitialPermissions([...mappedPermissions]);
 
                         if (repo.metadata) {
-                            form.setValue("externalHost", repo.metadata["HOST_NAME"]);
+                            setInitialMetadata(repo.metadata as any);
+                            if ((repo.metadata as any)["HOST_NAME"]) {
+                                form.setValue("externalHost", (repo.metadata as any)["HOST_NAME"]);
+                            }
+                        } else {
+                            setInitialMetadata({});
                         }
 
                         if (repo.settings) {
@@ -115,6 +121,12 @@ export default function RepositoryEditView() {
                                             mergedSettings.mirrorConfig = {
                                                 ...(currentPmConfig.defaultValues.mirrorConfig || {}),
                                                 ...(settings.mirrorConfig || {})
+                                            };
+                                        }
+                                        if (repo.packageManager === PackageManager.Oci) {
+                                            mergedSettings.routingConfig = {
+                                                ...(currentPmConfig.defaultValues.routingConfig || {}),
+                                                ...(settings.routingConfig || {})
                                             };
                                         }
                                     }
@@ -143,9 +155,16 @@ export default function RepositoryEditView() {
         const config = currentPmConfig ? data[currentPmConfig.configKey as keyof DynamicFormValues] : undefined;
 
         const settings = config ? JSON.stringify(config) : undefined;
-        const metadata = data.packageManager === PackageManager.Oci ? {
-            "HOST_NAME": data.externalHost
-        } : undefined;
+
+        // Preserve existing metadata and override only the keys managed by this form
+        const mergedMetadata: Record<string, any> = isEdit ? { ...initialMetadata } : {};
+        if (data.packageManager === PackageManager.Oci) {
+            if (data.externalHost && data.externalHost.trim().length > 0) {
+                mergedMetadata["HOST_NAME"] = data.externalHost.trim();
+            }
+        }
+        // Avoid sending undefined which would wipe metadata server-side
+        const metadata = mergedMetadata;
 
         try {
             let repoId: number;

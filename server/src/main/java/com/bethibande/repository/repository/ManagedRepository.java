@@ -4,6 +4,7 @@ import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.user.User;
+import jakarta.persistence.EntityManager;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 

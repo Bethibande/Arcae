@@ -2,14 +2,14 @@ package com.bethibande.repository.web.api;
 
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
-import com.bethibande.repository.jpa.repository.PublicRepositoryDTO;
-import com.bethibande.repository.jpa.repository.Repository;
-import com.bethibande.repository.jpa.repository.RepositoryDTO;
-import com.bethibande.repository.jpa.repository.RepositoryDTOWithoutId;
+import com.bethibande.repository.jpa.repository.*;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
 import com.bethibande.repository.jpa.repository.permissions.UserSelectionType;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserRole;
+import com.bethibande.repository.repository.ManagedRepository;
+import com.bethibande.repository.repository.RepositoryUpdatedNotifier;
+import com.bethibande.repository.repository.UpdateType;
 import com.bethibande.repository.web.AuthenticatedUser;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
@@ -31,10 +31,19 @@ import java.util.List;
 public class RepositoryEndpoint {
 
     private final AuthenticatedUser authenticatedUser;
+    private final RepositoryManager repositoryManager;
 
     @Inject
-    public RepositoryEndpoint(final AuthenticatedUser authenticatedUser) {
+    public RepositoryEndpoint(final AuthenticatedUser authenticatedUser, final RepositoryManager repositoryManager) {
         this.authenticatedUser = authenticatedUser;
+        this.repositoryManager = repositoryManager;
+    }
+
+    protected void processUpdate(final Repository entity, final UpdateType type) {
+        final ManagedRepository managed = repositoryManager.manage(entity);
+        if (managed instanceof RepositoryUpdatedNotifier notifier) {
+            notifier.processUpdate(type);
+        }
     }
 
     @POST
@@ -48,6 +57,8 @@ public class RepositoryEndpoint {
         repository.cleanupPolicies = dto.cleanupPolicies();
 
         repository.persist();
+
+        processUpdate(repository, UpdateType.CREATE);
 
         return RepositoryDTO.from(repository);
     }
@@ -63,6 +74,8 @@ public class RepositoryEndpoint {
         repository.metadata = dto.metadata();
         repository.cleanupPolicies = dto.cleanupPolicies();
         repository.persist();
+
+        processUpdate(repository, UpdateType.UPDATE);
 
         return RepositoryDTO.from(repository);
     }
@@ -178,6 +191,11 @@ public class RepositoryEndpoint {
     public void delete(@PathParam("id") final Long id) {
         if (Artifact.count("repository.id = ?1", id) > 0)
             throw new ClientErrorException("Cannot delete repository with artifacts", HttpStatus.SC_CONFLICT);
+
+        final Repository repository = Repository.findById(id);
+        if (repository != null) {
+            processUpdate(repository, UpdateType.DELETE);
+        }
 
         Repository.deleteById(id);
     }

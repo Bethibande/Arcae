@@ -365,7 +365,7 @@ public class OCIRepositoryEndpoint {
             return Response.created(URI.create(url))
                     .build();
         } catch (final Throwable th) {
-            System.err.println(th.getMessage());
+            LOGGER.error("Error completing upload", th);
             return Response.serverError().build();
         }
     }

@@ -73,6 +73,9 @@ public class OCIRepositoryEndpoint {
     @ServerResponseFilter
     public void authResponseInterceptor(final ContainerResponseContext context) {
         if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
+
+        LOGGER.debug("Intercepting response for {} with status {}", uriInfo.getPath(), context.getStatus());
+
         if (context.getStatus() == 401) {
             String baseUri = uriInfo.getBaseUri().toString();
             if (baseUri.endsWith("/")) {

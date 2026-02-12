@@ -70,9 +70,19 @@ public class OCIRepositoryEndpoint {
     @Context
     protected UriInfo uriInfo;
 
+    @Inject
+    public OCIRepositoryEndpoint(final RepositoryManager repositoryManager, final AuthenticatedUser authenticatedUser) {
+        this.repositoryManager = repositoryManager;
+        this.authenticatedUser = authenticatedUser;
+    }
+
     @ServerResponseFilter
     public void authResponseInterceptor(final ContainerResponseContext context) {
         if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
+
+        final String auth = context.getHeaderString(HttpHeaders.AUTHORIZATION);
+        final User user = authenticatedUser.getSelf();
+        LOGGER.info("Path: {}; User: {}; Auth: {}", uriInfo.getPath(), user != null ? user.name : "Anonymous", auth);
 
         if (context.getStatus() == 401) {
             String baseUri = uriInfo.getBaseUri().toString();
@@ -89,12 +99,6 @@ public class OCIRepositoryEndpoint {
         if (context.getStatus() == 403) {
             context.setEntity(OCIError.of(OCIErrorCodes.DENIED, "Access denied", "You are not permitted to perform the requested action"));
         }
-    }
-
-    @Inject
-    public OCIRepositoryEndpoint(final RepositoryManager repositoryManager, final AuthenticatedUser authenticatedUser) {
-        this.repositoryManager = repositoryManager;
-        this.authenticatedUser = authenticatedUser;
     }
 
     protected OCIRepository repositoryOrThrow(final String repositoryId) {

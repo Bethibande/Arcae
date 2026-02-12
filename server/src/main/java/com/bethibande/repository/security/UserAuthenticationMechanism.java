@@ -15,16 +15,12 @@ import io.vertx.core.http.Cookie;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.http.HttpHeaders;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Base64;
 import java.util.Optional;
 
 @ApplicationScoped
 public class UserAuthenticationMechanism implements HttpAuthenticationMechanism {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(UserAuthenticationMechanism.class);
 
     public static final String COOKIE_NAME = "Identity";
 

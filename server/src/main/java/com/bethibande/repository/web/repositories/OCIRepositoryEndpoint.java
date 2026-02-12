@@ -349,25 +349,20 @@ public class OCIRepositoryEndpoint {
                                    final @QueryParam("part") int partNumber,
                                    final @HeaderParam(HttpHeaders.CONTENT_LENGTH) Long contentLength,
                                    final InputStream content) {
-        try {
-            final OCIRepository repository = repositoryOrThrow(repositoryId);
-            final User user = authenticatedUser.getSelf();
-            final UploadSessionHandle handle = new UploadSessionHandle(sessionId, uploadId);
+        final OCIRepository repository = repositoryOrThrow(repositoryId);
+        final User user = authenticatedUser.getSelf();
+        final UploadSessionHandle handle = new UploadSessionHandle(sessionId, uploadId);
 
-            if (contentLength != null && contentLength > 0) {
-                final StreamHandle streamHandle = new StreamHandle(content, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), contentLength);
-                repository.uploadPart(user, namespace, handle, partNumber, streamHandle);
-            }
-
-            repository.completeUploadSession(user, namespace, digest, handle);
-
-            final String url = "/v2/%s/blobs/%s".formatted(namespace, digest);
-            return Response.created(URI.create(url))
-                    .build();
-        } catch (final Throwable th) {
-            LOGGER.error("Error completing upload", th);
-            return Response.serverError().build();
+        if (contentLength != null && contentLength > 0) {
+            final StreamHandle streamHandle = new StreamHandle(content, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), contentLength);
+            repository.uploadPart(user, namespace, handle, partNumber, streamHandle);
         }
+
+        repository.completeUploadSession(user, namespace, digest, handle);
+
+        final String url = "/v2/%s/blobs/%s".formatted(namespace, digest);
+        return Response.created(URI.create(url))
+                .build();
     }
 
     @GET

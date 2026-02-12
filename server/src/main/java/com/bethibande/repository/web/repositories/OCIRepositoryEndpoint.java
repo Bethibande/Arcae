@@ -150,6 +150,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
+    @Transactional
     public Response get(final @PathParam("repositoryId") String repositoryId) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();

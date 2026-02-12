@@ -15,12 +15,16 @@ import io.vertx.core.http.Cookie;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.http.HttpHeaders;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Base64;
 import java.util.Optional;
 
 @ApplicationScoped
 public class UserAuthenticationMechanism implements HttpAuthenticationMechanism {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserAuthenticationMechanism.class);
 
     public static final String COOKIE_NAME = "Identity";
 
@@ -45,11 +49,13 @@ public class UserAuthenticationMechanism implements HttpAuthenticationMechanism 
 
         final Cookie cookie = context.request().getCookie(COOKIE_NAME);
         if (cookie != null) {
+            LOGGER.info("Identity {}", cookie.getValue());
             request = cookieAuth(cookie);
         }
 
         final String authorization = context.request().getHeader(HttpHeaders.AUTHORIZATION);
         if (authorization != null) {
+            LOGGER.info("Authorization {}", authorization);
             if (authorization.startsWith("Basic ")) {
                 request = basicAuth(authorization.substring(6));
             }

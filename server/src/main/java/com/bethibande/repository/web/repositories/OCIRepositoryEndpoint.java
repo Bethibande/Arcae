@@ -81,6 +81,13 @@ public class OCIRepositoryEndpoint {
     public void authResponseInterceptor(final ContainerResponseContext context, final RoutingContext routing) {
         if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
 
+        String proto = context.getHeaderString("X-Forwarded-Proto");
+        LOGGER.info("External Protocol: {}", proto);
+
+        final String auth = routing.request().getHeader(HttpHeaders.AUTHORIZATION);
+        final User user = authenticatedUser.getSelf();
+        LOGGER.info("Method: {}; Path: {}; User: {}; Auth: {}", routing.request().method(), uriInfo.getPath(), user != null ? user.name : "Anonymous", auth);
+
         if (context.getStatus() == 401) {
             String baseUri = uriInfo.getBaseUri().toString();
             if (baseUri.endsWith("/")) {

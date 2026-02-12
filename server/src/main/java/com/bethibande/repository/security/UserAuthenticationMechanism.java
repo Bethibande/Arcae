@@ -49,13 +49,11 @@ public class UserAuthenticationMechanism implements HttpAuthenticationMechanism 
 
         final Cookie cookie = context.request().getCookie(COOKIE_NAME);
         if (cookie != null) {
-            LOGGER.info("Identity {}", cookie.getValue());
             request = cookieAuth(cookie);
         }
 
         final String authorization = context.request().getHeader(HttpHeaders.AUTHORIZATION);
         if (authorization != null) {
-            LOGGER.info("Authorization {}", authorization);
             if (authorization.startsWith("Basic ")) {
                 request = basicAuth(authorization.substring(6));
             }

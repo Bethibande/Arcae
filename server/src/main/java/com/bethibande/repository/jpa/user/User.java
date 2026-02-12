@@ -2,6 +2,7 @@ package com.bethibande.repository.jpa.user;
 
 import com.bethibande.process.annotation.EntityDTO;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.persistence.*;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
@@ -14,6 +15,7 @@ import java.util.stream.Collectors;
 
 @Entity
 @Indexed
+@RegisterForReflection
 @Table(name = "Users")
 @EntityDTO(excludeProperties = "id")
 @EntityDTO(excludeProperties = "password")

@@ -33,7 +33,7 @@ services:
     volumes:
       - minio:/data
   repository:
-    image: bethibandes/repository:latest
+    image: bethibande/repository:latest
     restart: unless-stopped
     ports:
       - "8080:8080"

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
+import io.vertx.ext.web.RoutingContext;
 import jakarta.inject.Inject;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -77,12 +78,12 @@ public class OCIRepositoryEndpoint {
     }
 
     @ServerResponseFilter
-    public void authResponseInterceptor(final ContainerResponseContext context) {
+    public void authResponseInterceptor(final ContainerResponseContext context, final RoutingContext routing) {
         if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
 
-        final String auth = context.getHeaderString(HttpHeaders.AUTHORIZATION);
+        final String auth = routing.request().getHeader(HttpHeaders.AUTHORIZATION);
         final User user = authenticatedUser.getSelf();
-        LOGGER.info("Path: {}; User: {}; Auth: {}", uriInfo.getPath(), user != null ? user.name : "Anonymous", auth);
+        LOGGER.info("Method: {}; Path: {}; User: {}; Auth: {}", routing.request().method(), uriInfo.getPath(), user != null ? user.name : "Anonymous", auth);
 
         if (context.getStatus() == 401) {
             String baseUri = uriInfo.getBaseUri().toString();

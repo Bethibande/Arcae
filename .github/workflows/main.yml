@@ -65,7 +65,7 @@ jobs:
       - name: Build and Push Arch-Specific Image
         run: |
           ./gradlew :server:build \
-            "-Pversion=${{ github.event.inputs.version }}"
+            "-Pversion=${{ github.event.inputs.version }}" \
             "-Dquarkus.native.container-build=true" \
             "-Dquarkus.container-image.builder=docker" \
             "-Dquarkus.native.enabled=true" \

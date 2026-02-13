@@ -1,16 +1,16 @@
 package com.bethibande.repository.repository.maven;
 
-import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
+import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.ManagedRepository;
+import com.bethibande.repository.repository.RepositoryApplicationContext;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.backend.RepositoryBackend;
 import com.bethibande.repository.repository.backend.S3Backend;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
@@ -43,8 +43,8 @@ public class MavenRepository implements ManagedRepository {
 
     private final RepositoryBackend backend;
 
-    public MavenRepository(final Repository info, final ObjectMapper mapper) throws JsonProcessingException {
-        this(info, mapper.readValue(info.settings, MavenRepositoryConfig.class));
+    public MavenRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
+        this(info, ctx.objectMapper().readValue(info.settings, MavenRepositoryConfig.class));
     }
 
     public MavenRepository(final Repository info, final MavenRepositoryConfig config) {

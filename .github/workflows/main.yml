@@ -30,7 +30,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v5
         with:
           cache-read-only: false
 
@@ -56,15 +56,16 @@ jobs:
         # The next step will generate these files.
         # This order is necessary since this step will generate the openapi-spec.
       - name: Quarkus App Parts Build
-        run: ./gradlew :server:quarkusAppPartsBuild
+        run: ./gradlew :server:quarkusAppPartsBuild "-Pversion=${{ github.event.inputs.version }}"
         continue-on-error: true
 
       - name: Generate OpenAPI
-        run: ./gradlew :server:openApiGenerate
+        run: ./gradlew :server:openApiGenerate "-Pversion=${{ github.event.inputs.version }}"
 
       - name: Build and Push Arch-Specific Image
         run: |
           ./gradlew :server:build \
+            "-Pversion=${{ github.event.inputs.version }}" \
             "-Dquarkus.native.container-build=true" \
             "-Dquarkus.container-image.builder=docker" \
             "-Dquarkus.native.enabled=true" \
@@ -87,13 +88,11 @@ jobs:
 
       - name: Create and Push Multi-Arch Manifest
         run: |
-          docker manifest create bethibande/repository:${{ github.event.inputs.version }} \
-            --amend bethibande/repository:${{ github.event.inputs.version }}-amd64 \
-            --amend bethibande/repository:${{ github.event.inputs.version }}-arm64
-          
-          docker manifest create bethibande/repository:latest \
-            --amend bethibande/repository:${{ github.event.inputs.version }}-amd64 \
-            --amend bethibande/repository:${{ github.event.inputs.version }}-arm64
-          
-          docker manifest push bethibande/repository:${{ github.event.inputs.version }}
-          docker manifest push bethibande/repository:latest
+          docker buildx imagetools create -t bethibande/repository:${{ github.event.inputs.version }} \
+            bethibande/repository:${{ github.event.inputs.version }}-amd64 \
+            bethibande/repository:${{ github.event.inputs.version }}-arm64
+      
+          # Create the latest tag
+          docker buildx imagetools create -t bethibande/repository:latest \
+          bethibande/repository:${{ github.event.inputs.version }}-amd64 \
+          bethibande/repository:${{ github.event.inputs.version }}-arm64

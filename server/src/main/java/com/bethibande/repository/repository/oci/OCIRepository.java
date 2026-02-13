@@ -6,13 +6,15 @@ import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.files.OCISubject;
 import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
+import com.bethibande.repository.jpa.repository.RepositoryMetadataKey;
 import com.bethibande.repository.jpa.user.User;
-import com.bethibande.repository.repository.ArtifactAndGroupId;
-import com.bethibande.repository.repository.ManagedRepository;
-import com.bethibande.repository.repository.StreamHandle;
+import com.bethibande.repository.k8s.KubernetesSupport;
+import com.bethibande.repository.repository.*;
 import com.bethibande.repository.repository.backend.MultipartUploadStatus;
 import com.bethibande.repository.repository.backend.ObjectInfo;
 import com.bethibande.repository.repository.backend.S3Backend;
+import com.bethibande.repository.repository.oci.config.OCIRepositoryConfig;
+import com.bethibande.repository.repository.oci.config.OCIRoutingConfig;
 import com.bethibande.repository.repository.oci.details.OCILayerReference;
 import com.bethibande.repository.repository.oci.details.OCIManifestDetails;
 import com.bethibande.repository.repository.oci.details.OCIManifestReference;
@@ -22,6 +24,8 @@ import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
@@ -41,7 +45,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 
-public class OCIRepository implements ManagedRepository {
+public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifier {
 
     public static final long MAX_MANIFEST_SIZE = 10_000_000L;
 
@@ -49,18 +53,48 @@ public class OCIRepository implements ManagedRepository {
 
     private final Repository info;
     private final OCIRepositoryConfig config;
+    private final KubernetesSupport kubernetesSupport;
 
     private final S3Backend backend;
 
-    public OCIRepository(final Repository info, final ObjectMapper mapper) throws JsonProcessingException {
-        this(info, mapper.readValue(info.settings, OCIRepositoryConfig.class));
+    public OCIRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
+        this(info, ctx.objectMapper().readValue(info.settings, OCIRepositoryConfig.class), ctx.kubernetesSupport());
     }
 
-    public OCIRepository(final Repository info, final OCIRepositoryConfig config) {
+    public OCIRepository(final Repository info,
+                         final OCIRepositoryConfig config,
+                         final KubernetesSupport kubernetesSupport) {
         this.info = info;
         this.config = config;
+        this.kubernetesSupport = kubernetesSupport;
 
         this.backend = new S3Backend(config.s3Config());
+    }
+
+    @Override
+    public void processUpdate(final UpdateType type) {
+        final OCIRoutingConfig routing = this.config.routingConfig();
+
+        if (!this.kubernetesSupport.hasHttpRouteSupport()) return;
+
+        if (routing.enabled() && type != UpdateType.DELETE) {
+            this.kubernetesSupport.createOrUpdateRepositoryHttpRoute(
+                    info.name,
+                    info.packageManager,
+                    info.getMetadata(RepositoryMetadataKey.HOST_NAME),
+                    routing.targetService(),
+                    routing.targetPort(),
+                    routing.gatewayName(),
+                    routing.gatewayNamespace()
+            );
+        }
+        if (!routing.enabled() || type == UpdateType.DELETE) {
+            this.kubernetesSupport.deleteRepositoryHttpRouteIfExists(
+                    info.name,
+                    info.packageManager
+            );
+        }
+        info.persist();
     }
 
     @Override
@@ -165,13 +199,15 @@ public class OCIRepository implements ManagedRepository {
         final String groupId = artifactAndGroupId.groupId();
         final String artifactId = artifactAndGroupId.artifactId();
 
-        final Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
-        if (artifact == null) return null;
+        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+            final Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
+            if (artifact == null) return null;
 
-        final ArtifactVersion version = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, tag).firstResult();
-        if (version == null) return null;
+            final ArtifactVersion version = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, tag).firstResult();
+            if (version == null) return null;
 
-        return version.manifest;
+            return version.manifest;
+        });
     }
 
     protected boolean isDigest(final String reference) {
@@ -205,7 +241,7 @@ public class OCIRepository implements ManagedRepository {
     public OCIContentInfo getManifestInfo(final User user, final String namespace, final String reference) {
         checkViewAccess(user);
 
-        if (reference.matches("^sha256:[0-9a-fA-F]{64}$|^sha512:[0-9a-fA-F]{128}$")) {
+        if (isDigest(reference)) {
             final ObjectInfo info = this.backend.headObject(toManifestKey(namespace, reference));
             if (info == null) return null;
             return new OCIContentInfo(
@@ -219,6 +255,7 @@ public class OCIRepository implements ManagedRepository {
 
             final String digest = file.key.substring(file.key.lastIndexOf('/') + 1);
             final ObjectInfo info = this.backend.headObject(file.key);
+            if (info == null) return null;
 
             return new OCIContentInfo(
                     digest,
@@ -253,7 +290,23 @@ public class OCIRepository implements ManagedRepository {
     public void uploadBlob(final User user, final String namespace, final String digest, final StreamHandle stream) {
         checkWriteAccess(user);
 
-        this.backend.put(toBlobKey(namespace, digest), stream);
+        final String key = toBlobKey(namespace, digest);
+        this.backend.put(key, stream);
+
+        QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).run(() -> {
+            final String[] digestParts = digest.split(":");
+
+            final Instant now = Instant.now();
+            final StoredFile file = new StoredFile();
+            file.key = key;
+            file.repository = info;
+            file.created = now;
+            file.updated = now;
+            file.contentType = stream.contentType();
+            file.contentLength = stream.contentLength();
+            file.hashes = Map.of(digestParts[0], digestParts[1]);
+            file.persist();
+        });
     }
 
     public UploadSessionHandle startUploadSession(final User user, final String namespace) {
@@ -335,15 +388,18 @@ public class OCIRepository implements ManagedRepository {
 
         final ObjectInfo blobInfo = this.backend.headObject(blobKey);
 
-        final StoredFile file = new StoredFile();
-        file.key = toBlobKey(namespace, digest);
-        file.repository = info;
-        file.created = Instant.now();
-        file.updated = Instant.now();
-        file.contentType = "application/octet-stream";
-        file.contentLength = blobInfo.contentLength();
-        file.hashes = Map.of(algorithm, hash);
-        file.persist();
+        QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).run(() -> {
+            final StoredFile file = new StoredFile();
+            file.key = toBlobKey(namespace, digest);
+            file.repository = info;
+            file.created = Instant.now();
+            file.updated = Instant.now();
+            file.contentType = "application/octet-stream";
+            file.contentLength = blobInfo.contentLength();
+            file.hashes = Map.of(algorithm, hash);
+            file.persist();
+        });
+
     }
 
     public void abortUpload(final User user, final String uploadId, final String namespace, final UUID sessionId) {
@@ -635,38 +691,40 @@ public class OCIRepository implements ManagedRepository {
         final String fileKey = toManifestKey(namespace, "sha256:" + hash);
         putFile(fileKey, contents, stream.contentType());
 
-        final Instant now = Instant.now();
-        final StoredFile file = storeOrUpdateFileReference(
-                fileKey,
-                now,
-                hash,
-                stream.contentType(),
-                stream.contentLength()
-        );
-        final OCISubject subject = createSubjectInfo(namespace, file, contents);
+        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+            final Instant now = Instant.now();
+            final StoredFile file = storeOrUpdateFileReference(
+                    fileKey,
+                    now,
+                    hash,
+                    stream.contentType(),
+                    stream.contentLength()
+            );
+            final OCISubject subject = createSubjectInfo(namespace, file, contents);
 
-        if (!isDigest(reference)) {
-            final ArtifactVersion version = updateOrCreateArtifactAndVersion(now, namespace, reference);
-            version.files.add(file);
-            version.manifest = file;
+            if (!isDigest(reference)) {
+                final ArtifactVersion version = updateOrCreateArtifactAndVersion(now, namespace, reference);
+                version.files.add(file);
+                version.manifest = file;
 
-            try {
-                version.details = parseDetails(contents);
+                try {
+                    version.details = parseDetails(contents);
 
-                if (version.details.additionalData() instanceof OCIManifestDetails manifestDetails) {
-                    version.files.addAll(collectAdditionalFileReferences(namespace, manifestDetails));
+                    if (version.details.additionalData() instanceof OCIManifestDetails manifestDetails) {
+                        version.files.addAll(collectAdditionalFileReferences(namespace, manifestDetails));
+                    }
+                } catch (final IOException ex) {
+                    throw new RuntimeException(ex);
                 }
-            } catch (final IOException ex) {
-                throw new RuntimeException(ex);
+
+                return new PutOCIManifestResult(
+                        file,
+                        version,
+                        subject
+                );
             }
 
-            return new PutOCIManifestResult(
-                    file,
-                    version,
-                    subject
-            );
-        }
-
-        return new PutOCIManifestResult(file, null, subject);
+            return new PutOCIManifestResult(file, null, subject);
+        });
     }
 }

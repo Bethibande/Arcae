@@ -7,6 +7,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -25,6 +26,7 @@ public class S3Backend implements RepositoryBackend {
     public S3Backend(final S3Config config) {
         this.config = config;
         this.client = S3Client.builder()
+                .httpClientBuilder(ApacheHttpClient.builder())
                 .endpointOverride(URI.create(config.url()))
                 .region(Region.of(config.region()))
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(config.accessKey(), config.secretKey())))

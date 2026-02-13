@@ -37,7 +37,7 @@ public class PermissionScope extends PanacheEntity {
         return switch (type) {
             case ANONYMOUS -> true;
             case AUTHENTICATED -> user != null;
-            case USER -> Objects.equals(this.user.id, user.id);
+            case USER -> user != null && Objects.equals(this.user.id, user.id);
         };
     }
 
@@ -47,7 +47,7 @@ public class PermissionScope extends PanacheEntity {
         return switch (type) {
             case ANONYMOUS -> true;
             case AUTHENTICATED -> user != null;
-            case USER -> Objects.equals(this.user.id, user.id);
+            case USER -> user != null && Objects.equals(this.user.id, user.id);
         };
     }
 

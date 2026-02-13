@@ -53,8 +53,17 @@ public class Repository extends PanacheEntityBase {
         return (T) metadata.get(key);
     }
 
+    public <T> T getMetadataOrDefault(final RepositoryMetadataKey key, final T defaultValue) {
+        final T value = getMetadata(key);
+        return value != null ? value : defaultValue;
+    }
+
     public void setMetadata(final RepositoryMetadataKey key, final Object value) {
-        metadata.put(key, value);
+        if (value == null) {
+            metadata.remove(key);
+        } else {
+            metadata.put(key, value);
+        }
     }
 
     public boolean canView(final User user) {

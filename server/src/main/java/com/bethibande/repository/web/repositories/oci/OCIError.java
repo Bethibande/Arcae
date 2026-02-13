@@ -1,7 +1,10 @@
 package com.bethibande.repository.web.repositories.oci;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
 import java.util.List;
 
+@RegisterForReflection
 public record OCIError(
         List<OCIErrorEntry> errors
 ) {

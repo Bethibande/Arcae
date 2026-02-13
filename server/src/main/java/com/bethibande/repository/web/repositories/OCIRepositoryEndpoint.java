@@ -81,17 +81,8 @@ public class OCIRepositoryEndpoint {
     public void authResponseInterceptor(final ContainerResponseContext context, final RoutingContext routing) {
         if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
 
-        final String auth = routing.request().getHeader(HttpHeaders.AUTHORIZATION);
-        final User user = authenticatedUser.getSelf();
-        LOGGER.info("Method: {}; Path: {}; User: {}; Auth: {}", routing.request().method(), uriInfo.getPath(), user != null ? user.name : "Anonymous", auth);
-
         if (context.getStatus() == 401) {
-            // Quarkus should be handling the X-Forwarded-Proto header, but for some reason it doesn't
-            // Maybe we are missing some configuration property,
-            // but for now we need to do this since all redirects turn out as http otherwise
-            final String proto = routing.request().getHeader("X-Forwarded-Proto");
-            final boolean https = proto == null || proto.equalsIgnoreCase("https");
-            String baseUri = uriInfo.getBaseUri().toString().replaceAll("http(s)?://", https ? "https://" : "http://");
+            String baseUri = uriInfo.getBaseUri().toString();
             if (baseUri.endsWith("/")) {
                 baseUri = baseUri.substring(0, baseUri.length() - 1);
             }

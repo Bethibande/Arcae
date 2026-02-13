@@ -6,6 +6,7 @@ import com.bethibande.repository.repository.RepositoryApplicationContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,6 +14,7 @@ import jakarta.inject.Inject;
 import java.time.Duration;
 
 @ApplicationScoped
+@RegisterForReflection(classNames = "com.github.benmanes.caffeine.cache.SSLW")
 public class RepositoryManager {
 
     @Inject

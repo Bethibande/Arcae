@@ -59,11 +59,10 @@ export default function RepositoryEditView() {
     useEffect(() => {
         if (isEdit) {
             Promise.all([
-                new RepositoryEndpointApi().apiV1RepositoryGet(),
+                new RepositoryEndpointApi().apiV1RepositoryIdGet({id: parseInt(id!)}),
                 new RepositoryPermissionEndpointApi().apiV1RepositoryIdPermissionsGet({id: parseInt(id!)})
             ])
-                .then(([repos, permissions]) => {
-                    const repo = repos.find(r => r.id === parseInt(id!));
+                .then(([repo, permissions]) => {
                     if (repo) {
                         form.setValue("name", repo.name);
                         form.setValue("packageManager", repo.packageManager);

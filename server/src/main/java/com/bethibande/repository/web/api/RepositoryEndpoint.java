@@ -81,6 +81,14 @@ public class RepositoryEndpoint {
     }
 
     @GET
+    @Path("/{id}")
+    public RepositoryDTO get(@PathParam("id") final long id) {
+        final Repository repository = Repository.findById(id);
+        if (repository == null) throw new NotFoundException("Unknown repository");
+        return RepositoryDTO.from(repository);
+    }
+
+    @GET
     @Transactional
     public List<RepositoryDTO> list() {
         return Repository.<Repository>listAll()

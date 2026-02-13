@@ -81,6 +81,9 @@ public class OCIRepositoryEndpoint {
     public void authResponseInterceptor(final ContainerResponseContext context, final RoutingContext routing) {
         if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
 
+        final String auth = routing.request().getHeader(HttpHeaders.AUTHORIZATION);
+        final User user = authenticatedUser.getSelf();
+        LOGGER.info("Method: {}; Path: {}; User: {}; Auth: {}", routing.request().method(), uriInfo.getPath(), user != null ? user.name : "Anonymous", auth);
 
         if (context.getStatus() == 401) {
             // Quarkus should be handling the X-Forwarded-Proto header, but for some reason it doesn't
@@ -170,7 +173,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @HEAD
-    @Transactional
     @Path("/{namespace: .*}/blobs/{digest}")
     public Response headBlob(final @PathParam("repositoryId") String repositoryId,
                              final @PathParam("namespace") String namespace,
@@ -189,7 +191,6 @@ public class OCIRepositoryEndpoint {
     }
 
     @HEAD
-    @Transactional
     @Path("/{namespace: .*}/manifests/{reference}")
     public Response headManifest(final @PathParam("repositoryId") String repositoryId,
                                  final @PathParam("namespace") String namespace,

@@ -241,7 +241,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
     public OCIContentInfo getManifestInfo(final User user, final String namespace, final String reference) {
         checkViewAccess(user);
 
-        if (reference.matches("^sha256:[0-9a-fA-F]{64}$|^sha512:[0-9a-fA-F]{128}$")) {
+        if (isDigest(reference)) {
             final ObjectInfo info = this.backend.headObject(toManifestKey(namespace, reference));
             if (info == null) return null;
             return new OCIContentInfo(

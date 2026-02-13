@@ -61,7 +61,7 @@ public class MavenRepository implements ManagedRepository {
 
     protected StreamHandle mirrorGet(final User user, final String path, final MirrorConnectionSettings mirror) {
         try (final HttpClient client = HttpClient.newHttpClient()) {
-            final String remoteUrl = "%s/%s".formatted(mirror.url(), path).replaceAll("//", "/");
+            final String remoteUrl = "%s/%s".formatted(mirror.url(), path).replaceAll("[^:]//", "/");
 
             final HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(remoteUrl))
                     .GET();

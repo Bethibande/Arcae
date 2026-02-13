@@ -727,4 +727,9 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
             return new PutOCIManifestResult(file, null, subject);
         });
     }
+
+    @Override
+    public void close() {
+        this.backend.close();
+    }
 }

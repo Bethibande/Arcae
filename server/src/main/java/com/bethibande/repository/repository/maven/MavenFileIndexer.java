@@ -1,9 +1,9 @@
 package com.bethibande.repository.repository.maven;
 
-import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactDetails;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
+import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.StreamHandle;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.TransactionSemantics;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.InternalServerErrorException;
 
@@ -108,29 +110,31 @@ public class MavenFileIndexer {
      * @return {@code true} if this method consumed the given {@code StreamHandle}.
      */
     protected boolean indexFile(final String path, final StreamHandle handle) {
-        if (isHash(path)) {
-            return updateHash(path, handle);
-        } else {
-            final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", path, info.id).firstResult();
-            final Instant now = Instant.now();
-            if (file == null) {
-                final StoredFile newFile = new StoredFile();
-                newFile.key = path;
-                newFile.repository = info;
-                newFile.created = now;
-                newFile.updated = now;
-                newFile.contentType = handle.contentType();
-                newFile.contentLength = handle.contentLength();
-                newFile.persist();
-
-                tryLinkFile(path, newFile);
+        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+            if (isHash(path)) {
+                return updateHash(path, handle);
             } else {
-                file.updated = now;
-                file.contentType = handle.contentType();
-                file.contentLength = handle.contentLength();
+                final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", path, info.id).firstResult();
+                final Instant now = Instant.now();
+                if (file == null) {
+                    final StoredFile newFile = new StoredFile();
+                    newFile.key = path;
+                    newFile.repository = info;
+                    newFile.created = now;
+                    newFile.updated = now;
+                    newFile.contentType = handle.contentType();
+                    newFile.contentLength = handle.contentLength();
+                    newFile.persist();
+
+                    tryLinkFile(path, newFile);
+                } else {
+                    file.updated = now;
+                    file.contentType = handle.contentType();
+                    file.contentLength = handle.contentLength();
+                }
             }
-        }
-        return false;
+            return false;
+        });
     }
 
     protected boolean tryLinkToArtifact(final String path, final StoredFile file) {
@@ -264,43 +268,45 @@ public class MavenFileIndexer {
      *              (Artifact and ArtifactVersion), and updates timestamps where applicable.
      */
     public void indexPom(final byte[] bytes) {
-        try {
-            final JsonNode node = new XmlMapper().readTree(bytes);
+        QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).run(() -> {
+            try {
+                final JsonNode node = new XmlMapper().readTree(bytes);
 
-            final String groupId = node.get("groupId").asText();
-            final String artifactId = node.get("artifactId").asText();
-            final String version = node.get("version").asText();
+                final String groupId = node.get("groupId").asText();
+                final String artifactId = node.get("artifactId").asText();
+                final String version = node.get("version").asText();
 
-            final Instant now = Instant.now();
-            Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
-            if (artifact == null) {
-                artifact = new Artifact();
-                artifact.groupId = groupId;
-                artifact.artifactId = artifactId;
-                artifact.repository = info;
-                artifact.lastUpdated = now;
+                final Instant now = Instant.now();
+                Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
+                if (artifact == null) {
+                    artifact = new Artifact();
+                    artifact.groupId = groupId;
+                    artifact.artifactId = artifactId;
+                    artifact.repository = info;
+                    artifact.lastUpdated = now;
 
-                artifact.persist();
-            } else {
-                artifact.lastUpdated = now;
+                    artifact.persist();
+                } else {
+                    artifact.lastUpdated = now;
+                }
+
+                ArtifactVersion versionEntity = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, version).firstResult();
+                if (versionEntity == null) {
+                    versionEntity = new ArtifactVersion();
+                    versionEntity.artifact = artifact;
+                    versionEntity.version = version;
+                    versionEntity.created = now;
+                    versionEntity.updated = now;
+                    versionEntity.details = getDetails(node);
+
+                    versionEntity.persist();
+                } else {
+                    versionEntity.updated = now;
+                    versionEntity.details = getDetails(node);
+                }
+            } catch (final IOException e) {
+                throw new RuntimeException(e);
             }
-
-            ArtifactVersion versionEntity = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, version).firstResult();
-            if (versionEntity == null) {
-                versionEntity = new ArtifactVersion();
-                versionEntity.artifact = artifact;
-                versionEntity.version = version;
-                versionEntity.created = now;
-                versionEntity.updated = now;
-                versionEntity.details = getDetails(node);
-
-                versionEntity.persist();
-            } else {
-                versionEntity.updated = now;
-                versionEntity.details = getDetails(node);
-            }
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 }

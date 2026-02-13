@@ -201,11 +201,13 @@ public class RepositoryEndpoint {
             throw new ClientErrorException("Cannot delete repository with artifacts", HttpStatus.SC_CONFLICT);
 
         final Repository repository = Repository.findById(id);
+
+        Repository.deleteById(id); // Important we do this here, otherwise the cache invalidation may not work as expected
+
         if (repository != null) {
             processUpdate(repository, UpdateType.DELETE);
+            repositoryManager.cacheInvalidate(repository.name);
         }
-
-        Repository.deleteById(id);
     }
 
 }

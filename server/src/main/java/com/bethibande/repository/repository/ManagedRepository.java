@@ -11,6 +11,12 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 import java.sql.Timestamp;
 import java.time.Instant;
 
+/**
+ * A ManagedRepository is an implementation of a repository for a specific package manager backed by a repository entity describing its features/settings.
+ * @see RepositoryUpdatedNotifier
+ * @see com.bethibande.repository.repository.maven.MavenRepository
+ * @see com.bethibande.repository.repository.oci.OCIRepository
+ */
 public interface ManagedRepository {
 
     Repository getInfo();
@@ -72,5 +78,7 @@ public interface ManagedRepository {
 
         return artifactVersion;
     }
+
+    void close();
 
 }

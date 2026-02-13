@@ -2,77 +2,60 @@ package com.bethibande.repository.web.repositories;
 
 import com.bethibande.repository.jpa.repository.PackageManager;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
-import com.bethibande.repository.jpa.security.AccessToken;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.maven.MavenRepository;
-import io.quarkus.security.UnauthorizedException;
+import com.bethibande.repository.web.AuthenticatedUser;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.TransactionSemantics;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import org.apache.http.HttpHeaders;
+import org.hibernate.Hibernate;
 
 import java.io.InputStream;
-import java.time.Instant;
-import java.util.Base64;
-import java.util.Objects;
 
 @Path("/repositories/maven/{repository}/{path:.*}")
 public class MavenRepositoryEndpoint {
 
     private final RepositoryManager repositoryManager;
+    private final AuthenticatedUser authenticatedUser;
 
     @Inject
-    public MavenRepositoryEndpoint(final RepositoryManager repositoryManager) {
+    public MavenRepositoryEndpoint(final RepositoryManager repositoryManager,
+                                   final AuthenticatedUser authenticatedUser) {
         this.repositoryManager = repositoryManager;
+        this.authenticatedUser = authenticatedUser;
     }
 
-    protected User extractUser(final String authorization) {
-        User user = null;
-        if (authorization != null && authorization.startsWith("Basic ")) {
-            final String credentials = new String(Base64.getDecoder().decode(authorization.substring("Basic ".length())));
-            final String[] parts = credentials.split(":");
+    protected MavenRepository getRepositoryOrThrow(final String repository) {
+        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+            final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN);
+            if (repo == null) throw new NotFoundException("Unknown repository");
 
-            final String username = parts[0];
-            final String tokenString = parts[1];
-
-            final AccessToken token = AccessToken.find("token = ?1", tokenString).firstResult();
-            if (token == null
-                    || !Objects.equals(token.owner.name, username)
-                    || token.isExpired(Instant.now())) throw new UnauthorizedException("Invalid token");
-
-            user = token.owner;
-        }
-
-        return user;
+            Hibernate.initialize(repo.getInfo().permissions);
+            return repo;
+        });
     }
 
     @PUT
-    @Transactional
     public void deployArtifact(final @PathParam("repository") String repository,
                                final @PathParam("path") String path,
                                final @HeaderParam(HttpHeaders.CONTENT_TYPE) String contentType,
                                final @HeaderParam(HttpHeaders.CONTENT_LENGTH) long contentLength,
-                               final @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization,
                                final InputStream data) {
-        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN);
-        if (repo == null) throw new NotFoundException("Unknown repository");
-
-        final User user = extractUser(authorization);
+        final MavenRepository repo = getRepositoryOrThrow(repository);
+        final User user = authenticatedUser.getSelf();
 
         repo.put(user, path, new StreamHandle(data, contentType, contentLength), false);
     }
 
     @GET
-    @Transactional
     public Response getArtifact(final @PathParam("repository") String repository,
-                                final @PathParam("path") String path,
-                                final @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization) {
-        final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN);
-        if (repo == null) throw new NotFoundException("Unknown repository");
-
-        final User user = extractUser(authorization);
+                                final @PathParam("path") String path) {
+        final MavenRepository repo = getRepositoryOrThrow(repository);
+        final User user = authenticatedUser.getSelf();
 
         final StreamHandle handle = repo.get(user, path);
         if (handle == null) throw new NotFoundException("Artifact not found");

@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
-public class S3Backend implements RepositoryBackend {
+public class S3Backend implements RepositoryBackend, AutoCloseable {
 
     public static final long MAX_UPLOAD_SIZE = 5_000_000_000L;
 
@@ -229,5 +229,9 @@ public class S3Backend implements RepositoryBackend {
     @Override
     public void delete(final String path) {
         this.client.deleteObject(b -> b.bucket(this.config.bucket()).key(path));
+    }
+
+    public void close() {
+        this.client.close();
     }
 }

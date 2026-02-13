@@ -8,9 +8,10 @@ import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.RepositoryApplicationContext;
 import com.bethibande.repository.repository.StreamHandle;
-import com.bethibande.repository.repository.backend.RepositoryBackend;
 import com.bethibande.repository.repository.backend.S3Backend;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
@@ -20,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -41,7 +41,7 @@ public class MavenRepository implements ManagedRepository {
     private final MavenRepositoryConfig config;
     private final MavenFileIndexer fileIndexer;
 
-    private final RepositoryBackend backend;
+    private final S3Backend backend;
 
     public MavenRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
         this(info, ctx.objectMapper().readValue(info.settings, MavenRepositoryConfig.class));
@@ -95,8 +95,8 @@ public class MavenRepository implements ManagedRepository {
             }
 
             return handle;
-        } catch (final IOException | InterruptedException e) {
-            LOGGER.error("Failed to fetch remote artifact for path {} on repository {}", path, info.name, e);
+        } catch (final Throwable th) {
+            LOGGER.error("Failed to fetch remote artifact for path {} on repository {}", path, info.name, th);
             return null;
         }
     }
@@ -113,18 +113,20 @@ public class MavenRepository implements ManagedRepository {
     }
 
     protected StreamHandle fetchHash(final String path) {
-        final String filePath = path.substring(0, path.lastIndexOf('.'));
-        final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", filePath, info.id).firstResult();
-        if (file == null) return null;
+        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+            final String filePath = path.substring(0, path.lastIndexOf('.'));
+            final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", filePath, info.id).firstResult();
+            if (file == null) return null;
 
-        final String hashType = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
-        final String hash = file.hashes.get(hashType);
-        if (hash == null) return null;
+            final String hashType = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
+            final String hash = file.hashes.get(hashType);
+            if (hash == null) return null;
 
-        final byte[] bytes = hash.getBytes();
-        final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+            final byte[] bytes = hash.getBytes();
+            final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
 
-        return new StreamHandle(stream, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), bytes.length);
+            return new StreamHandle(stream, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), bytes.length);
+        });
     }
 
     public StreamHandle get(final User user, final String path) {
@@ -238,4 +240,8 @@ public class MavenRepository implements ManagedRepository {
         Artifact.deleteById(artifact.id);
     }
 
+    @Override
+    public void close() {
+        this.backend.close();
+    }
 }

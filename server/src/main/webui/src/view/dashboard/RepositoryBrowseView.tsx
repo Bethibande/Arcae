@@ -34,6 +34,8 @@ interface RepositorySnippet {
     content: string;
 }
 
+const PAGE_SIZE = 10;
+
 function RepositoryConfigDetails({ repository }: { repository: RepositoryOverviewDTO }) {
     const [copied, setCopied] = useState<string | null>(null);
 
@@ -143,7 +145,7 @@ export default function RepositoryBrowseView() {
                 r: parseInt(id),
                 q: query,
                 p: page,
-                s: 20,
+                s: PAGE_SIZE,
                 o: sort as any
             })
             .then(setResults)

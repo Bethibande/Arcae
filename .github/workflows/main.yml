@@ -56,15 +56,16 @@ jobs:
         # The next step will generate these files.
         # This order is necessary since this step will generate the openapi-spec.
       - name: Quarkus App Parts Build
-        run: ./gradlew :server:quarkusAppPartsBuild
+        run: ./gradlew :server:quarkusAppPartsBuild "-Pversion=${{ github.event.inputs.version }}"
         continue-on-error: true
 
       - name: Generate OpenAPI
-        run: ./gradlew :server:openApiGenerate
+        run: ./gradlew :server:openApiGenerate "-Pversion=${{ github.event.inputs.version }}"
 
       - name: Build and Push Arch-Specific Image
         run: |
           ./gradlew :server:build \
+            "-Pversion=${{ github.event.inputs.version }}"
             "-Dquarkus.native.container-build=true" \
             "-Dquarkus.container-image.builder=docker" \
             "-Dquarkus.native.enabled=true" \

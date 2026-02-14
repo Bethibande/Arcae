@@ -10,6 +10,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.hibernate.Hibernate;
 
 import java.time.Duration;
 
@@ -45,11 +46,15 @@ public class RepositoryManager {
         final Repository repo = Repository.find("name = ?1 and packageManager = ?2", name, packageManager).firstResult();
         if (repo == null) return null;
 
+        Hibernate.initialize(repo.permissions);
+
         return manage(repo);
     }
 
     @SuppressWarnings("unchecked")
     public <T extends ManagedRepository> T manage(final Repository repo) {
+        if (!Hibernate.isInitialized(repo.permissions)) Hibernate.initialize(repo.permissions);
+
         return (T) this.repositoryCache.get(repo.name, (_) -> repo.packageManager.createRepository(repo, this.ctx));
     }
 

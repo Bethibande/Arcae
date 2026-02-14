@@ -34,7 +34,6 @@ public class MavenRepositoryEndpoint {
             final MavenRepository repo = repositoryManager.findRepository(repository, PackageManager.MAVEN);
             if (repo == null) throw new NotFoundException("Unknown repository");
 
-            Hibernate.initialize(repo.getInfo().permissions);
             return repo;
         });
     }

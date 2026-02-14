@@ -13,6 +13,7 @@ import com.bethibande.repository.repository.oci.*;
 import com.bethibande.repository.security.BearerTokenIdentityProvider;
 import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.exception.RangeNotSatisfiableException;
+import com.bethibande.repository.web.repositories.oci.OCIDigestHelper;
 import com.bethibande.repository.web.repositories.oci.OCIError;
 import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -106,8 +107,6 @@ public class OCIRepositoryEndpoint {
                             .entity(OCIError.of(OCIErrorCodes.NAME_UNKNOWN, "Unknown repository", "The specified repository does not exist"))
                             .build()
             );
-
-            Hibernate.initialize(repository.getInfo().permissions);
             return repository;
         });
     }
@@ -171,7 +170,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final OCIContentInfo info = repository.getBlobInfo(user, namespace, digest);
+        final OCIContentInfo info = repository.getBlobInfo(user, namespace, OCIDigestHelper.extractDigest(digest));
         if (info == null) throw new NotFoundException("Unknown blob");
 
         return Response.ok()
@@ -189,7 +188,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final OCIContentInfo info = repository.getManifestInfo(user, namespace, reference);
+        final OCIContentInfo info = repository.getManifestInfo(user, namespace, OCIDigestHelper.referenceOrDigest(reference));
         if (info == null) throw new NotFoundException("Unknown manifest");
 
         return Response.ok()
@@ -224,13 +223,14 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final StreamHandle handle = getBlob(repository, user, namespace, digest, rangeHeader);
+        final String actualDigest = OCIDigestHelper.extractDigest(digest);
+        final StreamHandle handle = getBlob(repository, user, namespace, actualDigest, rangeHeader);
         if (handle == null) throw new NotFoundException("Unknown blob");
 
         return Response.ok(handle.stream())
                 .header(HttpHeaders.CONTENT_TYPE, handle.contentType())
                 .header(HttpHeaders.CONTENT_LENGTH, handle.contentLength())
-                .header(HEADER_CONTENT_DIGEST, digest)
+                .header(HEADER_CONTENT_DIGEST, actualDigest)
                 .build();
     }
 
@@ -242,7 +242,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final OCIStreamHandle handle = repository.getManifest(user, namespace, reference);
+        final OCIStreamHandle handle = repository.getManifest(user, namespace, OCIDigestHelper.referenceOrDigest(reference));
         if (handle == null) throw new NotFoundException("Unknown blob");
 
         final StreamHandle streamHandle = handle.streamHandle();
@@ -251,6 +251,12 @@ public class OCIRepositoryEndpoint {
                 .header(HttpHeaders.CONTENT_TYPE, streamHandle.contentType())
                 .header(HttpHeaders.CONTENT_LENGTH, streamHandle.contentLength())
                 .header(HEADER_CONTENT_DIGEST, handle.digest())
+                .build();
+    }
+
+    protected Response badDigestResponse() {
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(OCIError.of(OCIErrorCodes.DIGEST_INVALID, "Invalid digest", "The specified digest is invalid"))
                 .build();
     }
 
@@ -271,9 +277,12 @@ public class OCIRepositoryEndpoint {
         );
 
         if (digest != null) {
-            repository.uploadBlob(user, namespace, digest, handle);
+            if (!OCIDigestHelper.isDigest(digest)) return badDigestResponse();
 
-            final String url = "/v2/%s/blobs/%s".formatted(namespace, digest);
+            final String actualDigest = OCIDigestHelper.extractDigest(digest);
+            repository.uploadBlob(user, namespace, actualDigest, handle);
+
+            final String url = "/v2/%s/blobs/%s".formatted(namespace, actualDigest);
             return Response.created(URI.create(url))
                     .build();
         } else {
@@ -357,9 +366,12 @@ public class OCIRepositoryEndpoint {
             repository.uploadPart(user, namespace, handle, partNumber, streamHandle);
         }
 
-        repository.completeUploadSession(user, namespace, digest, handle);
+        if (!OCIDigestHelper.isDigest(digest)) return badDigestResponse();
 
-        final String url = "/v2/%s/blobs/%s".formatted(namespace, digest);
+        final String actualDigest = OCIDigestHelper.extractDigest(digest);
+        repository.completeUploadSession(user, namespace, actualDigest, handle);
+
+        final String url = "/v2/%s/blobs/%s".formatted(namespace, actualDigest);
         return Response.created(URI.create(url))
                 .build();
     }
@@ -401,14 +413,15 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
+        final String actualReference = OCIDigestHelper.referenceOrDigest(reference);
         final PutOCIManifestResult result = repository.putManifest(
                 user,
                 namespace,
-                reference,
+                actualReference,
                 new StreamHandle(data, contentType, contentLength)
         );
 
-        final String url = "/v2/%s/manifests/%s".formatted(namespace, reference);
+        final String url = "/v2/%s/manifests/%s".formatted(namespace, actualReference);
         return Response.created(URI.create(url))
                 .header(HEADER_OCI_SUBJECT, result.subject() != null ? result.subject().subjectDigest : null)
                 .build();
@@ -489,7 +502,7 @@ public class OCIRepositoryEndpoint {
         final Root<OCISubject> root = query.from(OCISubject.class);
         final List<Predicate> predicates = new ArrayList<>();
         predicates.add(root.get("namespace").equalTo(namespace));
-        predicates.add(root.get("subjectDigest").equalTo(digest));
+        predicates.add(root.get("subjectDigest").equalTo(OCIDigestHelper.extractDigest(digest)));
         if (artifactType != null) predicates.add(root.get("artifactType").equalTo(artifactType));
 
         query.where(builder.and(predicates.toArray(Predicate[]::new)));
@@ -515,7 +528,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        repository.deleteManifest(user, namespace, reference);
+        repository.deleteManifest(user, namespace, OCIDigestHelper.referenceOrDigest(reference));
         return Response.accepted().build();
     }
 
@@ -528,7 +541,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        repository.deleteBlob(user, namespace, digest);
+        repository.deleteBlob(user, namespace, OCIDigestHelper.extractDigest(digest));
         return Response.accepted().build();
     }
 

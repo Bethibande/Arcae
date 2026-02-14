@@ -284,6 +284,7 @@ public class OCIRepositoryEndpoint {
 
             final String url = "/v2/%s/blobs/%s".formatted(namespace, actualDigest);
             return Response.created(URI.create(url))
+                    .header(HEADER_CONTENT_DIGEST, actualDigest)
                     .build();
         } else {
             final UploadSessionHandle session = repository.startUploadSession(user, namespace);
@@ -373,6 +374,7 @@ public class OCIRepositoryEndpoint {
 
         final String url = "/v2/%s/blobs/%s".formatted(namespace, actualDigest);
         return Response.created(URI.create(url))
+                .header(HEADER_CONTENT_DIGEST, actualDigest)
                 .build();
     }
 

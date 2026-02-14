@@ -688,7 +688,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         final byte[] contents = stream.readAllBytes();
 
         final String hash = hashAndValidate(contents, reference);
-        final String fileKey = toManifestKey(namespace, "sha256:" + hash);
+        final String digest = "sha256:" + hash;
+        final String fileKey = toManifestKey(namespace, digest);
         putFile(fileKey, contents, stream.contentType());
 
         return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
@@ -719,12 +720,13 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
 
                 return new PutOCIManifestResult(
                         file,
+                        digest,
                         version,
                         subject
                 );
             }
 
-            return new PutOCIManifestResult(file, null, subject);
+            return new PutOCIManifestResult(file, digest, null, subject);
         });
     }
 

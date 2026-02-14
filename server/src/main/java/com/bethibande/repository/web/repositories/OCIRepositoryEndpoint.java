@@ -424,6 +424,7 @@ public class OCIRepositoryEndpoint {
         final String url = "/v2/%s/manifests/%s".formatted(namespace, actualReference);
         return Response.created(URI.create(url))
                 .header(HEADER_OCI_SUBJECT, result.subject() != null ? result.subject().subjectDigest : null)
+                .header(HEADER_CONTENT_DIGEST, result.digest())
                 .build();
     }
 

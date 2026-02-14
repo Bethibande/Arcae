@@ -7,6 +7,7 @@ import org.jspecify.annotations.Nullable;
 
 public record PutOCIManifestResult(
         StoredFile file,
+        String digest,
         @Nullable ArtifactVersion version,
         @Nullable OCISubject subject
 ) {

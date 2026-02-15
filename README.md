@@ -1,19 +1,21 @@
-# Repository
-This is my personal repository software.
+<h1 align="center">Repository</h1>
+<p align="center">This is the source-code for my self-hosted maven/docker repository</p>
 
-> [!NOTE]
+
+> [!WARNING]
 > This project is in very early development, please use it with caution. Bugs should be expected.
 > The performance is also quite lacking due to missing database indices and caching in most areas.
 > And yes, most of the front-end is vibe-coded, deal with it. I'm a back-end developer. React makes me want to cry.
 
+### Quick links
 - [Features](#features)
 - [Installation](#installation)
 - [Screenshots](#screenshots)
 
 ### Features
-- Maven repository support
-- Docker/OCI repository support
-- Automatic Kubernetes gateway API configuration support for OCI repositories
+- **Maven** repository support
+- **Docker/OCI** repository support
+- **Kubernetes gateway API** - Automatic HTTPRoute configuration support for OCI repositories
 - Cleanup policies
 - Mirroring of remote repositories
 - User permissions for repository access

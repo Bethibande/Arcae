@@ -1,5 +1,6 @@
 package com.bethibande.repository.web.api;
 
+import com.bethibande.repository.k8s.KubernetesLeaderService;
 import com.bethibande.repository.k8s.KubernetesSupport;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -14,9 +15,13 @@ public class SystemEndpoint {
     @Inject
     protected KubernetesSupport kubernetesSupport;
 
+    @Inject
+    protected KubernetesLeaderService kubernetesLeaderService;
+
     public record KubernetesCapabilities(
             @NotNull boolean enabled,
-            @NotNull boolean routing
+            @NotNull boolean routing,
+            @NotNull boolean leaderElection
     ) {
     }
 
@@ -25,7 +30,21 @@ public class SystemEndpoint {
     public @NotNull KubernetesCapabilities hasKubernetesRoutingSupport() {
         return new KubernetesCapabilities(
                 kubernetesSupport.isEnabled(),
-                kubernetesSupport.hasHttpRouteSupport()
+                kubernetesSupport.hasHttpRouteSupport(),
+                kubernetesSupport.hasLeaderElectionSupport()
+        );
+    }
+
+    public record LeaderResponse(
+            @NotNull String hostname
+    ) {
+    }
+
+    @GET
+    @Path("/k8s/leader")
+    public @NotNull LeaderResponse getLeader() {
+        return new LeaderResponse(
+                this.kubernetesLeaderService.getLeader()
         );
     }
 

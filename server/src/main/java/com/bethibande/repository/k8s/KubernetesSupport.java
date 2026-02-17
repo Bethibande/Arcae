@@ -26,6 +26,9 @@ public class KubernetesSupport {
     public static final String GATEWAY_API_GROUP = "gateway.networking.k8s.io";
     public static final String HTTP_ROUTE_NAME = "httproutes";
 
+    public static final String COORDINATION_API_GROUP = "coordination.k8s.io";
+    public static final String LEASE_NAME = "leases";
+
     @Inject
     protected KubernetesClient client;
 
@@ -33,6 +36,7 @@ public class KubernetesSupport {
 
     protected boolean kubernetesSupport = true;
     protected boolean canManageHttpRoutes = false;
+    protected boolean canElectLeader = false;
 
     protected boolean canAccessApi() {
         try (final KubernetesClient timeoutClient = new KubernetesClientBuilder()
@@ -66,6 +70,14 @@ public class KubernetesSupport {
                 && hasPermission("get", HTTP_ROUTE_NAME, GATEWAY_API_GROUP)
                 && hasPermission("patch", HTTP_ROUTE_NAME, GATEWAY_API_GROUP)
                 && hasPermission("list", HTTP_ROUTE_NAME, GATEWAY_API_GROUP);
+
+        this.canElectLeader = hasPermission("create", LEASE_NAME, COORDINATION_API_GROUP)
+                && hasPermission("get", LEASE_NAME, COORDINATION_API_GROUP)
+                && hasPermission("update", LEASE_NAME, COORDINATION_API_GROUP)
+                && hasPermission("delete", LEASE_NAME, COORDINATION_API_GROUP)
+                && hasPermission("list", LEASE_NAME, COORDINATION_API_GROUP)
+                && hasPermission("watch", LEASE_NAME, COORDINATION_API_GROUP)
+                && hasPermission("patch", LEASE_NAME, COORDINATION_API_GROUP);
     }
 
     public boolean isEnabled() {
@@ -74,6 +86,10 @@ public class KubernetesSupport {
 
     public boolean hasHttpRouteSupport() {
         return this.canManageHttpRoutes;
+    }
+
+    public boolean hasLeaderElectionSupport() {
+        return this.canElectLeader;
     }
 
     protected String toHttpRouteName(final String repository, final PackageManager packageManager) {

@@ -14,6 +14,7 @@ import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,9 @@ public class KubernetesSupport {
     protected KubernetesClient client;
 
     private String namespace;
+
+    @ConfigProperty(name = "repository.scheduler.cluster-zone")
+    protected String clusterDomain;
 
     protected boolean kubernetesSupport = true;
     protected boolean canManageHttpRoutes = false;
@@ -78,6 +82,14 @@ public class KubernetesSupport {
                 && hasPermission("list", LEASE_NAME, COORDINATION_API_GROUP)
                 && hasPermission("watch", LEASE_NAME, COORDINATION_API_GROUP)
                 && hasPermission("patch", LEASE_NAME, COORDINATION_API_GROUP);
+    }
+
+    public String getNamespace() {
+        return this.namespace;
+    }
+
+    public String getClusterDomain() {
+        return this.clusterDomain;
     }
 
     public boolean isEnabled() {

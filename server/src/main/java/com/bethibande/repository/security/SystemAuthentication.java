@@ -8,7 +8,6 @@ import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.transaction.Transactional;
 import org.wildfly.security.util.PasswordUtil;
 
 import java.time.Instant;
@@ -25,24 +24,27 @@ public class SystemAuthentication {
     private AccessToken accessToken;
 
     @PostConstruct
-    @Transactional
     public void init() {
-        this.user = User.find("name = ?1", SYSTEM_USER_NAME).firstResult();
-        if (this.user == null) {
-            this.user = new User();
-            this.user.name = SYSTEM_USER_NAME;
-            this.user.email = "";
-            this.user.password = "";
-            this.user.roles = List.of(UserRole.ADMIN, UserRole.SYSTEM);
-            this.user.persist();
-        }
+        QuarkusTransaction.runner(TransactionSemantics.REQUIRE_NEW)
+                .run(() -> {
+                    this.user = User.find("name = ?1", SYSTEM_USER_NAME).firstResult();
+                    if (this.user == null) {
+                        this.user = new User();
+                        this.user.name = SYSTEM_USER_NAME;
+                        this.user.email = "";
+                        this.user.password = "";
+                        this.user.roles = List.of(UserRole.ADMIN, UserRole.SYSTEM);
+                        this.user.persist();
+                    }
 
-        this.accessToken = AccessToken.find("owner = ?1", user).firstResult();
-        if (this.accessToken == null) refreshToken();
+                    this.accessToken = AccessToken.find("owner = ?1", user).firstResult();
+                    if (this.accessToken == null) refreshToken();
+                });
     }
 
-    protected  void refreshToken() {
+    protected void refreshToken() {
         this.accessToken = new AccessToken();
+        this.accessToken.name = Instant.now().toString() + "-" + PasswordUtil.generateSecureRandomString(4);
         this.accessToken.owner = this.user;
         this.accessToken.token = PasswordUtil.generateSecureRandomString(256);
         this.accessToken.expiresAfter = Instant.now().plus(12, ChronoUnit.HOURS);

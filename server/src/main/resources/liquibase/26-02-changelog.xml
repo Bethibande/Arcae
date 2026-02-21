@@ -369,4 +369,59 @@
                               tableName="OCISubject"
                               validate="true"/>
     </changeSet>
+
+    <changeSet id="1771698048998-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="ScheduledJob_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1771698048998-2"
+               author="bethibande">
+        <createTable tableName="ScheduledJob">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_scheduledjob"/>
+            </column>
+            <column name="type"
+                    type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="settings"
+                    type="jsonb"/>
+            <column name="cronSchedule"
+                    type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nextRunAt"
+                    type="timestamptz"/>
+            <column name="deleteAfterRun"
+                    type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="runner"
+                    type="varchar(256)"/>
+            <column name="lastSuccessfulRun"
+                    type="timestamptz"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1771698435326-1" author="bethibande">
+        <insert tableName="scheduledjob">
+            <column name="id" valueComputed="nextval('ScheduledJob_seq')"/>
+            <column name="type">DELETE_OLD_VERSIONS</column>
+            <column name="cronSchedule">* * * * *</column>
+            <column name="nextRunAt">now()</column>
+            <column name="deleteAfterRun">false</column>
+        </insert>
+    </changeSet>
+
+    <changeSet id="1771698905127-1" author="bethibande">
+        <dropTable tableName="tasklock"/>
+    </changeSet>
+    <changeSet id="1771698923187-1" author="bethibande">
+        <dropSequence sequenceName="tasklock_seq"/>
+    </changeSet>
 </databaseChangeLog>

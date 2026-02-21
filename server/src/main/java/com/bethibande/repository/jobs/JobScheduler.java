@@ -1,7 +1,11 @@
 package com.bethibande.repository.jobs;
 
+import com.bethibande.repository.jobs.runner.JobRunner;
+import com.bethibande.repository.jobs.runner.LocalJobRunner;
+import com.bethibande.repository.jobs.runner.RemoteJobRunner;
 import com.bethibande.repository.k8s.KubernetesLeaderService;
 import com.bethibande.repository.k8s.KubernetesSupport;
+import com.bethibande.repository.web.api.JobEndpoint;
 import com.cronutils.model.Cron;
 import com.cronutils.model.definition.CronDefinition;
 import com.cronutils.model.definition.CronDefinitionBuilder;
@@ -12,21 +16,25 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class JobScheduler {
 
     private final KubernetesLeaderService kubernetesLeaderService;
-    private final KubernetesSupport kubernetesSupport;
 
     private final boolean distributed;
+
+    @ConfigProperty(name = "repository.scheduler.distributed")
+    protected boolean distributedAllowed;
 
     private final CronDefinition cronDefinition = CronDefinitionBuilder.defineCron()
             .withMinutes().and()
@@ -39,13 +47,30 @@ public class JobScheduler {
     private final CronParser cronParser = new CronParser(this.cronDefinition);
 
     @Inject
+    protected RemoteWorkerScheduler remoteWorkerScheduler;
+
+    @Inject
+    protected JobEndpoint jobEndpoint;
+
+    @Inject
+    protected LocalJobRunner localJobRunner;
+
+    @Inject
     public JobScheduler(final KubernetesLeaderService kubernetesLeaderService, final KubernetesSupport kubernetesSupport) {
         this.kubernetesLeaderService = kubernetesLeaderService;
-        this.kubernetesSupport = kubernetesSupport;
 
-        this.distributed = this.kubernetesSupport.isEnabled() && this.kubernetesSupport.hasLeaderElectionSupport();
+        this.distributed = this.distributedAllowed
+                && kubernetesSupport.isEnabled()
+                && kubernetesSupport.hasLeaderElectionSupport();
+
         if (this.distributed) {
-            this.kubernetesLeaderService.subscribe(new LeaderCallbacks(this::updateJobs, () -> {}, (_) -> {}));
+            this.kubernetesLeaderService.subscribe(new LeaderCallbacks(
+                    this::updateJobs,
+                    () -> {
+                    },
+                    (_) -> {
+                    }
+            ));
         }
     }
 
@@ -73,15 +98,41 @@ public class JobScheduler {
         });
     }
 
+    public void schedule(final ScheduledJob job, final Instant now) {
+        final Cron cron = this.cronParser.parse(job.cronSchedule);
+        job.nextRunAt = ExecutionTime.forCron(cron)
+                .nextExecution(now.atZone(ZoneOffset.UTC))
+                .map(ZonedDateTime::toInstant)
+                .orElse(null);
+
+        job.persist();
+
+        if (!now.isAfter(job.nextRunAt)) scheduleNow(job);
+    }
+
     private void scheduleNow(final ScheduledJob job) {
-        // Will assign the job to the queue of a worker
+        final JobRunner runner;
+        if (this.distributed) {
+            final String hostname = this.remoteWorkerScheduler.getHostname();
+            runner = new RemoteJobRunner(this.jobEndpoint, hostname);
+        } else {
+            runner = this.localJobRunner;
+        }
+
+        runner.run(job);
     }
 
     private void checkRunnerStatus(final List<ScheduledJob> runningJobs) {
+        final Set<String> hostnames = this.remoteWorkerScheduler.getAllHostNames();
+
         final Map<String, List<ScheduledJob>> runningJobsByRunners = runningJobs.stream()
                 .collect(Collectors.groupingBy(job -> job.runner));
 
-        // Will ensure each actively used runner is still alive
+        runningJobsByRunners.forEach((runner, jobs) -> {
+            if (!hostnames.contains(runner)) {
+                QuarkusTransaction.requiringNew().run(() -> jobs.forEach(this::failJob));
+            }
+        });
     }
 
     public void failJob(final ScheduledJob job) {
@@ -89,7 +140,13 @@ public class JobScheduler {
     }
 
     public void completeJob(final ScheduledJob job, final Instant now) {
+        if (job.deleteAfterRun) {
+            ScheduledJob.deleteById(job.id);
+            return;
+        }
+
         job.runner = null;
+        job.lastSuccessfulRun = now;
 
         final Cron cron = this.cronParser.parse(job.cronSchedule);
         job.nextRunAt = ExecutionTime.forCron(cron)

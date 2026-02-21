@@ -3,6 +3,7 @@ package com.bethibande.repository.jobs;
 import com.bethibande.process.annotation.EntityDTO;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,7 +13,9 @@ import org.hibernate.annotations.Type;
 import java.time.Instant;
 
 @Entity
-@EntityDTO(excludeProperties = {"id", "nextRunAt", "runner"})
+@EntityDTO
+@EntityDTO(excludeProperties = {"id", "nextRunAt", "runner"}, name = "ScheduledJobDTOWithoutId")
+@RegisterForReflection(targets = {JobType.class, ScheduledJobDTO.class, ScheduledJobDTOWithoutId.class})
 public class ScheduledJob extends PanacheEntity {
 
     @Enumerated(EnumType.STRING)
@@ -26,7 +29,7 @@ public class ScheduledJob extends PanacheEntity {
     @Column(nullable = false, columnDefinition = "varchar(64)")
     public String cronSchedule;
 
-    @Column(nullable = false, columnDefinition = "timestamptz")
+    @Column(columnDefinition = "timestamptz")
     public Instant nextRunAt;
 
     @Column(nullable = false)
@@ -34,6 +37,9 @@ public class ScheduledJob extends PanacheEntity {
 
     @Column(columnDefinition = "varchar(256)")
     public String runner;
+
+    @Column(columnDefinition = "timestamptz")
+    public Instant lastSuccessfulRun;
 
 
     public boolean isRunning() {

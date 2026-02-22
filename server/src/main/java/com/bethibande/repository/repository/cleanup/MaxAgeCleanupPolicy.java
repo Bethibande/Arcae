@@ -10,6 +10,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @RegisterForReflection
 public record MaxAgeCleanupPolicy(
@@ -21,16 +22,21 @@ public record MaxAgeCleanupPolicy(
     public void cleanup(final Repository repository, final ManagedRepository managedRepository) {
         final Instant maxAge = Instant.now().minus(time, unit);
 
-        QuarkusTransaction.requiringNew().run(() -> {
-            final List<ArtifactVersion> versions = ArtifactVersion.find("artifact.repository = ?1 AND updated < ?2", repository, maxAge)
-                    .page(0, 50)
-                    .list();
+        final AtomicBoolean running = new AtomicBoolean(true);
+        while (running.get()) {
+            QuarkusTransaction.requiringNew().run(() -> {
+                final List<ArtifactVersion> versions = ArtifactVersion.find("artifact.repository = ?1 AND updated < ?2", repository, maxAge)
+                        .page(0, 50)
+                        .list();
 
-            for (int i = 0; i < versions.size(); i++) {
-                final ArtifactVersion version = versions.get(i);
-                managedRepository.delete(null, version, true);
-            }
-        });
+                running.set(!versions.isEmpty());
+
+                for (int i = 0; i < versions.size(); i++) {
+                    final ArtifactVersion version = versions.get(i);
+                    managedRepository.delete(null, version, true);
+                }
+            });
+        }
     }
 
 }

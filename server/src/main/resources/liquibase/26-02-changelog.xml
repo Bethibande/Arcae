@@ -434,4 +434,14 @@
             <column name="deleteAfterRun">false</column>
         </insert>
     </changeSet>
+
+    <changeSet id="1771769145204-1" author="bethibande">
+        <insert tableName="scheduledjob">
+            <column name="id" valueComputed="nextval('ScheduledJob_seq')"/>
+            <column name="type">CLEAN_UP_ORPHANED_FILES</column>
+            <column name="cronSchedule">0 1 * * *</column> <!-- Every day at 01:00 UTC -->
+            <column name="nextRunAt">now()</column>
+            <column name="deleteAfterRun">false</column>
+        </insert>
+    </changeSet>
 </databaseChangeLog>

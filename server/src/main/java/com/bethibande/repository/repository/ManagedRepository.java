@@ -2,9 +2,9 @@ package com.bethibande.repository.repository;
 
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
+import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.user.User;
-import jakarta.persistence.EntityManager;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
@@ -13,6 +13,7 @@ import java.time.Instant;
 
 /**
  * A ManagedRepository is an implementation of a repository for a specific package manager backed by a repository entity describing its features/settings.
+ *
  * @see RepositoryUpdatedNotifier
  * @see com.bethibande.repository.repository.maven.MavenRepository
  * @see com.bethibande.repository.repository.oci.OCIRepository
@@ -28,6 +29,8 @@ public interface ManagedRepository {
     default boolean canWrite(final User user) {
         return getInfo().canWrite(user);
     }
+
+    void delete(final StoredFile file);
 
     void delete(final User user, final ArtifactVersion version, final boolean skipAuth);
 

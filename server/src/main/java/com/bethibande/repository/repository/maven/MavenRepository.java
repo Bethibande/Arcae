@@ -59,6 +59,12 @@ public class MavenRepository implements ManagedRepository {
         return info;
     }
 
+    @Override
+    public void delete(final StoredFile file) {
+        this.backend.delete("%s/%s".formatted(info.name, file.key));
+        StoredFile.deleteById(file.id);
+    }
+
     protected StreamHandle mirrorGet(final User user, final String path, final MirrorConnectionSettings mirror) {
         try (final HttpClient client = HttpClient.newHttpClient()) {
             final String remoteUrl = "%s/%s".formatted(mirror.url(), path).replaceAll("[^:]//", "/");

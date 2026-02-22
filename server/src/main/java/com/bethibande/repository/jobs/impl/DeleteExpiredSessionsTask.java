@@ -4,9 +4,11 @@ import com.bethibande.repository.jobs.JobType;
 import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.security.UserSessionService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.Instant;
 
+@ApplicationScoped
 public class DeleteExpiredSessionsTask implements JobTask<Object> {
 
     @Override

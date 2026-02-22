@@ -72,6 +72,12 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
     }
 
     @Override
+    public void delete(final StoredFile file) {
+        this.backend.delete(file.key);
+        StoredFile.deleteById(file.id);
+    }
+
+    @Override
     public void processUpdate(final UpdateType type) {
         final OCIRoutingConfig routing = this.config.routingConfig();
 

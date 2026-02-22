@@ -16,6 +16,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.LockModeType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Instant;
@@ -55,6 +56,8 @@ public class JobScheduler {
     @Inject
     protected LocalJobRunner localJobRunner;
 
+    private final long startupTime = System.currentTimeMillis();
+
     @Inject
     public JobScheduler(final KubernetesLeaderService kubernetesLeaderService, final KubernetesSupport kubernetesSupport) {
         this.kubernetesLeaderService = kubernetesLeaderService;
@@ -87,11 +90,14 @@ public class JobScheduler {
         final List<ScheduledJob> runningJobs = QuarkusTransaction.requiringNew()
                 .call(() -> ScheduledJob.list("runner IS NOT NULL"));
 
-        if (this.distributed) checkRunnerStatus(runningJobs);
+        checkRunnerStatus(runningJobs);
 
         QuarkusTransaction.requiringNew().run(() -> {
             final Instant now = Instant.now();
-            final List<ScheduledJob> toRun = ScheduledJob.list("runner IS NULL AND nextRunAt <= ?1", now);
+            final List<ScheduledJob> toRun = ScheduledJob.find("runner IS NULL AND nextRunAt <= ?1", now)
+                    .withLock(LockModeType.PESSIMISTIC_WRITE)
+                    .list();
+
             for (int i = 0; i < toRun.size(); i++) {
                 scheduleNow(toRun.get(i));
             }
@@ -115,21 +121,25 @@ public class JobScheduler {
         if (this.distributed) {
             final String hostname = this.remoteWorkerScheduler.getHostname();
             runner = new RemoteJobRunner(this.jobEndpoint, hostname);
+            job.runner = hostname;
         } else {
             runner = this.localJobRunner;
+            job.runner = String.valueOf(this.startupTime);
         }
 
         runner.run(job);
     }
 
     private void checkRunnerStatus(final List<ScheduledJob> runningJobs) {
-        final Set<String> hostnames = this.remoteWorkerScheduler.getAllHostNames();
+        final Set<String> availableRunners = this.distributed
+                ? this.remoteWorkerScheduler.getAllHostNames()
+                : Set.of(String.valueOf(this.startupTime));
 
         final Map<String, List<ScheduledJob>> runningJobsByRunners = runningJobs.stream()
                 .collect(Collectors.groupingBy(job -> job.runner));
 
         runningJobsByRunners.forEach((runner, jobs) -> {
-            if (!hostnames.contains(runner)) {
+            if (!availableRunners.contains(runner)) {
                 QuarkusTransaction.requiringNew().run(() -> jobs.forEach(this::failJob));
             }
         });

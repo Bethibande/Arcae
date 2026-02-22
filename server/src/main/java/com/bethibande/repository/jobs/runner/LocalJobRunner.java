@@ -18,9 +18,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.ReentrantLock;
 
 @ApplicationScoped
 public class LocalJobRunner implements JobRunner {
@@ -41,6 +44,12 @@ public class LocalJobRunner implements JobRunner {
     @VirtualThreads
     protected Executor executor;
 
+    protected volatile ScheduledJob running;
+
+    protected final Deque<ScheduledJob> queue = new ArrayDeque<>();
+
+    protected final ReentrantLock lock = new ReentrantLock();
+
     public JobTask<?> getTask(final JobType type) {
         for (int i = 0; i < this.tasks.size(); i++) {
             final JobTask<?> task = this.tasks.get(i);
@@ -49,16 +58,43 @@ public class LocalJobRunner implements JobRunner {
         return null;
     }
 
+    protected void onAfterRun() {
+        this.lock.lock();
+        try {
+            this.running = null;
+
+            final ScheduledJob next = this.queue.poll();
+            if (next != null) {
+                run(next);
+            }
+        } finally {
+            this.lock.unlock();
+        }
+    }
+
     @Override
     public void run(final ScheduledJob job) {
-        // TODO: Queue jobs if one is currently running
-        this.executor.execute(() -> {
-            try {
-                run0(job);
-            } catch (final JsonProcessingException ex) {
-                LOGGER.error("Failed to parse job settings for {}: {}", job.id, ex.getMessage(), ex);
+        this.lock.lock();
+        try {
+            if (this.running != null) {
+                this.queue.add(job);
+                return;
             }
-        });
+
+            this.running = job;
+
+            this.executor.execute(() -> {
+                try {
+                    run0(job);
+                } catch (final JsonProcessingException ex) {
+                    LOGGER.error("Failed to parse job settings for {}: {}", job.id, ex.getMessage(), ex);
+                } finally {
+                    onAfterRun();
+                }
+            });
+        } finally {
+            lock.unlock();
+        }
     }
 
     @SuppressWarnings("unchecked")

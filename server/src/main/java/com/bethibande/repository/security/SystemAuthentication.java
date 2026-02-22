@@ -18,7 +18,7 @@ import java.util.List;
 @ApplicationScoped
 public class SystemAuthentication {
 
-    private static final String SYSTEM_USER_NAME = "system";
+    public static final String SYSTEM_USER_NAME = "system";
 
     private User user;
     private AccessToken accessToken;

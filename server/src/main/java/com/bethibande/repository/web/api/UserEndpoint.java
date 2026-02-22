@@ -1,9 +1,7 @@
 package com.bethibande.repository.web.api;
 
-import com.bethibande.repository.jpa.user.User;
-import com.bethibande.repository.jpa.user.UserDTOWithoutId;
-import com.bethibande.repository.jpa.user.UserDTOWithoutPassword;
-import com.bethibande.repository.jpa.user.UserDTOWithoutRoles;
+import com.bethibande.repository.jpa.user.*;
+import com.bethibande.repository.security.SystemAuthentication;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
@@ -41,6 +39,8 @@ public class UserEndpoint {
     @POST
     @Transactional
     public UserDTOWithoutPassword create(final UserDTOWithoutId dto) {
+        if (dto.roles().contains(UserRole.SYSTEM)) throw new NotAuthorizedException("System users cannot be created");
+
         final User user = new User();
         user.name = dto.name();
         user.email = dto.email();
@@ -56,6 +56,7 @@ public class UserEndpoint {
     public UserDTOWithoutPassword update(final UserDTOWithoutPassword dto) {
         final User user = User.findById(dto.id());
         if (user == null) throw new NotFoundException("Unknown user");
+        if (user.roles.contains(UserRole.SYSTEM)) throw new NotAuthorizedException("System users cannot be updated");
 
         user.name = dto.name();
         user.email = dto.email();
@@ -94,6 +95,9 @@ public class UserEndpoint {
 
                     final BooleanPredicateClausesStep<?, ?> step = q.bool();
                     predicates.forEach(step::should);
+                    step.must(q.not(q.match()
+                            .field("name")
+                            .matching(SystemAuthentication.SYSTEM_USER_NAME)));
 
                     return step;
                 })
@@ -118,7 +122,7 @@ public class UserEndpoint {
     @Transactional
     public PagedResponse<UserDTOWithoutPassword> list(final @QueryParam("p") @Min(0) int page,
                                                       final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
-        final PanacheQuery<User> query = User.findAll(Sort.ascending("name")).page(page, pageSize);
+        final PanacheQuery<User> query = User.find("?1 NOT MEMBER OF roles", Sort.ascending("name"), UserRole.SYSTEM).page(page, pageSize);
 
         final long total = query.count();
         final int totalPages = (int) Math.ceil(total / (double) pageSize);
@@ -137,6 +141,11 @@ public class UserEndpoint {
     @DELETE
     @Transactional
     public void delete(final @QueryParam("id") long id) {
+        final User user = User.findById(id);
+        if (user != null && user.roles.contains(UserRole.SYSTEM))
+            throw new NotAuthorizedException("System users cannot be deleted");
+        if (authenticatedUser.getSelf().id == id) throw new NotAuthorizedException("Cannot delete self");
+
         User.deleteById(id);
     }
 

@@ -3,6 +3,7 @@ package com.bethibande.repository.web.api;
 import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserDTOWithoutPassword;
+import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.security.SecurityAttributes;
 import com.bethibande.repository.security.UserAuthenticationMechanism;
 import com.bethibande.repository.security.UserSessionService;
@@ -15,8 +16,11 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wildfly.security.util.PasswordUtil;
 
+import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -25,9 +29,12 @@ import java.util.Objects;
 @Path("/api/v1/auth")
 public class AuthenticationEndpoint {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationEndpoint.class);
+
     private static final String DUMMY_BCRYPT_HASH = BcryptUtil.bcryptHash(PasswordUtil.generateSecureRandomString(17));
+
     @Inject
-    UserSessionService userSessionService;
+    protected UserSessionService userSessionService;
 
     public static class Credentials {
         public String username;
@@ -61,9 +68,19 @@ public class AuthenticationEndpoint {
             userExists = false;
         }
 
-        boolean passwordMatches = BcryptUtil.matches(credentials.password, hashToCompare);
+        boolean passwordMatches = false;
+        try {
+            passwordMatches = BcryptUtil.matches(credentials.password, hashToCompare);
+        } catch (Exception e) {
+            if (e.getCause() == null || !(e.getCause() instanceof InvalidKeySpecException)) {
+                LOGGER.error("Error comparing password hash", e);
+            }
+        }
 
-        if (userExists && passwordMatches) {
+        if (userExists
+                && passwordMatches
+                && !hashToCompare.isBlank()
+                && !user.roles.contains(UserRole.SYSTEM)) {
             return doLogin(user);
         } else {
             return Response.status(Response.Status.UNAUTHORIZED).build();

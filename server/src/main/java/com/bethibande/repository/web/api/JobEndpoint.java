@@ -7,7 +7,6 @@ import com.bethibande.repository.security.SystemAuthentication;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
-import io.quarkus.security.UnauthorizedException;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -58,15 +57,15 @@ public class JobEndpoint {
     }
 
     public HttpRequest.Builder requestBuilder(final String hostname, final String path) {
-        final URI uri = URI.create("http://%s:%d%s".formatted(hostname, this.port, path));
+        final String fqDomain = this.remoteWorkerScheduler.resolvePodHostname(hostname);
+        final URI uri = URI.create("http://%s:%d%s".formatted(fqDomain, this.port, path));
         return HttpRequest.newBuilder()
                 .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(this.systemAuthentication.getAccessToken().token));
     }
 
     public HttpRequest.Builder requestBuilder(final String path) {
-        final String leaderHostname = this.remoteWorkerScheduler.leaderHostname(this.kubernetesLeaderService.getLeader());
-        return this.requestBuilder(leaderHostname, path);
+        return this.requestBuilder(this.kubernetesLeaderService.getLeader(), path);
     }
 
     public String toJson(final Object obj) {

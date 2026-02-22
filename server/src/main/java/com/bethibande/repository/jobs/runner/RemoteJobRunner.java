@@ -25,8 +25,8 @@ public class RemoteJobRunner implements JobRunner {
 
         try {
             final HttpResponse<Void> response = this.jobEndpoint.getClient().send(request, HttpResponse.BodyHandlers.discarding());
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("Failed to run job: %s".formatted(response.body()));
+            if (response.statusCode() != 204) {
+                throw new RuntimeException("Failed to run job: %d - %s".formatted(response.statusCode(), response.body()));
             }
         } catch (final IOException | InterruptedException ex) {
             throw new RuntimeException(ex);

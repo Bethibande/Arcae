@@ -18,10 +18,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.LockModeType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,12 +33,11 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class JobScheduler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobScheduler.class);
+
     private final KubernetesLeaderService kubernetesLeaderService;
 
     private final boolean distributed;
-
-    @ConfigProperty(name = "repository.scheduler.distributed")
-    protected boolean distributedAllowed;
 
     private final CronDefinition cronDefinition = CronDefinitionBuilder.defineCron()
             .withMinutes().and()
@@ -59,12 +61,22 @@ public class JobScheduler {
     private final long startupTime = System.currentTimeMillis();
 
     @Inject
-    public JobScheduler(final KubernetesLeaderService kubernetesLeaderService, final KubernetesSupport kubernetesSupport) {
+    public JobScheduler(final KubernetesLeaderService kubernetesLeaderService,
+                        final KubernetesSupport kubernetesSupport,
+                        final @ConfigProperty(name = "repository.scheduler.distributed") boolean distributedAllowed) {
         this.kubernetesLeaderService = kubernetesLeaderService;
 
-        this.distributed = this.distributedAllowed
+        this.distributed = distributedAllowed
                 && kubernetesSupport.isEnabled()
-                && kubernetesSupport.hasLeaderElectionSupport();
+                && kubernetesSupport.hasLeaderElectionSupport()
+                && kubernetesSupport.canListPods()
+                && kubernetesSupport.canInspectServices();
+
+        if (distributedAllowed
+                && kubernetesSupport.isEnabled()
+                && !this.distributed) {
+            LOGGER.warn("Leader election disabled due to missing permissions, replication not supported.");
+        }
 
         if (this.distributed) {
             this.kubernetesLeaderService.subscribe(new LeaderCallbacks(
@@ -136,7 +148,7 @@ public class JobScheduler {
 
     private void checkRunnerStatus(final List<ScheduledJob> runningJobs) {
         final Set<String> availableRunners = this.distributed
-                ? this.remoteWorkerScheduler.getAllHostNames()
+                ? new HashSet<>(this.remoteWorkerScheduler.getAllHostNames())
                 : Set.of(String.valueOf(this.startupTime));
 
         final Map<String, List<ScheduledJob>> runningJobsByRunners = runningJobs.stream()

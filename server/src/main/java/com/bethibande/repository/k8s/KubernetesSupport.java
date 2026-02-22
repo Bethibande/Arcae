@@ -41,6 +41,8 @@ public class KubernetesSupport {
     protected boolean kubernetesSupport = true;
     protected boolean canManageHttpRoutes = false;
     protected boolean canElectLeader = false;
+    protected boolean canListPods = false;
+    protected boolean canInspectServices = false;
 
     protected boolean canAccessApi() {
         try (final KubernetesClient timeoutClient = new KubernetesClientBuilder()
@@ -82,6 +84,11 @@ public class KubernetesSupport {
                 && hasPermission("list", LEASE_NAME, COORDINATION_API_GROUP)
                 && hasPermission("watch", LEASE_NAME, COORDINATION_API_GROUP)
                 && hasPermission("patch", LEASE_NAME, COORDINATION_API_GROUP);
+
+        this.canListPods = hasPermission("list", "pods", "")
+                && hasPermission("get", "pods", "");
+
+        this.canInspectServices = hasPermission("get", "services", "");
     }
 
     public String getNamespace() {
@@ -102,6 +109,14 @@ public class KubernetesSupport {
 
     public boolean hasLeaderElectionSupport() {
         return this.canElectLeader;
+    }
+
+    public boolean canListPods() {
+        return this.canListPods;
+    }
+
+    public boolean canInspectServices() {
+        return this.canInspectServices;
     }
 
     protected String toHttpRouteName(final String repository, final PackageManager packageManager) {

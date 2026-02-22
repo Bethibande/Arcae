@@ -34,6 +34,7 @@ dependencies {
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-hibernate-orm")
     implementation("io.quarkus:quarkus-cache")
+    implementation("io.quarkus:quarkus-caffeine")
 
     implementation("io.quarkus:quarkus-scheduler")
     implementation("com.cronutils:cron-utils:9.2.1")

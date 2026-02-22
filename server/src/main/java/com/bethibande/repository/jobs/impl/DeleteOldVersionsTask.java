@@ -3,11 +3,13 @@ package com.bethibande.repository.jobs.impl;
 import com.bethibande.repository.jobs.JobType;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
-import com.bethibande.repository.repository.ManagedRepository;
+import com.bethibande.repository.repository.maven.MavenRepository;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import java.util.List;
 
 @ApplicationScoped
 public class DeleteOldVersionsTask implements JobTask<Object> {
@@ -27,16 +29,19 @@ public class DeleteOldVersionsTask implements JobTask<Object> {
 
     @Override
     public void run(final Object config) {
-        QuarkusTransaction.runner(TransactionSemantics.REQUIRE_NEW).run(() -> {
-            Repository.<Repository>streamAll()
-                    .forEach(repository -> {
-                        if (repository.cleanupPolicies != null
-                                && repository.cleanupPolicies.maxAgePolicy() != null
-                                && repository.cleanupPolicies.maxAgePolicy().enabled()) {
-                            final ManagedRepository managedRepository = this.repositoryManager.manage(repository);
-                            repository.cleanupPolicies.maxAgePolicy().cleanup(repository, managedRepository);
-                        }
-                    });
-        });
+        final List<MavenRepository> repositories = QuarkusTransaction.runner(TransactionSemantics.REQUIRE_NEW).call(
+                () -> Repository.<Repository>listAll()
+                        .stream()
+                        .filter(repo -> repo.cleanupPolicies != null)
+                        .filter(repo -> repo.cleanupPolicies.maxVersionCountPolicy() != null)
+                        .filter(repo -> repo.cleanupPolicies.maxVersionCountPolicy().enabled())
+                        .map(repo -> this.repositoryManager.<MavenRepository>manage(repo))
+                        .toList()
+        );
+
+        for (int i = 0; i < repositories.size(); i++) {
+            final MavenRepository repository = repositories.get(i);
+            repository.getInfo().cleanupPolicies.maxAgePolicy().cleanup(repository.getInfo(), repository);
+        }
     }
 }

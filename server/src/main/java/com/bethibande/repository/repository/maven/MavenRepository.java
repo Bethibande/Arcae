@@ -179,7 +179,7 @@ public class MavenRepository implements ManagedRepository {
         }
     }
 
-    protected void delete0(final User user, final List<StoredFile> files, final boolean skipAuth) {
+    protected void deleteFilesFromStorage(final User user, final List<StoredFile> files, final boolean skipAuth) {
         if (!skipAuth && !this.info.canWrite(user)) throw new UnauthorizedException();
 
         for (int i = 0; i < files.size(); i++) {
@@ -210,15 +210,14 @@ public class MavenRepository implements ManagedRepository {
                        final ArtifactVersion version,
                        final boolean updateMavenMetadata,
                        final boolean skipAuth) {
-        delete0(user, version.files, skipAuth);
+        deleteFilesFromStorage(user, version.files, skipAuth);
         version.delete();
 
         if (version.artifact.countVersions() <= 0) {
             delete(user, version.artifact, skipAuth);
         } else if (updateMavenMetadata) {
             final StoredFile metadataFile = fileIndexer.getGAMetadataFile(version.artifact);
-            if (metadataFile == null)
-                throw new IllegalStateException("Metadata file not found for artifact: " + version.artifact);
+            if (metadataFile == null) return;
 
             final StreamHandle metadataHandle = get(user, metadataFile.key);
             final String fileContent = new String(metadataHandle.readAllBytes());
@@ -231,7 +230,7 @@ public class MavenRepository implements ManagedRepository {
     }
 
     public void delete(final User user, final Artifact artifact, final boolean skipAuth) {
-        delete0(user, artifact.files, skipAuth);
+        deleteFilesFromStorage(user, artifact.files, skipAuth);
 
         ArtifactVersion.<ArtifactVersion>find("artifact = ?1", artifact)
                 .stream()

@@ -1,22 +1,20 @@
 package com.bethibande.repository.web.api;
 
-import com.bethibande.repository.jobs.JobScheduler;
-import com.bethibande.repository.jobs.RemoteWorkerScheduler;
-import com.bethibande.repository.jobs.ScheduledJob;
-import com.bethibande.repository.jobs.ScheduledJobDTOWithoutId;
+import com.bethibande.repository.jobs.*;
 import com.bethibande.repository.jobs.runner.LocalJobRunner;
 import com.bethibande.repository.k8s.KubernetesLeaderService;
 import com.bethibande.repository.security.SystemAuthentication;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.security.UnauthorizedException;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.*;
 import org.apache.http.HttpHeaders;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -89,6 +87,19 @@ public class JobEndpoint {
         });
     }
 
+    protected <T> T propagate(final String path, final String method, final Class<T> clazz, final Object requestBody) throws IOException, InterruptedException {
+        final HttpRequest request = requestBuilder(path)
+                .method(method, requestBody == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(this.toJson(requestBody)))
+                .build();
+
+        final HttpResponse<T> response = this.client.send(request, jsonBodyHandler(clazz));
+        if (response.statusCode() != 200) {
+            throw new WebApplicationException(response.statusCode());
+        }
+
+        return response.body();
+    }
+
     @POST
     @Transactional
     @RolesAllowed("SYSTEM")
@@ -103,15 +114,10 @@ public class JobEndpoint {
     @POST
     @Transactional
     @Path("/schedule")
-    @RolesAllowed({"ADMIN", "SYSTEM"})
-    public ScheduledJob scheduleJob(final ScheduledJobDTOWithoutId dto) throws IOException, InterruptedException {
+    @RolesAllowed("ADMIN")
+    public ScheduledJobDTO scheduleJob(final ScheduledJobDTOWithoutId dto) throws IOException, InterruptedException {
         if (scheduler.isDistributed() && !kubernetesLeaderService.isLeader()) {
-            final HttpRequest request = requestBuilder("/api/v1/job/schedule")
-                    .method("POST", HttpRequest.BodyPublishers.ofString(this.toJson(dto)))
-                    .build();
-
-            final HttpResponse<ScheduledJob> response = this.client.send(request, jsonBodyHandler(ScheduledJob.class));
-            return response.body();
+            return propagate("/api/v1/job/schedule", "POST", ScheduledJobDTO.class, dto);
         }
 
         final ScheduledJob job = new ScheduledJob();
@@ -122,7 +128,54 @@ public class JobEndpoint {
 
         scheduler.schedule(job, Instant.now());
 
-        return job;
+        return ScheduledJobDTO.from(job);
+    }
+
+    @PUT
+    @Transactional
+    @RolesAllowed("ADMIN")
+    public ScheduledJobDTO updateJob(final ScheduledJobDTO dto) throws IOException, InterruptedException {
+        if (scheduler.isDistributed() && !kubernetesLeaderService.isLeader()) {
+            return propagate("/api/v1/job", "PUT", ScheduledJobDTO.class, dto);
+        }
+
+        final ScheduledJob job = ScheduledJob.findById(dto.id());
+        if (job == null) throw new NotFoundException("Job not found");
+
+        job.type = dto.type();
+        job.settings = dto.settings();
+        job.deleteAfterRun = dto.deleteAfterRun();
+        job.cronSchedule = dto.cronSchedule();
+
+        scheduler.schedule(job, Instant.now());
+
+        return ScheduledJobDTO.from(job);
+    }
+
+    @PUT
+    @Transactional
+    @RolesAllowed("ADMIN")
+    @Path("/{id}/nextRunAt")
+    public ScheduledJobDTO setNextExecution(final @PathParam("id") long id, final Instant nextRunAt) throws IOException, InterruptedException {
+        if (scheduler.isDistributed() && !kubernetesLeaderService.isLeader()) {
+            return propagate("/api/v1/job/%s/nextRunAt".formatted(id), "PUT", ScheduledJobDTO.class, nextRunAt);
+        }
+
+        final ScheduledJob job = ScheduledJob.findById(id);
+        if (job == null) throw new NotFoundException("Job not found");
+
+        job.nextRunAt = nextRunAt;
+        scheduler.schedule(job, Instant.now());
+
+        return ScheduledJobDTO.from(job);
+    }
+
+    @GET
+    @RolesAllowed("ADMIN")
+    public PagedResponse<ScheduledJobDTO> list(final @QueryParam("p") @Min(0) @DefaultValue("0") int page,
+                                               final @QueryParam("s") @Min(1) @Max(100) @DefaultValue("20") int pageSize) {
+        final PanacheQuery<ScheduledJob> query = ScheduledJob.findAll().page(page, pageSize);
+        return PagedResponse.from(query, page, ScheduledJobDTO::from);
     }
 
 }

@@ -444,4 +444,12 @@
             <column name="deleteAfterRun">false</column>
         </insert>
     </changeSet>
+
+    <changeSet id="1771774655044-1"
+               author="maxbb">
+        <addColumn tableName="ScheduledJob">
+            <column name="executionStartedAt"
+                    type="timestamptz"/>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

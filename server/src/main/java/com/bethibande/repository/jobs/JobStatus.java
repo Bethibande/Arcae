@@ -2,7 +2,10 @@ package com.bethibande.repository.jobs;
 
 public enum JobStatus {
 
-    SUCCEEDED,
+    IDLE,
+    SCHEDULED,
+    QUEUED,
+    RUNNING,
     FAILED
 
 }

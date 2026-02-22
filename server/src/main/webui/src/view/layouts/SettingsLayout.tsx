@@ -10,7 +10,7 @@ import {
     SidebarMenuItem,
     SidebarRail,
 } from "@/components/ui/sidebar.tsx";
-import {Key, ShieldCheck, User} from "lucide-react";
+import {Key, Play, ShieldCheck, User} from "lucide-react";
 import i18next from "i18next";
 import {useAuth} from "@/lib/auth.tsx";
 import {UserRole} from "@/generated";
@@ -20,7 +20,8 @@ export function settingsLayoutInit() {
         "title": "Settings",
         "user": "User Settings",
         "tokens": "Access Tokens",
-        "management": "User Management"
+        "management": "User Management",
+        "jobs": "System Jobs"
     })
 }
 
@@ -64,16 +65,28 @@ export default function SettingsLayout() {
                                     </NavLink>
                                 </SidebarMenuItem>
                                 {hasRole(UserRole.Admin) && (
-                                    <SidebarMenuItem>
-                                        <NavLink to="/settings/management" className="w-full">
-                                            {({isActive}) => (
-                                                <SidebarMenuButton isActive={isActive}>
-                                                    <ShieldCheck />
-                                                    <span>{t("management")}</span>
-                                                </SidebarMenuButton>
-                                            )}
-                                        </NavLink>
-                                    </SidebarMenuItem>
+                                    <>
+                                        <SidebarMenuItem>
+                                            <NavLink to="/settings/users" className="w-full">
+                                                {({isActive}) => (
+                                                    <SidebarMenuButton isActive={isActive}>
+                                                        <ShieldCheck />
+                                                        <span>{t("management")}</span>
+                                                    </SidebarMenuButton>
+                                                )}
+                                            </NavLink>
+                                        </SidebarMenuItem>
+                                        <SidebarMenuItem>
+                                            <NavLink to="/settings/jobs" className="w-full">
+                                                {({isActive}) => (
+                                                    <SidebarMenuButton isActive={isActive}>
+                                                        <Play />
+                                                        <span>{t("jobs")}</span>
+                                                    </SidebarMenuButton>
+                                                )}
+                                            </NavLink>
+                                        </SidebarMenuItem>
+                                    </>
                                 )}
                             </SidebarMenu>
                         </SidebarGroupContent>

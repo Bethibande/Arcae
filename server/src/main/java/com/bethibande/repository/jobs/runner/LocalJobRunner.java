@@ -1,7 +1,6 @@
 package com.bethibande.repository.jobs.runner;
 
 import com.bethibande.repository.jobs.JobScheduler;
-import com.bethibande.repository.jobs.JobStatus;
 import com.bethibande.repository.jobs.JobType;
 import com.bethibande.repository.jobs.ScheduledJob;
 import com.bethibande.repository.jobs.impl.JobTask;
@@ -97,6 +96,14 @@ public class LocalJobRunner implements JobRunner {
         }
     }
 
+    private enum JobExecutionStatus {
+
+        SUCCEEDED,
+        FAILED
+
+    }
+
+
     @SuppressWarnings("unchecked")
     private <T> void run0(final ScheduledJob job) throws JsonProcessingException {
         final JobTask<T> task = (JobTask<T>) this.getTask(job.type);
@@ -104,19 +111,24 @@ public class LocalJobRunner implements JobRunner {
                 ? this.objectMapper.readValue(job.settings, task.getConfigType())
                 : null;
 
+        QuarkusTransaction.requiringNew().run(() -> {
+            final ScheduledJob entity = ScheduledJob.findById(job.id, LockModeType.PESSIMISTIC_WRITE);
+            entity.executionStartedAt = Instant.now();
+        });
+
         try {
             task.run(config);
-            updateJobStatus(job, JobStatus.SUCCEEDED);
+            updateJobStatus(job, JobExecutionStatus.SUCCEEDED);
         } catch (final Throwable th) {
             LOGGER.error("Error while running job: {}-{}", job.id, job.type, th);
-            updateJobStatus(job, JobStatus.FAILED);
+            updateJobStatus(job, JobExecutionStatus.FAILED);
         }
     }
 
-    protected void updateJobStatus(final ScheduledJob job, JobStatus result) {
+    protected void updateJobStatus(final ScheduledJob job, JobExecutionStatus result) {
         QuarkusTransaction.runner(TransactionSemantics.REQUIRE_NEW).run(() -> {
             final ScheduledJob entity = ScheduledJob.findById(job.id, LockModeType.PESSIMISTIC_WRITE);
-            if (result == JobStatus.SUCCEEDED) {
+            if (result == JobExecutionStatus.SUCCEEDED) {
                 this.scheduler.completeJob(entity, Instant.now());
             } else {
                 this.scheduler.failJob(entity);

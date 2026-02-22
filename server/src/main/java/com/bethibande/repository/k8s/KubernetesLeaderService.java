@@ -50,10 +50,18 @@ public class KubernetesLeaderService {
 
     private final List<LeaderCallbacks> subscriptions = new CopyOnWriteArrayList<>();
 
+    @ConfigProperty(name = "repository.scheduler.distributed")
+    protected boolean distributedAllowed;
+
     void onStart(final @Observes StartupEvent startupEvent) {
         if (!kubernetesSupport.isEnabled()) return;
         if (!kubernetesSupport.hasLeaderElectionSupport()) {
             LOGGER.warn("Leader election not supported (possibly missing permissions), replication not supported.");
+            LOGGER.warn("Set the option \"repository.scheduler.distributed\" to \"false\" to disable leader election.\"");
+            return;
+        }
+        if (!distributedAllowed) {
+            LOGGER.warn("Leader election disabled by configuration, replication not supported.");
             return;
         }
 

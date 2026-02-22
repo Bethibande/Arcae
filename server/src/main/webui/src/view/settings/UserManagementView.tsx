@@ -165,11 +165,11 @@ export default function UserManagementView() {
     });
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-8 space-y-8 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-                    <p className="text-muted-foreground">Manage users and their permissions.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+                    <p className="text-muted-foreground mt-1">Manage users and their permissions.</p>
                 </div>
                 <Button onClick={() => {
                     setEditUser(null);

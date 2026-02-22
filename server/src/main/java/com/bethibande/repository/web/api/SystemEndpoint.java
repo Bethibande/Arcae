@@ -1,5 +1,6 @@
 package com.bethibande.repository.web.api;
 
+import com.bethibande.repository.jobs.JobScheduler;
 import com.bethibande.repository.k8s.KubernetesLeaderService;
 import com.bethibande.repository.k8s.KubernetesSupport;
 import jakarta.annotation.security.RolesAllowed;
@@ -17,11 +18,14 @@ public class SystemEndpoint {
 
     @Inject
     protected KubernetesLeaderService kubernetesLeaderService;
+    @Inject
+    JobScheduler jobScheduler;
 
     public record KubernetesCapabilities(
             @NotNull boolean enabled,
             @NotNull boolean routing,
-            @NotNull boolean leaderElection
+            @NotNull boolean leaderElection,
+            @NotNull boolean distributedScheduler
     ) {
     }
 
@@ -31,7 +35,8 @@ public class SystemEndpoint {
         return new KubernetesCapabilities(
                 kubernetesSupport.isEnabled(),
                 kubernetesSupport.hasHttpRouteSupport(),
-                kubernetesSupport.hasLeaderElectionSupport()
+                kubernetesSupport.hasLeaderElectionSupport(),
+                jobScheduler.isDistributed()
         );
     }
 

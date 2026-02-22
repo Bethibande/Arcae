@@ -13,6 +13,7 @@ import ArtifactView from "@/view/dashboard/ArtifactView.tsx";
 import UserSettingsView from "@/view/settings/UserSettingsView.tsx";
 import AccessTokensView from "@/view/settings/AccessTokensView.tsx";
 import UserManagementView from "@/view/settings/UserManagementView.tsx";
+import SystemJobsView from "@/view/settings/SystemJobsView.tsx";
 
 function App() {
     const primaryRoutes: RouteObject[] = [
@@ -49,8 +50,12 @@ function App() {
                     Component: AccessTokensView
                 },
                 {
-                    path: "management",
+                    path: "users",
                     Component: UserManagementView
+                },
+                {
+                    path: "jobs",
+                    Component: SystemJobsView
                 }
             ]
         }

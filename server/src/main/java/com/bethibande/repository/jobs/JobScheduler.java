@@ -106,17 +106,21 @@ public class JobScheduler {
 
     public void schedule(final ScheduledJob job, final Instant now) {
         final Cron cron = this.cronParser.parse(job.cronSchedule);
-        job.nextRunAt = ExecutionTime.forCron(cron)
-                .nextExecution(now.atZone(ZoneOffset.UTC))
-                .map(ZonedDateTime::toInstant)
-                .orElse(null);
+        if (job.nextRunAt == null) {
+            job.nextRunAt = ExecutionTime.forCron(cron)
+                    .nextExecution(now.atZone(ZoneOffset.UTC))
+                    .map(ZonedDateTime::toInstant)
+                    .orElse(null);
+        }
 
         job.persist();
 
-        if (!now.isAfter(job.nextRunAt)) scheduleNow(job);
+        if (!job.nextRunAt.isAfter(now)) scheduleNow(job);
     }
 
     private void scheduleNow(final ScheduledJob job) {
+        if (job.runner != null) return;
+
         final JobRunner runner;
         if (this.distributed) {
             final String hostname = this.remoteWorkerScheduler.getHostname();

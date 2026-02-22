@@ -1,7 +1,9 @@
 import {useEffect, useState} from "react";
-import {type ColumnDef} from "@tanstack/react-table";
+import {type ColumnDef, getCoreRowModel, useReactTable} from "@tanstack/react-table";
 import {type AccessTokenDTOWithoutToken, AccessTokenEndpointApi} from "@/generated";
 import {DataTable} from "@/components/data-table";
+import {DataTablePagination} from "@/components/data-table-pagination";
+import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
 import {MoreHorizontal, Pencil, Plus, Trash} from "lucide-react";
 import {AccessTokenEditDialog} from "@/components/access-token-edit-dialog";
@@ -77,6 +79,19 @@ export default function AccessTokensView() {
             },
         },
         {
+            id: "status",
+            header: "Status",
+            cell: ({row}) => {
+                const expires = row.original.expiresAfter;
+                const isExpired = expires && new Date(expires) < new Date();
+                return (
+                    <Badge variant={isExpired ? "destructive" : "outline"} className={isExpired ? "" : "border-green-500/50 text-green-500 bg-green-500/10"}>
+                        {isExpired ? "Expired" : "Active"}
+                    </Badge>
+                );
+            }
+        },
+        {
             id: "actions",
             cell: ({row}) => {
                 const token = row.original;
@@ -119,12 +134,18 @@ export default function AccessTokensView() {
         },
     ];
 
+    const table = useReactTable({
+        data,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+    });
+
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-8 space-y-8 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Access Tokens</h1>
-                    <p className="text-muted-foreground">Manage your personal access tokens for API access.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Access Tokens</h1>
+                    <p className="text-muted-foreground mt-1">Manage your personal access tokens for API access.</p>
                 </div>
                 <Button onClick={() => {
                     setEditToken(null);
@@ -139,6 +160,7 @@ export default function AccessTokensView() {
             ) : (
                 <div className="space-y-4">
                     <DataTable columns={columns} data={data}/>
+                    <DataTablePagination table={table}/>
                 </div>
             )}
 

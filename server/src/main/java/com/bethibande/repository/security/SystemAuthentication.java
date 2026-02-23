@@ -21,7 +21,7 @@ public class SystemAuthentication {
     public static final String SYSTEM_USER_NAME = "system";
 
     private User user;
-    private AccessToken accessToken;
+    private volatile AccessToken accessToken;
 
     @PostConstruct
     public void init() {
@@ -37,12 +37,16 @@ public class SystemAuthentication {
                         this.user.persist();
                     }
 
-                    this.accessToken = AccessToken.find("owner = ?1", user).firstResult();
-                    if (this.accessToken == null) refreshToken();
+                    refreshToken();
                 });
     }
 
     protected void refreshToken() {
+        final Instant now = Instant.now();
+        final Instant minAge = now.minus(11, ChronoUnit.MINUTES);
+        this.accessToken = AccessToken.find("owner = ?1 AND expiresAfter > ?2", user, minAge).firstResult();
+        if (!this.accessToken.isExpired(now)) return;
+
         this.accessToken = new AccessToken();
         this.accessToken.name = Instant.now().toString() + "-" + PasswordUtil.generateSecureRandomString(4);
         this.accessToken.owner = this.user;
@@ -53,7 +57,8 @@ public class SystemAuthentication {
 
     public AccessToken getAccessToken() {
         if (this.accessToken.isExpired(Instant.now().minus(10, ChronoUnit.MINUTES))) {
-            QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).run(this::refreshToken);
+            QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING)
+                    .run(this::refreshToken);
         }
         return this.accessToken;
     }

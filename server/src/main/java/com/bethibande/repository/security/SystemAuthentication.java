@@ -45,7 +45,7 @@ public class SystemAuthentication {
         final Instant now = Instant.now();
         final Instant minAge = now.minus(11, ChronoUnit.MINUTES);
         this.accessToken = AccessToken.find("owner = ?1 AND expiresAfter > ?2", user, minAge).firstResult();
-        if (!this.accessToken.isExpired(now)) return;
+        if (this.accessToken != null && !this.accessToken.isExpired(now)) return;
 
         this.accessToken = new AccessToken();
         this.accessToken.name = Instant.now().toString() + "-" + PasswordUtil.generateSecureRandomString(4);

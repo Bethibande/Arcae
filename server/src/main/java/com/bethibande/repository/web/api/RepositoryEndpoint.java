@@ -183,6 +183,7 @@ public class RepositoryEndpoint {
     }
 
     @GET
+    @PermitAll
     @Transactional
     @Path("/{id}/can-write")
     public boolean canWrite(final @PathParam("id") long id) {

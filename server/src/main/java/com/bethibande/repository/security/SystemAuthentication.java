@@ -43,7 +43,7 @@ public class SystemAuthentication {
 
     protected void refreshToken() {
         final Instant now = Instant.now();
-        final Instant minAge = now.minus(11, ChronoUnit.MINUTES);
+        final Instant minAge = now.plus(11, ChronoUnit.MINUTES);
         this.accessToken = AccessToken.find("owner = ?1 AND expiresAfter > ?2", user, minAge).firstResult();
         if (this.accessToken != null && !this.accessToken.isExpired(now)) return;
 
@@ -56,7 +56,7 @@ public class SystemAuthentication {
     }
 
     public AccessToken getAccessToken() {
-        if (this.accessToken.isExpired(Instant.now().minus(10, ChronoUnit.MINUTES))) {
+        if (this.accessToken.isExpired(Instant.now().plus(10, ChronoUnit.MINUTES))) {
             QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING)
                     .run(this::refreshToken);
         }

@@ -161,7 +161,7 @@ public class ArtifactEndpoint {
 
         final User self = authenticatedUser.getSelf();
 
-        repository.delete(self, version, true);
+        repository.delete(self, version, false);
     }
 
 }

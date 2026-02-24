@@ -186,6 +186,7 @@ public class RepositoryEndpoint {
     @PermitAll
     @Transactional
     @Path("/{id}/can-write")
+    @Produces("application/json")
     public boolean canWrite(final @PathParam("id") long id) {
         final Repository repo = Repository.findById(id);
         if (repo == null) throw new NotFoundException("Unknown repository");

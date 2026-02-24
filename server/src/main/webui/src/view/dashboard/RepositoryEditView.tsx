@@ -1,6 +1,7 @@
 import {Navigate, useNavigate, useParams} from "react-router";
 import {useEffect, useRef, useState} from "react";
-import {PackageManager, RepositoryEndpointApi, RepositoryPermissionEndpointApi, UserRole} from "@/generated";
+import {PackageManager, UserRole} from "@/generated";
+import {repositoryApi, repositoryPermissionApi} from "@/lib/api.ts";
 import {showError} from "@/lib/errors.ts";
 import {ChevronRight, Cloud, Globe, Lock, RefreshCw, Save, Settings, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
@@ -59,8 +60,8 @@ export default function RepositoryEditView() {
     useEffect(() => {
         if (isEdit) {
             Promise.all([
-                new RepositoryEndpointApi().apiV1RepositoryIdGet({id: parseInt(id!)}),
-                new RepositoryPermissionEndpointApi().apiV1RepositoryIdPermissionsGet({id: parseInt(id!)})
+                repositoryApi.apiV1RepositoryIdGet({id: parseInt(id!)}),
+                repositoryPermissionApi.apiV1RepositoryIdPermissionsGet({id: parseInt(id!)})
             ])
                 .then(([repo, permissions]) => {
                     if (repo) {
@@ -147,9 +148,6 @@ export default function RepositoryEditView() {
     }, [id, isEdit, form]);
 
     const onSubmit = async (data: DynamicFormValues) => {
-        const api = new RepositoryEndpointApi();
-        const permissionApi = new RepositoryPermissionEndpointApi();
-
         const currentPmConfig = CONFIG_MAPPING[data.packageManager];
         const config = currentPmConfig ? data[currentPmConfig.configKey as keyof DynamicFormValues] : undefined;
 
@@ -169,7 +167,7 @@ export default function RepositoryEditView() {
             let repoId: number;
             if (isEdit) {
                 repoId = parseInt(id!)
-                await api.apiV1RepositoryPut({
+                await repositoryApi.apiV1RepositoryPut({
                     repositoryDTO: {
                         id: repoId,
                         name: data.name,
@@ -180,7 +178,7 @@ export default function RepositoryEditView() {
                     }
                 });
             } else {
-                const repo = await api.apiV1RepositoryPost({
+                const repo = await repositoryApi.apiV1RepositoryPost({
                     repositoryDTOWithoutId: {
                         name: data.name,
                         packageManager: data.packageManager,
@@ -201,11 +199,11 @@ export default function RepositoryEditView() {
             const promises: Promise<any>[] = [];
 
             for (const p of toDelete) {
-                promises.push(permissionApi.apiV1RepositoryPermissionIdDelete({id: p.id!}));
+                promises.push(repositoryPermissionApi.apiV1RepositoryPermissionIdDelete({id: p.id!}));
             }
 
             for (const p of toUpdate) {
-                promises.push(permissionApi.apiV1RepositoryPermissionPut({
+                promises.push(repositoryPermissionApi.apiV1RepositoryPermissionPut({
                     permissionScopeDTO: {
                         id: p.id!,
                         repositoryId: repoId,
@@ -217,7 +215,7 @@ export default function RepositoryEditView() {
             }
 
             for (const p of toCreate) {
-                promises.push(permissionApi.apiV1RepositoryPermissionPost({
+                promises.push(repositoryPermissionApi.apiV1RepositoryPermissionPost({
                     permissionScopeDTOWithoutId: {
                         repositoryId: repoId,
                         level: p.level,

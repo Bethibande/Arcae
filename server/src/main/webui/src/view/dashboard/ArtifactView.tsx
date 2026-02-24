@@ -2,12 +2,11 @@ import {useNavigate, useParams, useSearchParams} from "react-router";
 import {useEffect, useState} from "react";
 import {
     type ArtifactDTO,
-    ArtifactEndpointApi,
     type ArtifactVersionDTO, PackageManager,
     type PagedResponseArtifactVersionDTO,
-    RepositoryEndpointApi,
     type RepositoryOverviewDTO
 } from "@/generated";
+import {artifactApi, repositoryApi} from "@/lib/api.ts";
 import {showError} from "@/lib/errors.ts";
 import {
     ArrowLeft,
@@ -168,15 +167,13 @@ export default function ArtifactView() {
     const fetchArtifact = () => {
         if (!id) return;
         setLoading(true);
-        const api = new ArtifactEndpointApi();
-        const repoApi = new RepositoryEndpointApi();
 
-        api.apiV1ArtifactIdGet({id: parseInt(id)})
+        artifactApi.apiV1ArtifactIdGet({id: parseInt(id)})
             .then(data => {
                 setArtifact(data);
                 return Promise.all([
-                    repoApi.apiV1RepositoryOverviewIdGet({id: data.repositoryId}),
-                    repoApi.apiV1RepositoryIdCanWriteGet({id: data.repositoryId})
+                    repositoryApi.apiV1RepositoryOverviewIdGet({id: data.repositoryId}),
+                    repositoryApi.apiV1RepositoryIdCanWriteGet({id: data.repositoryId})
                 ]);
             })
             .then(([overview, canWrite]) => {
@@ -195,9 +192,8 @@ export default function ArtifactView() {
         if (!id) return;
 
         setVersionsLoading(true);
-        const api = new ArtifactEndpointApi();
 
-        api.apiV1ArtifactIdVersionsGet({id: parseInt(id), p: versionPage, s: 10})
+        artifactApi.apiV1ArtifactIdVersionsGet({id: parseInt(id), p: versionPage, s: 10})
             .then(data => {
                 setVersions(data);
                 if (data.data && data.data.length > 0) {
@@ -219,8 +215,7 @@ export default function ArtifactView() {
     const handleDeleteArtifact = () => {
         if (!artifact) return;
         setIsDeletingArtifact(true);
-        const api = new ArtifactEndpointApi();
-        api.apiV1ArtifactIdDelete({id: artifact.id!})
+        artifactApi.apiV1ArtifactIdDelete({id: artifact.id!})
             .then(() => {
                 toast.success("Artifact deleted successfully");
                 navigate(`/repositories/${artifact.repositoryId}/browse`);
@@ -236,8 +231,7 @@ export default function ArtifactView() {
         if (!selectedVersion || !artifact) return;
         setIsDeletingVersion(true);
         const isLatest = selectedVersion.version === artifact.latestVersion;
-        const api = new ArtifactEndpointApi();
-        api.apiV1ArtifactVersionIdDelete({id: selectedVersion.id!})
+        artifactApi.apiV1ArtifactVersionIdDelete({id: selectedVersion.id!})
             .then(() => {
                 toast.success("Version deleted successfully");
                 if (versions?.total === 1) {

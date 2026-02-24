@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {type ColumnDef, getCoreRowModel, useReactTable} from "@tanstack/react-table";
-import {type AccessTokenDTOWithoutToken, AccessTokenEndpointApi} from "@/generated";
+import {type AccessTokenDTOWithoutToken} from "@/generated";
+import {accessTokenApi} from "@/lib/api.ts";
 import {DataTable} from "@/components/data-table";
 import {DataTablePagination} from "@/components/data-table-pagination";
 import {Badge} from "@/components/ui/badge";
@@ -30,8 +31,7 @@ export default function AccessTokensView() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const api = new AccessTokenEndpointApi();
-            const response = await api.apiV1TokensGet();
+            const response = await accessTokenApi.apiV1TokensGet();
             setData(response || []);
         } catch (error) {
             console.error("Failed to fetch tokens", error);
@@ -50,8 +50,7 @@ export default function AccessTokensView() {
 
         setIsDeleting(true);
         try {
-            const api = new AccessTokenEndpointApi();
-            await api.apiV1TokensIdDelete({id: tokenToDelete});
+            await accessTokenApi.apiV1TokensIdDelete({id: tokenToDelete});
             toast.success("Token deleted successfully");
             setIsDeleteDialogOpen(false);
             setTokenToDelete(null);

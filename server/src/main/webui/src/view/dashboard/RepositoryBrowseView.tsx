@@ -2,12 +2,11 @@ import {useNavigate, useParams, useSearchParams} from "react-router";
 import {useEffect, useState} from "react";
 import {
     type ArtifactDTO,
-    ArtifactEndpointApi,
     type PagedResponseArtifactDTO,
     PackageManager,
-    RepositoryEndpointApi,
     type RepositoryOverviewDTO
 } from "@/generated";
+import {artifactApi, repositoryApi} from "@/lib/api.ts";
 import {showError} from "@/lib/errors.ts";
 import {
     ArrowLeft,
@@ -130,8 +129,7 @@ export default function RepositoryBrowseView() {
     useEffect(() => {
         if (!id) return;
 
-        new RepositoryEndpointApi()
-            .apiV1RepositoryOverviewIdGet({id: parseInt(id)})
+        repositoryApi.apiV1RepositoryOverviewIdGet({id: parseInt(id)})
             .then(setRepository)
             .catch(showError);
     }, [id]);
@@ -140,8 +138,7 @@ export default function RepositoryBrowseView() {
         if (!id) return;
 
         setLoading(true);
-        new ArtifactEndpointApi()
-            .apiV1ArtifactGet({
+        artifactApi.apiV1ArtifactGet({
                 r: parseInt(id),
                 q: query,
                 p: page,

@@ -5,7 +5,7 @@ import * as z from "zod";
 import {FormField} from "@/components/form-field.tsx";
 import {Input} from "@/components/ui/input.tsx";
 import {Button} from "@/components/ui/button.tsx";
-import {AuthenticationEndpointApi, UserEndpointApi} from "@/generated";
+import {authApi, userApi} from "@/lib/api.ts";
 import {showError} from "@/lib/errors.ts";
 import {toast} from "sonner";
 import {useEffect, useState} from "react";
@@ -32,8 +32,6 @@ type PasswordValues = z.infer<typeof passwordSchema>;
 
 export default function UserSettingsView() {
     const [loading, setLoading] = useState(true);
-    const api = new UserEndpointApi();
-    const authApi = new AuthenticationEndpointApi()
 
     const {updateAuthState} = useAuth()
 
@@ -72,7 +70,7 @@ export default function UserSettingsView() {
 
     const onProfileSubmit = async (data: ProfileValues) => {
         try {
-            await api.apiV1UserSelfPut({
+            await userApi.apiV1UserSelfPut({
                 userDTOWithoutRoles: {
                     name: data.name,
                     email: data.email,
@@ -89,7 +87,7 @@ export default function UserSettingsView() {
 
     const onPasswordSubmit = async (data: PasswordValues) => {
         try {
-            await api.apiV1UserSelfPasswordPut({
+            await userApi.apiV1UserSelfPasswordPut({
                 passwordResetForm: {
                     current: data.current,
                     newPassword: data.newPassword,

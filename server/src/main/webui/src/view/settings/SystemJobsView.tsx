@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {type ColumnDef, getCoreRowModel, type PaginationState, useReactTable,} from "@tanstack/react-table";
-import {JobEndpointApi, type ScheduledJobDTO, JobType, UserRole, SystemEndpointApi, JobStatus} from "@/generated";
+import {JobStatus, JobType, type ScheduledJobDTO, UserRole} from "@/generated";
+import {jobApi, systemApi} from "@/lib/api.ts";
 import {DataTable} from "@/components/data-table";
 import {DataTablePagination} from "@/components/data-table-pagination";
 import {Badge} from "@/components/ui/badge";
@@ -52,15 +53,13 @@ export default function SystemJobsView() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const api = new JobEndpointApi();
-            const response = await api.apiV1JobGet({
+            const response = await jobApi.apiV1JobGet({
                 p: pagination.pageIndex,
                 s: pagination.pageSize,
             });
             setData(response.data || []);
             setTotalPages(response.pages || 0);
 
-            const systemApi = new SystemEndpointApi();
             const caps = await systemApi.apiV1SystemK8sCapabilitiesGet();
             setDistributedEnabled(caps.distributedScheduler);
         } catch (error) {
@@ -77,9 +76,8 @@ export default function SystemJobsView() {
 
     const runNow = async (jobId: number) => {
         try {
-            const api = new JobEndpointApi();
             // Setting nextRunAt to the current time triggers immediate execution
-            await api.apiV1JobIdNextRunAtPut({
+            await jobApi.apiV1JobIdNextRunAtPut({
                 id: jobId,
                 body: new Date(),
             });

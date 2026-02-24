@@ -225,7 +225,7 @@
     </changeSet>
 
     <changeSet id="1769872646659-1"
-               author="maxbb">
+               author="bethibande">
         <dropNotNullConstraint columnDataType="timestamptz"
                                columnName="expiresAfter"
                                tableName="AccessToken"/>

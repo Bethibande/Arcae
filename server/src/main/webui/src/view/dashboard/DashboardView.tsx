@@ -3,7 +3,8 @@ import {Button} from "@/components/ui/button.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {ChevronRight, LayoutGrid, List, Plus,} from "lucide-react";
 import {useEffect, useState} from "react";
-import {RepositoryEndpointApi, type RepositoryOverviewDTO, RepositorySortOrder, UserRole} from "@/generated";
+import {type RepositoryOverviewDTO, RepositorySortOrder, UserRole} from "@/generated";
+import {repositoryApi} from "@/lib/api.ts";
 import {showError} from "@/lib/errors.ts";
 import {RepositoryCard} from "@/components/repository/RepositoryCard.tsx";
 import {useNavigate} from "react-router";
@@ -22,8 +23,7 @@ export default function DashboardView() {
     const navigate = useNavigate();
 
     const fetchRepositories = (order: RepositorySortOrder) => {
-        new RepositoryEndpointApi()
-            .apiV1RepositoryOverviewGet({ o: order })
+        repositoryApi.apiV1RepositoryOverviewGet({ o: order })
             .then(setRepositories)
             .catch(showError)
     };

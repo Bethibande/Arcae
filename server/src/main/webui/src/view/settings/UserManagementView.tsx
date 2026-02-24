@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {type ColumnDef, getCoreRowModel, type PaginationState, useReactTable,} from "@tanstack/react-table";
-import {type UserDTOWithoutPassword, UserEndpointApi, UserRole} from "@/generated";
+import {type UserDTOWithoutPassword, UserRole} from "@/generated";
+import {userApi} from "@/lib/api.ts";
 import {DataTable} from "@/components/data-table";
 import {DataTablePagination} from "@/components/data-table-pagination";
 import {Badge} from "@/components/ui/badge";
@@ -42,8 +43,7 @@ export default function UserManagementView() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const api = new UserEndpointApi();
-            const response = await api.apiV1UserGet({
+            const response = await userApi.apiV1UserGet({
                 p: pagination.pageIndex,
                 s: pagination.pageSize,
             });
@@ -66,8 +66,7 @@ export default function UserManagementView() {
 
         setIsDeleting(true);
         try {
-            const api = new UserEndpointApi();
-            await api.apiV1UserDelete({id: userToDelete});
+            await userApi.apiV1UserDelete({id: userToDelete});
             toast.success("User deleted successfully");
             setIsDeleteDialogOpen(false);
             setUserToDelete(null);

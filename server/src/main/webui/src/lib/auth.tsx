@@ -1,7 +1,9 @@
-import {AuthenticationEndpointApi, ResponseError, type UserDTOWithoutPassword} from "@/generated";
+import {ResponseError, type UserDTOWithoutPassword} from "@/generated";
+import {authApi} from "@/lib/api.ts";
 import {showError, showErrorMessage} from "@/lib/errors.ts";
 import {createContext, type ReactNode, useContext, useEffect, useState} from "react";
 import i18next from "i18next";
+import {refresh} from "@/lib/middleware.ts";
 
 export interface LoginResult {
     user?: UserDTOWithoutPassword;
@@ -10,7 +12,7 @@ export interface LoginResult {
 
 async function login(username: string, password: string): Promise<LoginResult> {
     try {
-        const response = await new AuthenticationEndpointApi().apiV1AuthLoginPost({
+        const response = await authApi.apiV1AuthLoginPost({
             credentials: {
                 username: username,
                 password: password
@@ -31,7 +33,7 @@ async function login(username: string, password: string): Promise<LoginResult> {
 }
 
 async function logout() {
-    await new AuthenticationEndpointApi().apiV1AuthLogoutPost()
+    await authApi.apiV1AuthLogoutPost()
 }
 
 export interface AuthStatus {
@@ -44,23 +46,37 @@ export interface AuthStatus {
 
 export const AuthContext = createContext<AuthStatus | undefined>(undefined);
 
+let loading = false
+
 export const AuthProvider = ({children}: { children: ReactNode }) => {
     const [auth, setAuth] = useState<UserDTOWithoutPassword | undefined>(undefined);
     const [pending, setPending] = useState<boolean>(true);
 
     function updateAuthState() {
+        if (loading) return;
+        loading = true;
+
         fetch("/api/v1/auth/me", {
             headers: {
                 "Accept": "application/json",
             }
         }).then(response => {
             if (response.status === 404) {
-                setAuth(undefined);
-                setPending(false);
+                refresh().then(result => {
+                    if (result) {
+                        loading = false;
+                        updateAuthState()
+                    } else {
+                        setAuth(undefined);
+                        setPending(false);
+                        loading = false;
+                    }
+                }).catch(showError)
             } else if (response.ok) {
                 response.json().then(user => {
                     setAuth(user)
                     setPending(false)
+                    loading = false;
                 })
             } else {
                 showErrorMessage(i18next.t("login.error.load"))

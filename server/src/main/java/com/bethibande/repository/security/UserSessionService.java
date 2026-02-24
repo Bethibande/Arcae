@@ -1,5 +1,6 @@
 package com.bethibande.repository.security;
 
+import com.bethibande.repository.jpa.security.RefreshToken;
 import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.User;
 import io.quarkus.cache.CacheInvalidate;
@@ -17,7 +18,8 @@ public class UserSessionService {
     public static final String USER_SESSION_CACHE = "user-sessions";
 
     // TODO: Config
-    public static final Duration SESSION_LIFETIME = Duration.ofDays(7);
+    public static final Duration SESSION_LIFETIME = Duration.ofHours(1);
+    public static final Duration REFRESH_TOKEN_LIFETIME = Duration.ofDays(7);
 
     @Transactional
     @CacheResult(cacheName = USER_SESSION_CACHE)
@@ -45,6 +47,19 @@ public class UserSessionService {
         session.persist();
 
         return session;
+    }
+
+
+    @Transactional
+    public RefreshToken createRefreshTokenForUser(final User user) {
+        final RefreshToken token = new RefreshToken();
+        token.user = user;
+        token.created = Instant.now();
+        token.token = PasswordUtil.generateSecureRandomString(256);
+        token.token = PasswordUtil.generateSecureRandomString(512);
+        token.persist();
+
+        return token;
     }
 
 }

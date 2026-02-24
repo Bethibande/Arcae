@@ -8,7 +8,7 @@ import {FormField} from "@/components/form-field.tsx";
 import {Input} from "@/components/ui/input.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {handleSubmit} from "@/lib/forms.ts";
-import {SetupEndpointApi} from "@/generated";
+import {setupApi} from "@/lib/api.ts";
 import {useAuth} from "@/lib/auth.tsx";
 import {showError} from "@/lib/errors.ts";
 import {useNavigate} from "react-router";
@@ -60,7 +60,7 @@ export function SetupUserView() {
     const navigate = useNavigate()
 
     function submit(data: z.output<typeof formSchema>) {
-        new SetupEndpointApi().apiV1SetupUserPost({
+        setupApi.apiV1SetupUserPost({
             userDTOWithoutId: data
         }).then(() => {
             login(data.name, data.password)

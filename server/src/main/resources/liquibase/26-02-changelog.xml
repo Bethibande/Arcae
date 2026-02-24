@@ -121,7 +121,9 @@
 
     <changeSet id="1769969568855-1" author="bethibande">
         <sql>
-            UPDATE repository SET packagemanager = 'MAVEN' WHERE packagemanager = 'MAVEN_3';
+            UPDATE repository
+            SET packagemanager = 'MAVEN'
+            WHERE packagemanager = 'MAVEN_3';
         </sql>
     </changeSet>
 
@@ -446,10 +448,73 @@
     </changeSet>
 
     <changeSet id="1771774655044-1"
-               author="maxbb">
+               author="bethibande">
+        <!-- Messed up the author, so we need this to prevent re-runs on existing deployments -->
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="ScheduledJob" columnName="executionStartedAt"/>
+            </not>
+        </preConditions>
+
         <addColumn tableName="ScheduledJob">
             <column name="executionStartedAt"
                     type="timestamptz"/>
         </addColumn>
+    </changeSet>
+    <changeSet id="1771841226713-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="RefreshToken_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1771841226713-2"
+               author="bethibande">
+        <createTable tableName="RefreshToken">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_refreshtoken"/>
+            </column>
+            <column name="user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="token"
+                    type="varchar(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1771841226713-3"
+               author="bethibande">
+        <addUniqueConstraint columnNames="token"
+                             constraintName="uc_refreshtoken_token"
+                             tableName="RefreshToken"/>
+    </changeSet>
+    <changeSet id="1771841226713-4"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="user_id"
+                                 baseTableName="RefreshToken"
+                                 constraintName="FK_REFRESHTOKEN_ON_USER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+    <changeSet id="1771841255749-1" author="bethibande">
+        <createIndex tableName="RefreshToken" indexName="refreshtoken_token">
+            <column name="token"/>
+        </createIndex>
+        <createIndex tableName="RefreshToken" indexName="refreshtoken_created">
+            <column name="created"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1771841344186-1" author="bethibande">
+        <createIndex tableName="usersession" indexName="usersession_created">
+            <column name="created"/>
+        </createIndex>
     </changeSet>
 </databaseChangeLog>

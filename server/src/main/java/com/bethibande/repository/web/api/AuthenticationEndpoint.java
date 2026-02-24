@@ -1,5 +1,6 @@
 package com.bethibande.repository.web.api;
 
+import com.bethibande.repository.jpa.security.RefreshToken;
 import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserDTOWithoutPassword;
@@ -12,6 +13,7 @@ import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
@@ -32,6 +34,7 @@ public class AuthenticationEndpoint {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationEndpoint.class);
 
     private static final String DUMMY_BCRYPT_HASH = BcryptUtil.bcryptHash(PasswordUtil.generateSecureRandomString(17));
+    private static final String REFRESH_TOKEN_COOKIE_NAME = "RefreshToken";
 
     @Inject
     protected UserSessionService userSessionService;
@@ -87,19 +90,46 @@ public class AuthenticationEndpoint {
         }
     }
 
+    @GET
+    @PermitAll
+    @Transactional
+    @Path("/refresh")
+    public Response refresh(final @CookieParam(REFRESH_TOKEN_COOKIE_NAME) String refreshToken) {
+        final RefreshToken token = RefreshToken.find("token = ?1", refreshToken).firstResult();
+        final Instant now = Instant.now();
+
+        if (token == null || token.isExpired(now)) throw new BadRequestException("Invalid refresh token");
+
+        token.delete();
+        return doLogin(token.user);
+    }
+
     public Response doLogin(final User user) {
         final UserSession session = userSessionService.createSessionForUser(user);
-        final Duration maxAge = Duration.between(Instant.now(), session.expiresAfter());
+        final Duration maxSessionAge = Duration.between(Instant.now(), session.expiresAfter());
+
+        final RefreshToken refreshToken = userSessionService.createRefreshTokenForUser(user);
+        final Duration maxRefreshTokenAge = Duration.between(Instant.now(), refreshToken.expiresAfter());
 
         return Response.ok(UserDTOWithoutPassword.from(user))
-                .cookie(new NewCookie.Builder(UserAuthenticationMechanism.COOKIE_NAME)
-                        .value(session.token)
-                        .httpOnly(true)
-                        .secure(!isDevMode())
-                        .sameSite(NewCookie.SameSite.STRICT)
-                        .path("/")
-                        .maxAge((int) maxAge.toSeconds())
-                        .build())
+                .cookie(
+                        new NewCookie.Builder(UserAuthenticationMechanism.COOKIE_NAME)
+                                .value(session.token)
+                                .httpOnly(true)
+                                .secure(!isDevMode())
+                                .sameSite(NewCookie.SameSite.STRICT)
+                                .path("/")
+                                .maxAge((int) maxSessionAge.toSeconds())
+                                .build(),
+                        new NewCookie.Builder(REFRESH_TOKEN_COOKIE_NAME)
+                                .value(refreshToken.token)
+                                .httpOnly(true)
+                                .secure(!isDevMode())
+                                .sameSite(NewCookie.SameSite.STRICT)
+                                .path("/api/v1/auth/refresh")
+                                .maxAge((int) maxRefreshTokenAge.toSeconds())
+                                .build()
+                )
                 .build();
     }
 
@@ -111,20 +141,29 @@ public class AuthenticationEndpoint {
         if (session != null) userSessionService.invalidateSession(session.token);
 
         return Response.ok()
-                .cookie(new NewCookie.Builder(UserAuthenticationMechanism.COOKIE_NAME)
-                        .httpOnly(true)
-                        .secure(!isDevMode())
-                        .path("/")
-                        .maxAge(0)
-                        .value("")
-                        .build())
+                .cookie(
+                        new NewCookie.Builder(UserAuthenticationMechanism.COOKIE_NAME)
+                                .httpOnly(true)
+                                .secure(!isDevMode())
+                                .path("/")
+                                .maxAge(0)
+                                .value("")
+                                .build(),
+                        new NewCookie.Builder(REFRESH_TOKEN_COOKIE_NAME)
+                                .httpOnly(true)
+                                .secure(!isDevMode())
+                                .path("/api/v1/auth/refresh")
+                                .maxAge(0)
+                                .value("")
+                                .build()
+                )
                 .build();
     }
 
     @GET
     @PermitAll
     @Path("/me")
-    public UserDTOWithoutPassword me(final @HeaderParam("User-Agent") String userAgent) {
+    public UserDTOWithoutPassword me() {
         if (identity.isAnonymous()) throw new NotFoundException();
 
         final User user = identity.getPrincipal(User.class);

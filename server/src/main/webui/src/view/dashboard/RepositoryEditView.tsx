@@ -3,7 +3,7 @@ import {useEffect, useRef, useState} from "react";
 import {PackageManager, UserRole} from "@/generated";
 import {repositoryApi, repositoryPermissionApi} from "@/lib/api.ts";
 import {showError} from "@/lib/errors.ts";
-import {ChevronRight, Cloud, Globe, Lock, RefreshCw, Save, Settings, Trash2} from "lucide-react";
+import {ChevronRight, Cloud, Globe, Lock, RefreshCw, Save, Settings, Trash2, Zap} from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
 import {Card, CardContent} from "@/components/ui/card.tsx";
 import {Input} from "@/components/ui/input.tsx";
@@ -239,6 +239,11 @@ export default function RepositoryEditView() {
             id: "replication",
             label: "Replication/Mirroring",
             icon: RefreshCw
+        }] : []),
+        ...(selectedPackageManager === PackageManager.Maven || selectedPackageManager === PackageManager.Oci ? [{
+            id: "behavior",
+            label: "Behavioral Policies",
+            icon: Zap
         }] : []),
         {id: "storage", label: "Storage (S3)", icon: Cloud},
         ...(selectedPackageManager === PackageManager.Oci ? [{

@@ -29,6 +29,7 @@ import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -293,10 +294,22 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         return this.backend.get(toBlobKey(namespace, digest), offset, length);
     }
 
+    public WebApplicationException createBlobExistsException() {
+        return new WebApplicationException(Response.status(Response.Status.CONFLICT)
+                .entity(OCIError.of(OCIErrorCodes.DENIED, "Blob already exists", "The blob already exists in the repository and cannot be overwritten"))
+                .build());
+    }
+
     public void uploadBlob(final User user, final String namespace, final String digest, final StreamHandle stream) {
         checkWriteAccess(user);
 
         final String key = toBlobKey(namespace, digest);
+        if (this.config.allowRedeployments() != null
+                && !this.config.allowRedeployments()
+                && this.backend.head(key)) {
+            throw createBlobExistsException();
+        }
+
         this.backend.put(key, stream);
 
         QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).run(() -> {
@@ -376,6 +389,13 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
 
         final String pendingKey = toPendingBlobKey(namespace, handle.sessionId().toString());
         final String blobKey = toBlobKey(namespace, digest);
+
+        if (this.config.allowRedeployments() != null
+                && !this.config.allowRedeployments()
+                && this.backend.head(blobKey)) {
+            this.backend.abortMultipartUpload(handle.uploadId(), pendingKey);
+            throw createBlobExistsException();
+        }
 
         this.backend.completeMultipartUpload(handle.uploadId(), pendingKey);
 
@@ -696,6 +716,15 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         final String hash = hashAndValidate(contents, reference);
         final String digest = "sha256:" + hash;
         final String fileKey = toManifestKey(namespace, digest);
+
+        if (this.config.allowRedeployments() != null
+                && !this.config.allowRedeployments()
+                && this.backend.head(fileKey)) {
+            throw new WebApplicationException(Response.status(Response.Status.CONFLICT)
+                    .entity(OCIError.of(OCIErrorCodes.DENIED, "Manifest already exists", "The manifest already exists in the repository"))
+                    .build());
+        }
+
         putFile(fileKey, contents, stream.contentType());
 
         return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {

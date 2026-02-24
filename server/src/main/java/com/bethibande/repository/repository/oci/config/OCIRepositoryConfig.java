@@ -9,6 +9,7 @@ public record OCIRepositoryConfig(
         @NotNull
         S3Config s3Config,
         @NotNull
-        OCIRoutingConfig routingConfig
+        OCIRoutingConfig routingConfig,
+        Boolean allowRedeployments
 ) {
 }

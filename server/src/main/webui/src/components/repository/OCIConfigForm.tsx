@@ -19,6 +19,7 @@ export const ociSchema = z.object({
         message: "All routing fields are required when routing is enabled",
         path: ["enabled"]
     }),
+    allowRedeployments: z.boolean().optional(),
 });
 
 export type OCIConfig = z.infer<typeof ociSchema>;
@@ -37,7 +38,8 @@ export const defaultOCIConfig: OCIConfig = {
         targetPort: 80,
         gatewayName: "",
         gatewayNamespace: ""
-    }
+    },
+    allowRedeployments: true
 };
 
 interface OCIConfigFormProps<TFieldValues extends FieldValues> {
@@ -48,6 +50,7 @@ interface OCIConfigFormProps<TFieldValues extends FieldValues> {
 export function OCIConfigForm<TFieldValues extends FieldValues>({ control, prefix }: OCIConfigFormProps<TFieldValues>) {
     const [k8sRoutingSupported, setK8sRoutingSupported] = useState(false);
     const routingToggleId = "oci-routing-toggle";
+    const redeployToggleId = "oci-redeploy-toggle";
 
     useEffect(() => {
         new SystemEndpointApi().apiV1SystemK8sCapabilitiesGet()
@@ -66,6 +69,35 @@ export function OCIConfigForm<TFieldValues extends FieldValues>({ control, prefi
 
     return (
         <div className="space-y-6">
+            <div id="behavior" className="space-y-6 pt-4">
+                <h2 className="text-xl font-bold tracking-tight">Behavioral Policies</h2>
+                <Card>
+                    <CardContent className="divide-y p-0">
+                        <div className="flex items-center justify-between p-6">
+                            <div className="space-y-0.5">
+                                <label className="text-base font-semibold" htmlFor={redeployToggleId}>Allow re-deployments</label>
+                                <p className="text-sm text-muted-foreground">
+                                    Permit overwriting existing tags by pushing again (enable if you want to allow re-deployments).
+                                </p>
+                            </div>
+                            <div className="flex-none">
+                                <Controller
+                                    name={`${prefix}.allowRedeployments` as any}
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Switch
+                                            id={redeployToggleId}
+                                            checked={!!field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    )}
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
             <S3ConfigForm control={control} prefix={`${prefix}.s3Config`} />
 
             <div id="external-access" className="space-y-6 pt-4">

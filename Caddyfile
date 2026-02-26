@@ -2,7 +2,7 @@
     debug
 }
 
-:8081 {
+:8080 {
     rewrite * /repositories/oci/docker{uri}
     reverse_proxy http://host.docker.internal:8080
 }

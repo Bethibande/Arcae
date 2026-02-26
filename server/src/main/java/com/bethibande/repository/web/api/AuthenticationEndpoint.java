@@ -165,6 +165,7 @@ public class AuthenticationEndpoint {
     @Path("/me")
     public UserDTOWithoutPassword me() {
         if (identity.isAnonymous()) throw new NotFoundException();
+        if (!(identity.getPrincipal() instanceof User)) throw new BadRequestException("You are not a user");
 
         final User user = identity.getPrincipal(User.class);
         return UserDTOWithoutPassword.from(user);

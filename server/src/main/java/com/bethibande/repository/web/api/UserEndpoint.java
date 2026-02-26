@@ -1,7 +1,6 @@
 package com.bethibande.repository.web.api;
 
 import com.bethibande.repository.jpa.user.*;
-import com.bethibande.repository.security.SystemAuthentication;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
@@ -95,9 +94,6 @@ public class UserEndpoint {
 
                     final BooleanPredicateClausesStep<?, ?> step = q.bool();
                     predicates.forEach(step::should);
-                    step.must(q.not(q.match()
-                            .field("name")
-                            .matching(SystemAuthentication.SYSTEM_USER_NAME)));
 
                     return step;
                 })
@@ -122,7 +118,7 @@ public class UserEndpoint {
     @Transactional
     public PagedResponse<UserDTOWithoutPassword> list(final @QueryParam("p") @Min(0) int page,
                                                       final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
-        final PanacheQuery<User> query = User.find("?1 NOT MEMBER OF roles", Sort.ascending("name"), UserRole.SYSTEM).page(page, pageSize);
+        final PanacheQuery<User> query = User.findAll(Sort.ascending("name")).page(page, pageSize);
 
         final long total = query.count();
         final int totalPages = (int) Math.ceil(total / (double) pageSize);
@@ -142,8 +138,6 @@ public class UserEndpoint {
     @Transactional
     public void delete(final @QueryParam("id") long id) {
         final User user = User.findById(id);
-        if (user != null && user.roles.contains(UserRole.SYSTEM))
-            throw new NotAuthorizedException("System users cannot be deleted");
         if (authenticatedUser.getSelf().id == id) throw new NotAuthorizedException("Cannot delete self");
 
         User.deleteById(id);

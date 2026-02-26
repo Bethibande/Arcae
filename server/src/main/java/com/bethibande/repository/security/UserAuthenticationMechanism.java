@@ -1,5 +1,7 @@
 package com.bethibande.repository.security;
 
+import com.bethibande.repository.security.system.SystemAuthenticationRequest;
+import com.bethibande.repository.web.management.ManagementServer;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.credential.TokenCredential;
@@ -15,6 +17,7 @@ import io.vertx.core.http.Cookie;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.http.HttpHeaders;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.Base64;
 import java.util.Optional;
@@ -23,6 +26,9 @@ import java.util.Optional;
 public class UserAuthenticationMechanism implements HttpAuthenticationMechanism {
 
     public static final String COOKIE_NAME = "Identity";
+
+    @ConfigProperty(name = ManagementServer.MANAGEMENT_PORT_PROPERTY)
+    protected int managementPort;
 
     protected AuthenticationRequest cookieAuth(final Cookie cookie) {
         final String text = cookie.getValue();
@@ -42,6 +48,10 @@ public class UserAuthenticationMechanism implements HttpAuthenticationMechanism 
     @Override
     public Uni<SecurityIdentity> authenticate(final RoutingContext context, final IdentityProviderManager identityProviderManager) {
         AuthenticationRequest request = null;
+
+        if (context.request().localAddress().port() == managementPort) {
+            request = new SystemAuthenticationRequest();
+        }
 
         final Cookie cookie = context.request().getCookie(COOKIE_NAME);
         if (cookie != null) {

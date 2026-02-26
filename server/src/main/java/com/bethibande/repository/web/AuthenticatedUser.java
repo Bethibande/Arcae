@@ -7,6 +7,8 @@ import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 
+import java.security.Principal;
+
 @RequestScoped
 public class AuthenticatedUser {
 
@@ -15,7 +17,10 @@ public class AuthenticatedUser {
 
     public User getSelf() {
         if (identity.isAnonymous()) return null;
-        return identity.getPrincipal(User.class);
+        final Principal principal = identity.getPrincipal();
+        if (principal instanceof User user) return user;
+
+        return null;
     }
 
     public AccessToken getAccessToken() {

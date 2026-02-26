@@ -63,7 +63,7 @@ public class JobScheduler {
     @Inject
     public JobScheduler(final KubernetesLeaderService kubernetesLeaderService,
                         final KubernetesSupport kubernetesSupport,
-                        final @ConfigProperty(name = "repository.scheduler.distributed") boolean distributedAllowed) {
+                        final @ConfigProperty(name = "repository.distributed") boolean distributedAllowed) {
         this.kubernetesLeaderService = kubernetesLeaderService;
 
         this.distributed = distributedAllowed

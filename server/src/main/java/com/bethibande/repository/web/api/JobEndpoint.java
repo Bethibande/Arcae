@@ -3,7 +3,7 @@ package com.bethibande.repository.web.api;
 import com.bethibande.repository.jobs.*;
 import com.bethibande.repository.jobs.runner.LocalJobRunner;
 import com.bethibande.repository.k8s.KubernetesLeaderService;
-import com.bethibande.repository.security.SystemAuthentication;
+import com.bethibande.repository.util.HttpClientUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
@@ -22,7 +22,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 @ApplicationScoped
@@ -39,15 +38,12 @@ public class JobEndpoint {
     protected ObjectMapper objectMapper;
 
     @Inject
-    protected SystemAuthentication systemAuthentication;
-
-    @Inject
     protected LocalJobRunner localJobRunner;
 
     @Inject
     protected RemoteWorkerScheduler remoteWorkerScheduler;
 
-    @ConfigProperty(name = "quarkus.http.port")
+    @ConfigProperty(name = "repository.management.port")
     protected int port;
 
     private final HttpClient client = HttpClient.newHttpClient();
@@ -60,8 +56,7 @@ public class JobEndpoint {
         final String fqDomain = this.remoteWorkerScheduler.resolvePodHostname(hostname);
         final URI uri = URI.create("http://%s:%d%s".formatted(fqDomain, this.port, path));
         return HttpRequest.newBuilder()
-                .uri(uri)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(this.systemAuthentication.getAccessToken().token));
+                .uri(uri);
     }
 
     public HttpRequest.Builder requestBuilder(final String path) {
@@ -76,22 +71,12 @@ public class JobEndpoint {
         }
     }
 
-    protected <T> HttpResponse.BodyHandler<T> jsonBodyHandler(final Class<T> clazz) {
-        return (_) -> HttpResponse.BodySubscribers.mapping(HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8), (json) -> {
-            try {
-                return this.objectMapper.readValue(json, clazz);
-            } catch (final JsonProcessingException ex) {
-                throw new RuntimeException(ex);
-            }
-        });
-    }
-
     protected <T> T propagate(final String path, final String method, final Class<T> clazz, final Object requestBody) throws IOException, InterruptedException {
         final HttpRequest request = requestBuilder(path)
                 .method(method, requestBody == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(this.toJson(requestBody)))
                 .build();
 
-        final HttpResponse<T> response = this.client.send(request, jsonBodyHandler(clazz));
+        final HttpResponse<T> response = this.client.send(request, HttpClientUtil.jsonBodyHandler(clazz));
         if (response.statusCode() != 200) {
             throw new WebApplicationException(response.statusCode());
         }

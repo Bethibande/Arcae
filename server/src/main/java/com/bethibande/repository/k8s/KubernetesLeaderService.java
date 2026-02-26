@@ -50,7 +50,7 @@ public class KubernetesLeaderService {
 
     private final List<LeaderCallbacks> subscriptions = new CopyOnWriteArrayList<>();
 
-    @ConfigProperty(name = "repository.scheduler.distributed")
+    @ConfigProperty(name = "repository.distributed")
     protected boolean distributedAllowed;
 
     void onStart(final @Observes StartupEvent startupEvent) {

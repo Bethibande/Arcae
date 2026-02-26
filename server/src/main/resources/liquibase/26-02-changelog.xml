@@ -517,4 +517,15 @@
             <column name="created"/>
         </createIndex>
     </changeSet>
+    <changeSet id="1772101743074-1" author="bethibande">
+        <sql>
+            DELETE FROM accesstoken t WHERE t.owner_id = (SELECT id FROM users u WHERE u.name = 'system')
+        </sql>
+        <sql>
+            DELETE FROM user_roles r WHERE r.user_id = (SELECT id FROM users u WHERE u.name = 'system')
+        </sql>
+        <sql>
+            DELETE FROM users u WHERE u.name = 'system'
+        </sql>
+    </changeSet>
 </databaseChangeLog>

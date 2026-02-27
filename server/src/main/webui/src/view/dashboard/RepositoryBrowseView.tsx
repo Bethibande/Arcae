@@ -39,7 +39,7 @@ function RepositoryConfigDetails({ repository }: { repository: RepositoryOvervie
     const [copied, setCopied] = useState<string | null>(null);
 
     const getSnippets = (): RepositorySnippet[] => {
-        const baseUrl = `${window.location.origin}/repository/maven/${repository.repository.name}`;
+        const baseUrl = `${window.location.origin}/repositories/maven/${repository.repository.name}`;
         if (repository.repository.packageManager === PackageManager.Maven) {
             return [
                 {

@@ -528,4 +528,12 @@
             DELETE FROM users u WHERE u.name = 'system'
         </sql>
     </changeSet>
+
+    <changeSet id="1772182002168-1"
+               author="bethibande">
+        <addColumn tableName="ArtifactVersion">
+            <column name="mirrorTTL"
+                    type="timestamptz"/>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

@@ -218,7 +218,7 @@ export default function ArtifactView() {
         artifactApi.apiV1ArtifactIdDelete({id: artifact.id!})
             .then(() => {
                 toast.success("Artifact deleted successfully");
-                navigate(`/repositories/${artifact.repositoryId}/browse`);
+                navigate(`/repository/${artifact.repositoryId}/browse`);
             })
             .catch(showError)
             .finally(() => {
@@ -235,7 +235,7 @@ export default function ArtifactView() {
             .then(() => {
                 toast.success("Version deleted successfully");
                 if (versions?.total === 1) {
-                    navigate(`/repositories/${artifact.repositoryId}/browse`);
+                    navigate(`/repository/${artifact.repositoryId}/browse`);
                 } else {
                     fetchVersions();
                     if (isLatest) {
@@ -274,7 +274,7 @@ export default function ArtifactView() {
                           onClick={() => navigate("/")}>Repositories</span>
                     <ChevronRight className="size-4"/>
                     <span className="cursor-pointer hover:text-foreground"
-                          onClick={() => navigate(`/repositories/${artifact.repositoryId}/browse`)}>Browse</span>
+                          onClick={() => navigate(`/repository/${artifact.repositoryId}/browse`)}>Browse</span>
                     <ChevronRight className="size-4"/>
                     <span className="text-foreground truncate">{artifact.artifactId}</span>
                 </div>

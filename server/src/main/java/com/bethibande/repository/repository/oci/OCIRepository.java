@@ -18,6 +18,7 @@ import com.bethibande.repository.repository.oci.config.OCIRoutingConfig;
 import com.bethibande.repository.repository.oci.details.OCILayerReference;
 import com.bethibande.repository.repository.oci.details.OCIManifestDetails;
 import com.bethibande.repository.repository.oci.details.OCIManifestReference;
+import com.bethibande.repository.util.CopyingInputStream;
 import com.bethibande.repository.web.exception.RequestTooLongException;
 import com.bethibande.repository.web.repositories.oci.OCIError;
 import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
@@ -27,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
+import jakarta.persistence.LockModeType;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.WebApplicationException;
@@ -36,19 +38,21 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.Executor;
 
 public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifier {
 
     public static final long MAX_MANIFEST_SIZE = 10_000_000L;
+
+    // TODO: Configuration
+    public static final Duration MIRROR_TTL = Duration.ofHours(1);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OCIRepository.class);
 
@@ -57,19 +61,30 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
     private final KubernetesSupport kubernetesSupport;
 
     private final S3Backend backend;
+    private final OCIMirrorSupport mirrorSupport;
+
+    private final Executor executor;
 
     public OCIRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
-        this(info, ctx.objectMapper().readValue(info.settings, OCIRepositoryConfig.class), ctx.kubernetesSupport());
+        this(
+                info,
+                ctx.objectMapper().readValue(info.settings, OCIRepositoryConfig.class),
+                ctx.kubernetesSupport(),
+                ctx.executor()
+        );
     }
 
     public OCIRepository(final Repository info,
                          final OCIRepositoryConfig config,
-                         final KubernetesSupport kubernetesSupport) {
+                         final KubernetesSupport kubernetesSupport,
+                         final Executor executor) {
         this.info = info;
         this.config = config;
         this.kubernetesSupport = kubernetesSupport;
+        this.executor = executor;
 
         this.backend = new S3Backend(config.s3Config());
+        this.mirrorSupport = new OCIMirrorSupport(config);
     }
 
     @Override
@@ -201,7 +216,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         }
     }
 
-    protected StoredFile findManifestFileByTag(final String namespace, final String tag) {
+    protected ArtifactVersion getArtifactVersionByTag(final String namespace, final String tag, final LockModeType lockMode) {
         final ArtifactAndGroupId artifactAndGroupId = extractArtifactAndGroupId(namespace);
         final String groupId = artifactAndGroupId.groupId();
         final String artifactId = artifactAndGroupId.artifactId();
@@ -210,10 +225,16 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
             final Artifact artifact = Artifact.find("groupId = ?1 and artifactId = ?2 and repository.id = ?3", groupId, artifactId, info.id).firstResult();
             if (artifact == null) return null;
 
-            final ArtifactVersion version = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, tag).firstResult();
-            if (version == null) return null;
+            return ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, tag).withLock(lockMode).firstResult();
+        });
+    }
 
-            return version.manifest;
+    protected StoredFile findManifestFileByTag(final String namespace, final String tag) {
+        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+            final ArtifactVersion version = getArtifactVersionByTag(namespace, tag, LockModeType.NONE);
+            return version != null
+                    ? version.manifest
+                    : null;
         });
     }
 
@@ -221,9 +242,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         return reference.matches("^sha256:[0-9a-fA-F]{64}$|^sha512:[0-9a-fA-F]{128}$");
     }
 
-    public OCIStreamHandle getManifest(final User user, final String namespace, final String reference) {
-        checkViewAccess(user);
-
+    private OCIStreamHandle getManifestInternal(final String namespace, final String reference) {
         if (isDigest(reference)) {
             final StreamHandle handle = this.backend.get(toManifestKey(namespace, reference));
             if (handle == null) return null;
@@ -245,9 +264,88 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         }
     }
 
+    private ArtifactVersion getArtifactVersionByDigest(final String namespace, final String digest, final LockModeType lockMode) {
+        final String key = toManifestKey(namespace, digest);
+
+        return QuarkusTransaction.joiningExisting().call(() -> ArtifactVersion.find("manifest.key = ?1", key).withLock(lockMode).firstResult());
+    }
+
+    private ArtifactVersion getArtifactVersionByReference(final String namespace, final String reference, final LockModeType lockMode) {
+        return isDigest(reference)
+                ? getArtifactVersionByDigest(namespace, reference, lockMode)
+                : getArtifactVersionByTag(namespace, reference, lockMode);
+    }
+
+    public OCIStreamHandle getManifest(final User user, final String namespace, final String reference) {
+        checkViewAccess(user);
+
+        if (isDigest(reference)) { // Digest can't change so we can skip the mirror if the data is present
+            final OCIStreamHandle result = getManifestInternal(namespace, reference);
+            if (result != null) return result;
+        }
+
+        if (this.mirrorSupport.isMirroringEnabled()) {
+            final ArtifactVersion version = getArtifactVersionByReference(namespace, reference, LockModeType.NONE);
+
+            if (version == null || version.mirrorTTLExpired(Instant.now())) {
+                final OCIStreamHandle remote = this.mirrorSupport.getManifestFromMirror(namespace, reference);
+                if (remote != null) {
+                    final PutOCIManifestResult result = putManifest(null, namespace, reference, remote.streamHandle(), true);
+
+                    QuarkusTransaction.requiringNew().run(() -> {
+                        if (result.version() != null) {
+                            final Long versionId = result.version().id;
+                            QuarkusTransaction.requiringNew().run(() -> {
+                                ArtifactVersion.update(
+                                        "mirrorTTL = ?1 where id = ?2",
+                                        Instant.now().plus(MIRROR_TTL),
+                                        versionId
+                                );
+                            });
+                        }
+                    });
+                }
+            }
+        }
+
+        return getManifestInternal(namespace, reference);
+    }
+
     public OCIContentInfo getManifestInfo(final User user, final String namespace, final String reference) {
         checkViewAccess(user);
 
+        final OCIContentInfo localInfo = getManifestInfoInternal(namespace, reference);
+        final boolean isDigest = isDigest(reference);
+
+        if (this.mirrorSupport.isMirroringEnabled()) {
+            final ArtifactVersion version = getArtifactVersionByReference(namespace, reference, LockModeType.NONE);
+            final boolean needsSync = (localInfo == null) || (!isDigest && version.mirrorTTLExpired(Instant.now()));
+
+            if (needsSync) {
+                final OCIStreamHandle remote = this.mirrorSupport.getManifestFromMirror(namespace, reference);
+
+                if (remote != null) {
+                    final PutOCIManifestResult putResult = putManifest(null, namespace, reference, remote.streamHandle(), true);
+
+                    if (putResult.version() != null) {
+                        final Long versionId = putResult.version().id;
+                        QuarkusTransaction.requiringNew().run(() -> {
+                            ArtifactVersion.update(
+                                    "mirrorTTL = ?1 where id = ?2",
+                                    Instant.now().plus(MIRROR_TTL),
+                                    versionId
+                            );
+                        });
+                    }
+
+                    return getManifestInfoInternal(namespace, reference);
+                }
+            }
+        }
+        return localInfo;
+    }
+
+    private OCIContentInfo getManifestInfoInternal(final String namespace, final String reference) {
         if (isDigest(reference)) {
             final ObjectInfo info = this.backend.headObject(toManifestKey(namespace, reference));
             if (info == null) return null;
@@ -276,13 +374,72 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         checkViewAccess(user);
 
         final ObjectInfo info = this.backend.headObject(toBlobKey(namespace, digest));
-        if (info == null) return null;
+        if (info == null) {
+            if (this.mirrorSupport.isMirroringEnabled()) {
+                return this.mirrorSupport.headBlobFromMirror(namespace, digest);
+            }
+            return null;
+        }
         return new OCIContentInfo(digest, info.contentLength(), info.contentType());
     }
 
     public StreamHandle getBlob(final User user, final String namespace, final String digest) {
         checkViewAccess(user);
-        return this.backend.get(toBlobKey(namespace, digest));
+        final StreamHandle handle = this.backend.get(toBlobKey(namespace, digest));
+
+        if (handle == null && this.mirrorSupport.isMirroringEnabled()) {
+            final OCIStreamHandle result = this.mirrorSupport.getBlobFromMirror(namespace, digest);
+            if (result != null && this.mirrorSupport.isStoreArtifacts()) {
+                final StreamHandle resultHandle = result.streamHandle();
+                final InputStream pipe = pipeAndStoreData(namespace, digest, resultHandle);
+
+                return new StreamHandle(
+                        pipe,
+                        resultHandle.contentType(),
+                        resultHandle.contentLength()
+                );
+            }
+
+            return result != null
+                    ? result.streamHandle()
+                    : null;
+        }
+        return handle;
+    }
+
+    private InputStream pipeAndStoreData(final String namespace, final String digest, final StreamHandle handle) {
+        try {
+            final PipedInputStream sink = new PipedInputStream(1024 * 1024);
+            final PipedOutputStream pipe = new PipedOutputStream(sink);
+
+            final CopyingInputStream source = new CopyingInputStream(handle.stream(), pipe);
+            this.executor.execute(() -> {
+                final StreamHandle driverHandle = new StreamHandle(
+                        source,
+                        handle.contentType(),
+                        handle.contentLength()
+                );
+                this.uploadBlob(null, namespace, digest, driverHandle, true);
+            });
+
+            return sink;
+        } catch (final IOException ex) {
+            LOGGER.error("Failed to pipe stream when mirroring data");
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private StreamHandle mirrorBlobRange(final String namespace, final String digest, final long offset, final long length) {
+        final OCIStreamHandle result = this.mirrorSupport.getBlobRangeFromMirror(
+                namespace,
+                digest,
+                offset,
+                offset + length - 1
+        );
+
+        return result != null
+                ? result.streamHandle()
+                : null;
     }
 
     public StreamHandle getBlob(final User user,
@@ -291,7 +448,13 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
                                 final long offset,
                                 final long length) {
         checkViewAccess(user);
-        return this.backend.get(toBlobKey(namespace, digest), offset, length);
+
+        final String key = toBlobKey(namespace, digest);
+        final StreamHandle handle = this.backend.get(key, offset, length);
+        if (handle == null && this.mirrorSupport.isMirroringEnabled()) {
+            return mirrorBlobRange(namespace, digest, offset, length); // Can't store this here as it is just a part of the blob
+        }
+        return handle;
     }
 
     public WebApplicationException createBlobExistsException() {
@@ -300,8 +463,12 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
                 .build());
     }
 
-    public void uploadBlob(final User user, final String namespace, final String digest, final StreamHandle stream) {
-        checkWriteAccess(user);
+    public void uploadBlob(final User user,
+                           final String namespace,
+                           final String digest,
+                           final StreamHandle stream,
+                           final boolean skipAuth) {
+        if (!skipAuth) checkWriteAccess(user);
 
         final String key = toBlobKey(namespace, digest);
         if (this.config.allowRedeployments() != null
@@ -707,8 +874,9 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
     public PutOCIManifestResult putManifest(final User user,
                                             final String namespace,
                                             final String reference,
-                                            final StreamHandle stream) {
-        checkWriteAccess(user);
+                                            final StreamHandle stream,
+                                            final boolean skipAuth) {
+        if (!skipAuth) checkWriteAccess(user);
         if (stream.contentLength() > MAX_MANIFEST_SIZE) throw new RequestTooLongException();
 
         final byte[] contents = stream.readAllBytes();
@@ -727,7 +895,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
 
         putFile(fileKey, contents, stream.contentType());
 
-        return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
+        return QuarkusTransaction.requiringNew().call(() -> {
             final Instant now = Instant.now();
             final StoredFile file = storeOrUpdateFileReference(
                     fileKey,
@@ -768,5 +936,6 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
     @Override
     public void close() {
         this.backend.close();
+        this.mirrorSupport.close();
     }
 }

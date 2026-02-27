@@ -22,15 +22,15 @@ function App() {
             Component: DashboardView
         },
         {
-            path: "/repositories/new",
+            path: "/repository/new",
             Component: RepositoryEditView
         },
         {
-            path: "/repositories/:id/edit",
+            path: "/repository/:id/edit",
             Component: RepositoryEditView
         },
         {
-            path: "/repositories/:id/browse",
+            path: "/repository/:id/browse",
             Component: RepositoryBrowseView
         },
         {

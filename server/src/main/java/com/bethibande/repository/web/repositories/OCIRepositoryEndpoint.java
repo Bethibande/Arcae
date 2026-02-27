@@ -37,6 +37,7 @@ import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHeaders;
 import org.apache.http.entity.ContentType;
 import org.hibernate.Hibernate;
@@ -198,18 +199,23 @@ public class OCIRepositoryEndpoint {
                 .build();
     }
 
+    protected Pair<Long, Long> parseContentRange(final String rangeHeader) {
+        final String[] parts = rangeHeader.substring(6).split("-");
+        final long offset = Long.parseLong(parts[0]);
+        final long length = parts.length == 2
+            ? Long.parseLong(parts[1]) - offset + 1
+            : Long.MAX_VALUE;
+
+        return Pair.of(offset, length);
+    }
+
     protected StreamHandle getBlob(final OCIRepository repository,
                                    final User user,
                                    final String namespace,
                                    final String digest,
-                                   final String rangeHeader) {
-        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-            final String[] parts = rangeHeader.substring(6).split("-");
-            final long offset = Long.parseLong(parts[0]);
-            final long length = parts.length == 2
-                    ? Long.parseLong(parts[1]) - offset + 1
-                    : Long.MAX_VALUE;
-            return repository.getBlob(user, namespace, digest, offset, length);
+                                   final Pair<Long, Long> range) {
+        if (range != null) {
+            return repository.getBlob(user, namespace, digest, range.getLeft(), range.getRight());
         }
         return repository.getBlob(user, namespace, digest);
     }
@@ -224,13 +230,19 @@ public class OCIRepositoryEndpoint {
         final User user = authenticatedUser.getSelf();
 
         final String actualDigest = OCIDigestHelper.extractDigest(digest);
-        final StreamHandle handle = getBlob(repository, user, namespace, actualDigest, rangeHeader);
+        final Pair<Long, Long> range = rangeHeader != null ? parseContentRange(rangeHeader) : null;
+        final StreamHandle handle = getBlob(repository, user, namespace, actualDigest, range);
         if (handle == null) throw new NotFoundException("Unknown blob");
+
+        final String contentRange = range != null
+                ? "%d-%d".formatted(range.getLeft(), range.getRight() + range.getLeft() - 1)
+                : "0-%d".formatted(handle.contentLength() - 1);
 
         return Response.ok(handle.stream())
                 .header(HttpHeaders.CONTENT_TYPE, handle.contentType())
                 .header(HttpHeaders.CONTENT_LENGTH, handle.contentLength())
                 .header(HEADER_CONTENT_DIGEST, actualDigest)
+                .header(HttpHeaders.CONTENT_RANGE, contentRange)
                 .build();
     }
 
@@ -280,7 +292,7 @@ public class OCIRepositoryEndpoint {
             if (!OCIDigestHelper.isDigest(digest)) return badDigestResponse();
 
             final String actualDigest = OCIDigestHelper.extractDigest(digest);
-            repository.uploadBlob(user, namespace, actualDigest, handle);
+            repository.uploadBlob(user, namespace, actualDigest, handle, false);
 
             final String url = "/v2/%s/blobs/%s".formatted(namespace, actualDigest);
             return Response.created(URI.create(url))
@@ -420,7 +432,8 @@ public class OCIRepositoryEndpoint {
                 user,
                 namespace,
                 actualReference,
-                new StreamHandle(data, contentType, contentLength)
+                new StreamHandle(data, contentType, contentLength),
+                false
         );
 
         final String url = "/v2/%s/manifests/%s".formatted(namespace, actualReference);

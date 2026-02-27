@@ -1,9 +1,9 @@
-package com.bethibande.repository.repository.maven;
+package com.bethibande.repository.repository.mirror;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 @RegisterForReflection
-public enum MavenMirrorAuthType {
+public enum MirrorAuthType {
 
     NONE,
     BASIC,

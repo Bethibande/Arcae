@@ -7,12 +7,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import io.quarkus.virtual.threads.VirtualThreads;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.hibernate.Hibernate;
 
 import java.time.Duration;
+import java.util.concurrent.Executor;
 
 @ApplicationScoped
 @RegisterForReflection(classNames = "com.github.benmanes.caffeine.cache.SSLW")
@@ -23,6 +25,10 @@ public class RepositoryManager {
 
     @Inject
     protected KubernetesSupport kubernetesSupport;
+
+    @Inject
+    @VirtualThreads
+    protected Executor executor;
 
     private RepositoryApplicationContext ctx;
 
@@ -35,7 +41,7 @@ public class RepositoryManager {
 
     @PostConstruct
     protected void init() {
-        ctx = new RepositoryApplicationContext(mapper, kubernetesSupport);
+        ctx = new RepositoryApplicationContext(this.mapper, this.kubernetesSupport, this.executor);
     }
 
     @SuppressWarnings("unchecked")

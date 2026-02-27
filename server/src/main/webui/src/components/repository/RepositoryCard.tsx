@@ -86,7 +86,7 @@ export function RepositoryCard({ repository: overview, onDelete }: RepositoryCar
     return (
         <>
             <Card key={repo.name}
-                  onClick={() => !isMaintenance && navigate(`/repositories/${repo.id}/browse`)}
+                  onClick={() => !isMaintenance && navigate(`/repository/${repo.id}/browse`)}
                   className={cn(
                       "relative group hover:ring-primary/50 transition-all",
                       isMaintenance ? "cursor-default opacity-80" : "cursor-pointer"
@@ -103,11 +103,11 @@ export function RepositoryCard({ repository: overview, onDelete }: RepositoryCar
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repositories/${repo.id}/browse`); }}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/browse`); }}>
                                     <ExternalLink className="size-4 mr-2"/>
                                     Browse
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repositories/${repo.id}/edit`); }}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/edit`); }}>
                                     <Pencil className="size-4 mr-2"/>
                                     Edit
                                 </DropdownMenuItem>

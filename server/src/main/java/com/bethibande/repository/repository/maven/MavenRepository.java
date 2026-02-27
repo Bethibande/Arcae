@@ -9,6 +9,7 @@ import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.RepositoryApplicationContext;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.backend.S3Backend;
+import com.bethibande.repository.repository.mirror.StandardMirrorConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
@@ -108,7 +109,7 @@ public class MavenRepository implements ManagedRepository {
     }
 
     protected StreamHandle mirrorGet(final User user, final String path) {
-        final MavenMirrorConfig mirrors = this.config.mirrorConfig();
+        final StandardMirrorConfig mirrors = this.config.mirrorConfig();
         for (int i = 0; i < mirrors.connections().size(); i++) {
             final MirrorConnectionSettings mirror = mirrors.connections().get(i);
             final StreamHandle result = mirrorGet(user, path, mirror);

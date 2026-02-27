@@ -6,6 +6,7 @@ import {FormField} from "@/components/form-field.tsx";
 import {useEffect, useState} from "react";
 import {SystemEndpointApi} from "@/generated";
 import {Switch} from "@/components/ui/switch.tsx";
+import {MirrorConfigForm, mirrorSchema} from "@/components/repository/MirrorConfigForm.tsx";
 
 export const ociSchema = z.object({
     s3Config: s3Schema,
@@ -20,6 +21,7 @@ export const ociSchema = z.object({
         path: ["enabled"]
     }),
     allowRedeployments: z.boolean().optional(),
+    mirrorConfig: mirrorSchema,
 });
 
 export type OCIConfig = z.infer<typeof ociSchema>;
@@ -39,7 +41,12 @@ export const defaultOCIConfig: OCIConfig = {
         gatewayName: "",
         gatewayNamespace: ""
     },
-    allowRedeployments: true
+    allowRedeployments: true,
+    mirrorConfig: {
+        connections: [],
+        enabled: false,
+        storeArtifacts: true,
+    }
 };
 
 interface OCIConfigFormProps<TFieldValues extends FieldValues> {
@@ -99,6 +106,12 @@ export function OCIConfigForm<TFieldValues extends FieldValues>({ control, prefi
             </div>
 
             <S3ConfigForm control={control} prefix={`${prefix}.s3Config`} />
+
+            <MirrorConfigForm
+                control={control}
+                prefix={`${prefix}.mirrorConfig`}
+                urlPlaceholder="https://registry-1.docker.io"
+            />
 
             <div id="external-access" className="space-y-6 pt-4">
                 <h2 className="text-xl font-bold tracking-tight">External Access</h2>

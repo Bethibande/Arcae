@@ -43,6 +43,13 @@ public class ArtifactVersion extends PanacheEntity {
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant updated;
 
+    /**
+     * Denotes the date after which the mirror may pull the version from the remote again.
+     * This is useful for package managers where we need to eagerly pull the versions from the remote to update static tags such as "latest" properly
+     */
+    @Column(columnDefinition = "timestamptz")
+    public Instant mirrorTTL;
+
     @Column(columnDefinition = "jsonb")
     @Type(JsonBinaryType.class)
     public ArtifactDetails details;
@@ -53,5 +60,9 @@ public class ArtifactVersion extends PanacheEntity {
     @ManyToMany
     @JoinTable(name = "ArtifactVersion_files")
     public List<StoredFile> files;
+
+    public boolean mirrorTTLExpired(final Instant now) {
+        return this.mirrorTTL != null && now.isAfter(this.mirrorTTL);
+    }
 
 }

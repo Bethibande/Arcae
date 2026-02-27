@@ -10,6 +10,7 @@ import com.bethibande.repository.repository.RepositoryApplicationContext;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.backend.S3Backend;
 import com.bethibande.repository.repository.mirror.StandardMirrorConfig;
+import com.bethibande.repository.repository.security.AuthContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
@@ -66,7 +67,7 @@ public class MavenRepository implements ManagedRepository {
         StoredFile.deleteById(file.id);
     }
 
-    protected StreamHandle mirrorGet(final User user, final String path, final MirrorConnectionSettings mirror) {
+    protected StreamHandle mirrorGet(final AuthContext auth, final String path, final MirrorConnectionSettings mirror) {
         try (final HttpClient client = HttpClient.newHttpClient()) {
             final String remoteUrl = "%s/%s".formatted(mirror.url(), path).replaceAll("[^:]//", "/");
 
@@ -97,8 +98,8 @@ public class MavenRepository implements ManagedRepository {
             final StreamHandle handle = new StreamHandle(stream, contentType, contentLength);
 
             if (this.config.mirrorConfig().storeArtifacts()) {
-                put(user, path, handle, true);
-                return get(user, path);
+                put(auth, path, handle, true);
+                return get(auth, path);
             }
 
             return handle;
@@ -108,11 +109,11 @@ public class MavenRepository implements ManagedRepository {
         }
     }
 
-    protected StreamHandle mirrorGet(final User user, final String path) {
+    protected StreamHandle mirrorGet(final AuthContext auth, final String path) {
         final StandardMirrorConfig mirrors = this.config.mirrorConfig();
         for (int i = 0; i < mirrors.connections().size(); i++) {
             final MirrorConnectionSettings mirror = mirrors.connections().get(i);
-            final StreamHandle result = mirrorGet(user, path, mirror);
+            final StreamHandle result = mirrorGet(auth, path, mirror);
             if (result != null) return result;
         }
 
@@ -136,8 +137,8 @@ public class MavenRepository implements ManagedRepository {
         });
     }
 
-    public StreamHandle get(final User user, final String path) {
-        if (!this.info.canView(user)) throw new UnauthorizedException();
+    public StreamHandle get(final AuthContext auth, final String path) {
+        if (!this.info.canView(auth)) throw new UnauthorizedException();
 
         final StreamHandle result = this.fileIndexer.isHash(path)
                 ? fetchHash(path)
@@ -146,14 +147,14 @@ public class MavenRepository implements ManagedRepository {
         if (result == null
                 && this.config.mirrorConfig() != null
                 && this.config.mirrorConfig().enabled()) {
-            return mirrorGet(user, path);
+            return mirrorGet(auth, path);
         }
 
         return result;
     }
 
-    public void put(final User user, final String path, final StreamHandle handle, final boolean skipAuth) {
-        if (!this.info.canWrite(user) && !skipAuth) throw new UnauthorizedException();
+    public void put(final AuthContext auth, final String path, final StreamHandle handle, final boolean skipAuth) {
+        if (!this.info.canWrite(auth) && !skipAuth) throw new UnauthorizedException();
 
         final String namespacedPath = "%s/%s".formatted(info.name, path);
 
@@ -186,8 +187,8 @@ public class MavenRepository implements ManagedRepository {
         }
     }
 
-    protected void deleteFilesFromStorage(final User user, final List<StoredFile> files, final boolean skipAuth) {
-        if (!skipAuth && !this.info.canWrite(user)) throw new UnauthorizedException();
+    protected void deleteFilesFromStorage(final AuthContext auth, final List<StoredFile> files) {
+        if (!this.info.canWrite(auth)) throw new UnauthorizedException();
 
         for (int i = 0; i < files.size(); i++) {
             final StoredFile file = files.get(i);
@@ -207,41 +208,39 @@ public class MavenRepository implements ManagedRepository {
     }
 
     @Override
-    public void delete(final User user,
-                       final ArtifactVersion version,
-                       final boolean skipAuth) {
-        delete(user, version, true, skipAuth);
+    public void delete(final AuthContext auth,
+                       final ArtifactVersion version) {
+        delete(auth, version, true);
     }
 
-    public void delete(final User user,
+    public void delete(final AuthContext auth,
                        final ArtifactVersion version,
-                       final boolean updateMavenMetadata,
-                       final boolean skipAuth) {
-        deleteFilesFromStorage(user, version.files, skipAuth);
+                       final boolean updateMavenMetadata) {
+        deleteFilesFromStorage(auth, version.files);
         version.delete();
 
         if (version.artifact.countVersions() <= 0) {
-            delete(user, version.artifact, skipAuth);
+            delete(auth, version.artifact);
         } else if (updateMavenMetadata) {
             final StoredFile metadataFile = fileIndexer.getGAMetadataFile(version.artifact);
             if (metadataFile == null) return;
 
-            final StreamHandle metadataHandle = get(user, metadataFile.key);
+            final StreamHandle metadataHandle = get(auth, metadataFile.key);
             final String fileContent = new String(metadataHandle.readAllBytes());
 
             final String result = this.fileIndexer.removeVersionFromMetadata(fileContent, version);
 
             final StreamHandle newMetadataHandle = stringToStreamHandle(result, metadataHandle.contentType());
-            put(user, metadataFile.key, newMetadataHandle, true);
+            put(auth, metadataFile.key, newMetadataHandle, true);
         }
     }
 
-    public void delete(final User user, final Artifact artifact, final boolean skipAuth) {
-        deleteFilesFromStorage(user, artifact.files, skipAuth);
+    public void delete(final AuthContext auth, final Artifact artifact) {
+        deleteFilesFromStorage(auth, artifact.files);
 
         ArtifactVersion.<ArtifactVersion>find("artifact = ?1", artifact)
                 .stream()
-                .forEach(version -> delete(user, version, false, true));
+                .forEach(version -> delete(AuthContext.ofSystem(), version, false));
 
         Artifact.deleteById(artifact.id);
     }

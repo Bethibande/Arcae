@@ -2,9 +2,10 @@ package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.process.annotation.EntityDTO;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
-import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.repository.cleanup.CleanupPolicies;
+import com.bethibande.repository.repository.security.AuthContext;
+import com.bethibande.repository.repository.security.UserAuthContext;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
@@ -66,20 +67,22 @@ public class Repository extends PanacheEntityBase {
         }
     }
 
-    public boolean canView(final User user) {
-        if (user != null && user.roles.contains(UserRole.ADMIN)) return true;
+    public boolean canView(final AuthContext auth) {
+        if (auth.isSystem()) return true;
+        if (auth instanceof UserAuthContext userAuth && userAuth.getUser().roles.contains(UserRole.ADMIN)) return true;
         if (permissions.isEmpty()) return true;
 
         for (int i = 0; i < permissions.size(); i++) {
-            if (permissions.get(i).canView(user)) return true;
+            if (permissions.get(i).canView(auth)) return true;
         }
         return false;
     }
 
-    public boolean canWrite(final User user) {
-        if (user != null && user.roles.contains(UserRole.ADMIN)) return true;
+    public boolean canWrite(final AuthContext auth) {
+        if (auth.isSystem()) return true;
+        if (auth instanceof UserAuthContext userAuth && userAuth.getUser().roles.contains(UserRole.ADMIN)) return true;
         for (int i = 0; i < permissions.size(); i++) {
-            if (permissions.get(i).canWrite(user)) return true;
+            if (permissions.get(i).canWrite(auth)) return true;
         }
         return false;
     }

@@ -92,6 +92,11 @@ public class OCIClient {
 
         if (response.statusCode() == 404) return null;
         if (response.statusCode() == 401) {
+            if (additionalHeaders != null && additionalHeaders.containsKey(HttpHeaders.AUTHORIZATION)) {
+                LOGGER.warn("Failed to head object, Authorization was invalid");
+                return null;
+            }
+
             final String authRequest = response.headers().firstValue(HttpHeaders.WWW_AUTHENTICATE).orElseThrow();
             final String token = authenticate(namespace, authRequest);
 
@@ -131,6 +136,11 @@ public class OCIClient {
 
         if (response.statusCode() == 404) return null;
         if (response.statusCode() == 401) {
+            if (additionalHeaders != null && additionalHeaders.containsKey(HttpHeaders.AUTHORIZATION)) {
+                LOGGER.warn("Failed to fetch object, Authorization was invalid");
+                return null;
+            }
+
             final String authRequest = response.headers().firstValue(HttpHeaders.WWW_AUTHENTICATE).orElseThrow();
             final String token = authenticate(namespace, authRequest);
 

@@ -18,6 +18,7 @@ import com.bethibande.repository.repository.oci.config.OCIRoutingConfig;
 import com.bethibande.repository.repository.oci.details.OCILayerReference;
 import com.bethibande.repository.repository.oci.details.OCIManifestDetails;
 import com.bethibande.repository.repository.oci.details.OCIManifestReference;
+import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.util.CopyingInputStream;
 import com.bethibande.repository.web.exception.RequestTooLongException;
 import com.bethibande.repository.web.repositories.oci.OCIError;
@@ -124,22 +125,22 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         return info;
     }
 
-    protected void checkViewAccess(final User user) {
-        if (!info.canView(user)) {
-            if (user == null) throw new UnauthorizedException();
+    protected void checkViewAccess(final AuthContext auth) {
+        if (!info.canView(auth)) {
+            if (auth.isAnonymous()) throw new UnauthorizedException();
             throw new ForbiddenException();
         }
     }
 
-    protected void checkWriteAccess(final User user) {
-        if (!info.canWrite(user)) {
-            if (user == null) throw new UnauthorizedException();
+    protected void checkWriteAccess(final AuthContext auth) {
+        if (!info.canWrite(auth)) {
+            if (auth.isAnonymous()) throw new UnauthorizedException();
             throw new ForbiddenException();
         }
     }
 
-    public Artifact getArtifact(final User user, final String namespace) {
-        checkViewAccess(user);
+    public Artifact getArtifact(final AuthContext auth, final String namespace) {
+        checkViewAccess(auth);
 
         final ArtifactAndGroupId artifactAndGroupId = extractArtifactAndGroupId(namespace);
         return Artifact.find(
@@ -150,8 +151,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         ).firstResult();
     }
 
-    public void deleteBlob(final User user, final String namespace, final String digest) {
-        checkWriteAccess(user);
+    public void deleteBlob(final AuthContext auth, final String namespace, final String digest) {
+        checkWriteAccess(auth);
 
         final String key = toBlobKey(namespace, digest);
         final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", key, info.id).firstResult();
@@ -161,8 +162,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         tryDeleteFile(file);
     }
 
-    public void deleteManifest(final User user, final String namespace, final String reference) {
-        checkWriteAccess(user);
+    public void deleteManifest(final AuthContext auth, final String namespace, final String reference) {
+        checkWriteAccess(auth);
 
         final StoredFile file = findManifestFileByReference(namespace, reference);
         if (file == null) return;
@@ -180,7 +181,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
             final ArtifactVersion version = ArtifactVersion.find("artifact = ?1 and version = ?2", artifact, reference).firstResult();
             if (version == null) return;
 
-            delete(user, version, true);
+            delete(AuthContext.ofSystem(auth), version);
         } else {
             file.clearOwners();
         }
@@ -276,8 +277,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
                 : getArtifactVersionByTag(namespace, reference, lockMode);
     }
 
-    public OCIStreamHandle getManifest(final User user, final String namespace, final String reference) {
-        checkViewAccess(user);
+    public OCIStreamHandle getManifest(final AuthContext auth, final String namespace, final String reference) {
+        checkViewAccess(auth);
 
         if (isDigest(reference)) { // Digest can't change so we can skip the mirror if the data is present
             final OCIStreamHandle result = getManifestInternal(namespace, reference);
@@ -290,7 +291,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
             if (version == null || version.mirrorTTLExpired(Instant.now())) {
                 final OCIStreamHandle remote = this.mirrorSupport.getManifestFromMirror(namespace, reference);
                 if (remote != null) {
-                    final PutOCIManifestResult result = putManifest(null, namespace, reference, remote.streamHandle(), true);
+                    final PutOCIManifestResult result = putManifest(AuthContext.ofSystem(auth), namespace, reference, remote.streamHandle());
 
                     QuarkusTransaction.requiringNew().run(() -> {
                         if (result.version() != null) {
@@ -311,8 +312,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         return getManifestInternal(namespace, reference);
     }
 
-    public OCIContentInfo getManifestInfo(final User user, final String namespace, final String reference) {
-        checkViewAccess(user);
+    public OCIContentInfo getManifestInfo(final AuthContext auth, final String namespace, final String reference) {
+        checkViewAccess(auth);
 
         final OCIContentInfo localInfo = getManifestInfoInternal(namespace, reference);
         final boolean isDigest = isDigest(reference);
@@ -325,7 +326,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
                 final OCIStreamHandle remote = this.mirrorSupport.getManifestFromMirror(namespace, reference);
 
                 if (remote != null) {
-                    final PutOCIManifestResult putResult = putManifest(null, namespace, reference, remote.streamHandle(), true);
+                    final PutOCIManifestResult putResult = putManifest(AuthContext.ofSystem(auth), namespace, reference, remote.streamHandle());
 
                     if (putResult.version() != null) {
                         final Long versionId = putResult.version().id;
@@ -370,8 +371,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         }
     }
 
-    public OCIContentInfo getBlobInfo(final User user, final String namespace, final String digest) {
-        checkViewAccess(user);
+    public OCIContentInfo getBlobInfo(final AuthContext auth, final String namespace, final String digest) {
+        checkViewAccess(auth);
 
         final ObjectInfo info = this.backend.headObject(toBlobKey(namespace, digest));
         if (info == null) {
@@ -383,8 +384,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         return new OCIContentInfo(digest, info.contentLength(), info.contentType());
     }
 
-    public StreamHandle getBlob(final User user, final String namespace, final String digest) {
-        checkViewAccess(user);
+    public StreamHandle getBlob(final AuthContext auth, final String namespace, final String digest) {
+        checkViewAccess(auth);
         final StreamHandle handle = this.backend.get(toBlobKey(namespace, digest));
 
         if (handle == null && this.mirrorSupport.isMirroringEnabled()) {
@@ -419,7 +420,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
                         handle.contentType(),
                         handle.contentLength()
                 );
-                this.uploadBlob(null, namespace, digest, driverHandle, true);
+                this.uploadBlob(AuthContext.ofSystem(), namespace, digest, driverHandle);
             });
 
             return sink;
@@ -442,12 +443,12 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
                 : null;
     }
 
-    public StreamHandle getBlob(final User user,
+    public StreamHandle getBlob(final AuthContext auth,
                                 final String namespace,
                                 final String digest,
                                 final long offset,
                                 final long length) {
-        checkViewAccess(user);
+        checkViewAccess(auth);
 
         final String key = toBlobKey(namespace, digest);
         final StreamHandle handle = this.backend.get(key, offset, length);
@@ -463,12 +464,11 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
                 .build());
     }
 
-    public void uploadBlob(final User user,
+    public void uploadBlob(final AuthContext auth,
                            final String namespace,
                            final String digest,
-                           final StreamHandle stream,
-                           final boolean skipAuth) {
-        if (!skipAuth) checkWriteAccess(user);
+                           final StreamHandle stream) {
+        checkWriteAccess(auth);
 
         final String key = toBlobKey(namespace, digest);
         if (this.config.allowRedeployments() != null
@@ -495,8 +495,8 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         });
     }
 
-    public UploadSessionHandle startUploadSession(final User user, final String namespace) {
-        checkWriteAccess(user);
+    public UploadSessionHandle startUploadSession(final AuthContext auth, final String namespace) {
+        checkWriteAccess(auth);
 
         final UUID sessionId = UUID.randomUUID();
         final String filePath = toPendingBlobKey(namespace, sessionId.toString());
@@ -505,20 +505,20 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         return new UploadSessionHandle(sessionId, uploadId);
     }
 
-    public void uploadPart(final User user,
+    public void uploadPart(final AuthContext auth,
                            final String namespace,
                            final UploadSessionHandle handle,
                            final int number,
                            final StreamHandle stream) {
-        checkWriteAccess(user);
+        checkWriteAccess(auth);
 
         this.backend.uploadPart(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()), number, stream);
     }
 
-    public MultipartUploadStatus getUploadStatus(final User user,
+    public MultipartUploadStatus getUploadStatus(final AuthContext auth,
                                                  final String namespace,
                                                  final UploadSessionHandle handle) {
-        checkWriteAccess(user);
+        checkWriteAccess(auth);
 
         return this.backend.headUpload(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()));
     }
@@ -548,11 +548,11 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         }
     }
 
-    public void completeUploadSession(final User user,
+    public void completeUploadSession(final AuthContext auth,
                                       final String namespace,
                                       final String digest,
                                       final UploadSessionHandle handle) {
-        checkWriteAccess(user);
+        checkWriteAccess(auth);
 
         final String pendingKey = toPendingBlobKey(namespace, handle.sessionId().toString());
         final String blobKey = toBlobKey(namespace, digest);
@@ -573,7 +573,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         final byte[] finalDigest = moveAndDigest(pendingKey, blobKey, algorithm);
         final String digestString = Hex.encodeHexString(finalDigest);
         if (!Objects.equals(hash, digestString)) {
-            abortUpload(user, handle.uploadId(), namespace, handle.sessionId());
+            abortUpload(auth, handle.uploadId(), namespace, handle.sessionId());
             throw new BadRequestException(Response.status(Response.Status.BAD_REQUEST)
                     .entity(OCIError.of(OCIErrorCodes.DIGEST_INVALID, "Digest mismatch", "The provided digest does not match the actual digest of the uploaded data"))
                     .build());
@@ -595,15 +595,15 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
 
     }
 
-    public void abortUpload(final User user, final String uploadId, final String namespace, final UUID sessionId) {
-        checkWriteAccess(user);
+    public void abortUpload(final AuthContext auth, final String uploadId, final String namespace, final UUID sessionId) {
+        checkWriteAccess(auth);
 
         this.backend.abortMultipartUpload(uploadId, toPendingBlobKey(namespace, sessionId.toString()));
     }
 
     @Override
-    public void delete(final User user, final ArtifactVersion version, final boolean skipAuth) {
-        if (!skipAuth && !info.canWrite(user)) throw new UnauthorizedException();
+    public void delete(final AuthContext auth, final ArtifactVersion version) {
+        if (!info.canWrite(auth)) throw new UnauthorizedException();
 
         final List<StoredFile> files = new ArrayList<>(version.files);
         version.files.clear();
@@ -615,16 +615,16 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
 
         version.delete();
         if (version.artifact.countVersions() <= 0) {
-            delete(user, version.artifact, true);
+            delete(AuthContext.ofSystem(auth), version.artifact);
         }
     }
 
-    public void delete(final User user, final Artifact artifact, final boolean skipAuth) {
-        if (!skipAuth && !info.canWrite(user)) throw new UnauthorizedException();
+    public void delete(final AuthContext auth, final Artifact artifact) {
+        if (!info.canWrite(auth)) throw new UnauthorizedException();
 
         ArtifactVersion.<ArtifactVersion>find("artifact = ?1", artifact)
                 .stream()
-                .forEach(version -> delete(user, version, true));
+                .forEach(version -> delete(AuthContext.ofSystem(auth), version));
 
         Artifact.deleteById(artifact.id);
     }
@@ -871,12 +871,11 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         return null;
     }
 
-    public PutOCIManifestResult putManifest(final User user,
+    public PutOCIManifestResult putManifest(final AuthContext auth,
                                             final String namespace,
                                             final String reference,
-                                            final StreamHandle stream,
-                                            final boolean skipAuth) {
-        if (!skipAuth) checkWriteAccess(user);
+                                            final StreamHandle stream) {
+        checkWriteAccess(auth);
         if (stream.contentLength() > MAX_MANIFEST_SIZE) throw new RequestTooLongException();
 
         final byte[] contents = stream.readAllBytes();

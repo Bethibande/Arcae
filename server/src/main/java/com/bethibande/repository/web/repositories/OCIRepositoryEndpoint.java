@@ -10,6 +10,7 @@ import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.backend.MultipartUploadStatus;
 import com.bethibande.repository.repository.oci.*;
+import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.security.BearerTokenIdentityProvider;
 import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.exception.RangeNotSatisfiableException;
@@ -155,7 +156,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        if (!repository.canView(user)) {
+        if (!repository.canView(AuthContext.ofUser(user))) {
             if (user == null) throw new UnauthorizedException();
             throw new ForbiddenException("Unauthorized");
         }
@@ -171,7 +172,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final OCIContentInfo info = repository.getBlobInfo(user, namespace, OCIDigestHelper.extractDigest(digest));
+        final OCIContentInfo info = repository.getBlobInfo(AuthContext.ofUser(user), namespace, OCIDigestHelper.extractDigest(digest));
         if (info == null) throw new NotFoundException("Unknown blob");
 
         return Response.ok()
@@ -189,7 +190,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final OCIContentInfo info = repository.getManifestInfo(user, namespace, OCIDigestHelper.referenceOrDigest(reference));
+        final OCIContentInfo info = repository.getManifestInfo(AuthContext.ofUser(user), namespace, OCIDigestHelper.referenceOrDigest(reference));
         if (info == null) throw new NotFoundException("Unknown manifest");
 
         return Response.ok()
@@ -214,10 +215,11 @@ public class OCIRepositoryEndpoint {
                                    final String namespace,
                                    final String digest,
                                    final Pair<Long, Long> range) {
+        final AuthContext auth = AuthContext.ofUser(user);
         if (range != null) {
-            return repository.getBlob(user, namespace, digest, range.getLeft(), range.getRight());
+            return repository.getBlob(auth, namespace, digest, range.getLeft(), range.getRight());
         }
-        return repository.getBlob(user, namespace, digest);
+        return repository.getBlob(auth, namespace, digest);
     }
 
     @GET
@@ -254,7 +256,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final OCIStreamHandle handle = repository.getManifest(user, namespace, OCIDigestHelper.referenceOrDigest(reference));
+        final OCIStreamHandle handle = repository.getManifest(AuthContext.ofUser(user), namespace, OCIDigestHelper.referenceOrDigest(reference));
         if (handle == null) throw new NotFoundException("Unknown blob");
 
         final StreamHandle streamHandle = handle.streamHandle();
@@ -282,6 +284,7 @@ public class OCIRepositoryEndpoint {
         // TODO: Mounts
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
+        final AuthContext auth = AuthContext.ofUser(user);
         final StreamHandle handle = new StreamHandle(
                 content,
                 ContentType.APPLICATION_OCTET_STREAM.getMimeType(),
@@ -292,19 +295,19 @@ public class OCIRepositoryEndpoint {
             if (!OCIDigestHelper.isDigest(digest)) return badDigestResponse();
 
             final String actualDigest = OCIDigestHelper.extractDigest(digest);
-            repository.uploadBlob(user, namespace, actualDigest, handle, false);
+            repository.uploadBlob(auth, namespace, actualDigest, handle);
 
             final String url = "/v2/%s/blobs/%s".formatted(namespace, actualDigest);
             return Response.created(URI.create(url))
                     .header(HEADER_CONTENT_DIGEST, actualDigest)
                     .build();
         } else {
-            final UploadSessionHandle session = repository.startUploadSession(user, namespace);
+            final UploadSessionHandle session = repository.startUploadSession(auth, namespace);
 
             int nextPart = 1;
             String range = null;
             if (contentLength != null && contentLength > 0) {
-                repository.uploadPart(user, namespace, session, 1, handle);
+                repository.uploadPart(auth, namespace, session, 1, handle);
                 range = "0-%d".formatted(contentLength - 1);
                 nextPart++;
             }
@@ -330,11 +333,12 @@ public class OCIRepositoryEndpoint {
                                 final InputStream content) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
+        final AuthContext auth = AuthContext.ofUser(user);
 
         final UploadSessionHandle sessionHandle = new UploadSessionHandle(sessionId, uploadId);
 
         // Doing this for each request is suboptimal, find a better way to track this
-        final MultipartUploadStatus status = repository.getUploadStatus(user, namespace, sessionHandle);
+        final MultipartUploadStatus status = repository.getUploadStatus(auth, namespace, sessionHandle);
         if (status.partNumber() + 1 != partNumber) throw new RangeNotSatisfiableException();
         if (contentRange != null) {
             final String[] parts = contentRange.split("-");
@@ -349,7 +353,7 @@ public class OCIRepositoryEndpoint {
                 contentLength
         );
 
-        repository.uploadPart(user, namespace, sessionHandle, partNumber, streamHandle);
+        repository.uploadPart(auth, namespace, sessionHandle, partNumber, streamHandle);
 
         final String url = "/v2/%s/blobs/uploads/%s?uploadId=%s&part=%d".formatted(namespace, sessionId, uploadId, partNumber + 1);
 
@@ -372,17 +376,18 @@ public class OCIRepositoryEndpoint {
                                    final InputStream content) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
+        final AuthContext auth = AuthContext.ofUser(user);
         final UploadSessionHandle handle = new UploadSessionHandle(sessionId, uploadId);
 
         if (contentLength != null && contentLength > 0) {
             final StreamHandle streamHandle = new StreamHandle(content, ContentType.APPLICATION_OCTET_STREAM.getMimeType(), contentLength);
-            repository.uploadPart(user, namespace, handle, partNumber, streamHandle);
+            repository.uploadPart(auth, namespace, handle, partNumber, streamHandle);
         }
 
         if (!OCIDigestHelper.isDigest(digest)) return badDigestResponse();
 
         final String actualDigest = OCIDigestHelper.extractDigest(digest);
-        repository.completeUploadSession(user, namespace, actualDigest, handle);
+        repository.completeUploadSession(auth, namespace, actualDigest, handle);
 
         final String url = "/v2/%s/blobs/%s".formatted(namespace, actualDigest);
         return Response.created(URI.create(url))
@@ -398,9 +403,10 @@ public class OCIRepositoryEndpoint {
                                     final @QueryParam("uploadId") String uploadId) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
+        final AuthContext auth = AuthContext.ofUser(user);
 
         final UploadSessionHandle handle = new UploadSessionHandle(sessionId, uploadId);
-        final MultipartUploadStatus status = repository.getUploadStatus(user, namespace, handle);
+        final MultipartUploadStatus status = repository.getUploadStatus(auth, namespace, handle);
 
         final String url = "/v2/%s/blobs/uploads/%s?uploadId=%s&part=%d".formatted(
                 namespace,
@@ -429,11 +435,10 @@ public class OCIRepositoryEndpoint {
 
         final String actualReference = OCIDigestHelper.referenceOrDigest(reference);
         final PutOCIManifestResult result = repository.putManifest(
-                user,
+                AuthContext.ofUser(user),
                 namespace,
                 actualReference,
-                new StreamHandle(data, contentType, contentLength),
-                false
+                new StreamHandle(data, contentType, contentLength)
         );
 
         final String url = "/v2/%s/manifests/%s".formatted(namespace, actualReference);
@@ -456,7 +461,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final Artifact artifact = repository.getArtifact(user, namespace);
+        final Artifact artifact = repository.getArtifact(AuthContext.ofUser(user), namespace);
         final List<ArtifactVersion> versions = ArtifactVersion.list("artifact = ?1 order by version asc", artifact);
 
         if (n != null && n == 0) return new TagList(namespace, List.of());
@@ -510,7 +515,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        if (!repository.canView(user)) throw new ForbiddenException("Unauthorized");
+        if (!repository.canView(AuthContext.ofUser(user))) throw new ForbiddenException("Unauthorized");
 
         final CriteriaBuilder builder = OCISubject.getEntityManager().getCriteriaBuilder();
         final CriteriaQuery<OCISubject> query = builder.createQuery(OCISubject.class);
@@ -544,7 +549,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        repository.deleteManifest(user, namespace, OCIDigestHelper.referenceOrDigest(reference));
+        repository.deleteManifest(AuthContext.ofUser(user), namespace, OCIDigestHelper.referenceOrDigest(reference));
         return Response.accepted().build();
     }
 
@@ -557,7 +562,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        repository.deleteBlob(user, namespace, OCIDigestHelper.extractDigest(digest));
+        repository.deleteBlob(AuthContext.ofUser(user), namespace, OCIDigestHelper.extractDigest(digest));
         return Response.accepted().build();
     }
 
@@ -571,7 +576,7 @@ public class OCIRepositoryEndpoint {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        repository.abortUpload(user, uploadId, namespace, sessionId);
+        repository.abortUpload(AuthContext.ofUser(user), uploadId, namespace, sessionId);
         return Response.noContent().build();
     }
 }

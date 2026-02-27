@@ -3,6 +3,7 @@ package com.bethibande.repository.repository.cleanup;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.ManagedRepository;
+import com.bethibande.repository.repository.security.AuthContext;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -33,7 +34,7 @@ public record MaxAgeCleanupPolicy(
 
                 for (int i = 0; i < versions.size(); i++) {
                     final ArtifactVersion version = versions.get(i);
-                    managedRepository.delete(null, version, true);
+                    managedRepository.delete(AuthContext.ofSystem(), version);
                 }
             });
         }

@@ -4,6 +4,8 @@ import com.bethibande.process.annotation.EntityDTO;
 import com.bethibande.process.annotation.VirtualDTOField;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.user.User;
+import com.bethibande.repository.repository.security.AuthContext;
+import com.bethibande.repository.repository.security.UserAuthContext;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,22 +35,18 @@ public class PermissionScope extends PanacheEntity {
         return user != null ? user.name : null;
     }
 
-    public boolean canView(final User user) {
+    public boolean canView(final AuthContext auth) {
         return switch (type) {
             case ANONYMOUS -> true;
-            case AUTHENTICATED -> user != null;
-            case USER -> user != null && Objects.equals(this.user.id, user.id);
+            case AUTHENTICATED -> !auth.isAnonymous();
+            case USER -> auth instanceof UserAuthContext userAuth && Objects.equals(this.user.id, userAuth.getUser().id);
         };
     }
 
-    public boolean canWrite(final User user) {
+    public boolean canWrite(final AuthContext auth) {
         if (level == PermissionLevel.READ) return false;
 
-        return switch (type) {
-            case ANONYMOUS -> true;
-            case AUTHENTICATED -> user != null;
-            case USER -> user != null && Objects.equals(this.user.id, user.id);
-        };
+        return canView(auth); // Same check
     }
 
 }

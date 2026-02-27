@@ -3,6 +3,7 @@ package com.bethibande.repository.repository.cleanup;
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.repository.ManagedRepository;
+import com.bethibande.repository.repository.security.AuthContext;
 import io.quarkus.panache.common.Sort;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.Min;
@@ -25,7 +26,7 @@ public record MaxVersionCountPolicy(
                     .list();
             for (int i = 0; i < delete.size(); i++) {
                 final ArtifactVersion version = delete.get(i);
-                repository.delete(null, version, true);
+                repository.delete(AuthContext.ofSystem(), version);
             }
         }
     }

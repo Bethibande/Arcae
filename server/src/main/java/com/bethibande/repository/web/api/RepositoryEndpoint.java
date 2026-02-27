@@ -10,6 +10,7 @@ import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.RepositoryUpdatedNotifier;
 import com.bethibande.repository.repository.UpdateType;
+import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.web.AuthenticatedUser;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
@@ -115,7 +116,7 @@ public class RepositoryEndpoint {
         }
 
         final User self = authenticatedUser.getSelf();
-        if (!repository.canView(self)) throw new ForbiddenException("Unauthorized");
+        if (!repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
 
         return new RepositoryOverviewDTO(
                 PublicRepositoryDTO.from(repository),
@@ -192,7 +193,7 @@ public class RepositoryEndpoint {
         if (repo == null) throw new NotFoundException("Unknown repository");
 
         final User self = authenticatedUser.getSelf();
-        return repo.canWrite(self);
+        return repo.canWrite(AuthContext.ofUser(self));
     }
 
     @DELETE

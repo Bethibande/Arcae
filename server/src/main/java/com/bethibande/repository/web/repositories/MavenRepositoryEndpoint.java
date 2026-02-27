@@ -5,6 +5,7 @@ import com.bethibande.repository.jpa.repository.RepositoryManager;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.maven.MavenRepository;
+import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
@@ -45,18 +46,18 @@ public class MavenRepositoryEndpoint {
                                final @HeaderParam(HttpHeaders.CONTENT_LENGTH) long contentLength,
                                final InputStream data) {
         final MavenRepository repo = getRepositoryOrThrow(repository);
-        final User user = authenticatedUser.getSelf();
+        final User user = this.authenticatedUser.getSelf();
 
-        repo.put(user, path, new StreamHandle(data, contentType, contentLength), false);
+        repo.put(AuthContext.ofUser(user), path, new StreamHandle(data, contentType, contentLength), false);
     }
 
     @GET
     public Response getArtifact(final @PathParam("repository") String repository,
                                 final @PathParam("path") String path) {
         final MavenRepository repo = getRepositoryOrThrow(repository);
-        final User user = authenticatedUser.getSelf();
+        final User user = this.authenticatedUser.getSelf();
 
-        final StreamHandle handle = repo.get(user, path);
+        final StreamHandle handle = repo.get(AuthContext.ofUser(user), path);
         if (handle == null) throw new NotFoundException("Artifact not found");
 
         return Response.ok()

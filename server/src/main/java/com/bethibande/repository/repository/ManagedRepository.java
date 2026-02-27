@@ -5,6 +5,7 @@ import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.user.User;
+import com.bethibande.repository.repository.security.AuthContext;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
@@ -22,19 +23,19 @@ public interface ManagedRepository {
 
     Repository getInfo();
 
-    default boolean canView(final User user) {
-        return getInfo().canView(user);
+    default boolean canView(final AuthContext auth) {
+        return getInfo().canView(auth);
     }
 
-    default boolean canWrite(final User user) {
-        return getInfo().canWrite(user);
+    default boolean canWrite(final AuthContext auth) {
+        return getInfo().canWrite(auth);
     }
 
     void delete(final StoredFile file);
 
-    void delete(final User user, final ArtifactVersion version, final boolean skipAuth);
+    void delete(final AuthContext auth, final ArtifactVersion version);
 
-    void delete(final User user, final Artifact artifact, final boolean skipAuth);
+    void delete(final AuthContext auth, final Artifact artifact);
 
     default Artifact getOrCreateArtifact(final String groupId, final String artifactId, final Instant now) {
         final long id = (Long) Artifact.getEntityManager()

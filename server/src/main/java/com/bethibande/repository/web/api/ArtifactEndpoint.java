@@ -9,6 +9,7 @@ import com.bethibande.repository.jpa.repository.RepositoryManager;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.maven.MavenRepository;
+import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.panache.common.Sort;
 import jakarta.inject.Inject;
@@ -56,7 +57,7 @@ public class ArtifactEndpoint {
         final User self = authenticatedUser.getSelf();
         final Repository repository = Repository.findById(query.repositoryId());
         if (repository == null) throw new NotFoundException("Unknown repository");
-        if (!repository.canView(self)) throw new ForbiddenException("Unauthorized");
+        if (!repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
 
         final SearchResult<Artifact> result = searchSession.search(Artifact.class)
                 .where(q -> {
@@ -100,7 +101,7 @@ public class ArtifactEndpoint {
         if (artifact == null) throw new NotFoundException("Unknown artifact");
 
         final User self = authenticatedUser.getSelf();
-        if (!artifact.repository.canView(self)) throw new ForbiddenException("Unauthorized");
+        if (!artifact.repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
 
         return ArtifactDTO.from(artifact);
     }
@@ -115,7 +116,7 @@ public class ArtifactEndpoint {
                 .orElseThrow(() -> new NotFoundException("Artifact not found"));
 
         final User self = authenticatedUser.getSelf();
-        if (!artifact.repository.canView(self)) throw new ForbiddenException("Unauthorized");
+        if (!artifact.repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
 
         final var query = ArtifactVersion.<ArtifactVersion>find("artifact.id = ?1", Sort.descending("updated"), artifact.id)
                 .page(page, pageSize);
@@ -146,7 +147,7 @@ public class ArtifactEndpoint {
 
         final User self = authenticatedUser.getSelf();
 
-        repository.delete(self, artifact, false);
+        repository.delete(AuthContext.ofUser(self), artifact);
     }
 
     @DELETE
@@ -161,7 +162,7 @@ public class ArtifactEndpoint {
 
         final User self = authenticatedUser.getSelf();
 
-        repository.delete(self, version, false);
+        repository.delete(AuthContext.ofUser(self), version);
     }
 
 }

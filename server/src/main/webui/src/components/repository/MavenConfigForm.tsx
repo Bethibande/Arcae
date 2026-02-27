@@ -27,6 +27,7 @@ export const defaultMavenConfig: MavenConfig = {
         connections: [],
         enabled: false,
         storeArtifacts: true,
+        authorizedUsersOnly: false,
     }
 };
 
@@ -67,13 +68,13 @@ export function MavenConfigForm<TFieldValues extends FieldValues>({ control, pre
                 </Card>
             </div>
 
+            <S3ConfigForm control={control} prefix={`${prefix}.s3Config`} />
+
             <MirrorConfigForm
                 control={control}
                 prefix={`${prefix}.mirrorConfig`}
                 urlPlaceholder="https://repo1.maven.org/maven2/"
             />
-
-            <S3ConfigForm control={control} prefix={`${prefix}.s3Config`} />
         </>
     );
 }

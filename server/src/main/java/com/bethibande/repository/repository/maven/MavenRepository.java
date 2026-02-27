@@ -4,7 +4,6 @@ import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
-import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.RepositoryApplicationContext;
 import com.bethibande.repository.repository.StreamHandle;
@@ -146,7 +145,8 @@ public class MavenRepository implements ManagedRepository {
 
         if (result == null
                 && this.config.mirrorConfig() != null
-                && this.config.mirrorConfig().enabled()) {
+                && this.config.mirrorConfig().enabled()
+                && this.config.mirrorConfig().canMirror(auth, this.info)) {
             return mirrorGet(auth, path);
         }
 

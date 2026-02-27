@@ -46,6 +46,7 @@ export const defaultOCIConfig: OCIConfig = {
         connections: [],
         enabled: false,
         storeArtifacts: true,
+        authorizedUsersOnly: false,
     }
 };
 
@@ -106,12 +107,6 @@ export function OCIConfigForm<TFieldValues extends FieldValues>({ control, prefi
             </div>
 
             <S3ConfigForm control={control} prefix={`${prefix}.s3Config`} />
-
-            <MirrorConfigForm
-                control={control}
-                prefix={`${prefix}.mirrorConfig`}
-                urlPlaceholder="https://registry-1.docker.io"
-            />
 
             <div id="external-access" className="space-y-6 pt-4">
                 <h2 className="text-xl font-bold tracking-tight">External Access</h2>
@@ -187,6 +182,12 @@ export function OCIConfigForm<TFieldValues extends FieldValues>({ control, prefi
                     </CardContent>
                 </Card>
             </div>
+
+            <MirrorConfigForm
+                control={control}
+                prefix={`${prefix}.mirrorConfig`}
+                urlPlaceholder="https://registry-1.docker.io"
+            />
         </div>
     );
 }

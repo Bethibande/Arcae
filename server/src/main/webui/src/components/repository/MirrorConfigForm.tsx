@@ -18,6 +18,7 @@ export const mirrorSchema = z.object({
     connections: z.array(connectionSchema),
     enabled: z.boolean(),
     storeArtifacts: z.boolean(),
+    authorizedUsersOnly: z.boolean(),
 });
 
 interface MirrorConfigFormProps<TFieldValues extends FieldValues> {
@@ -75,6 +76,28 @@ export function MirrorConfigForm<TFieldValues extends FieldValues>({ control, pr
                                     <FormField
                                         label={""}
                                         fieldName={`${prefix}.storeArtifacts` as FieldPath<TFieldValues>}
+                                        Input={({ value, onChange }) => (
+                                            <Switch
+                                                checked={value}
+                                                onCheckedChange={onChange}
+                                            />
+                                        )}
+                                        control={control}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between py-2">
+                                <div className="space-y-0.5">
+                                    <label className="text-sm font-medium">Authorized Users Only</label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Only use mirrors if the requestor is authorized to write to the local repository.
+                                    </p>
+                                </div>
+                                <div className="flex-none">
+                                    <FormField
+                                        label={""}
+                                        fieldName={`${prefix}.authorizedUsersOnly` as FieldPath<TFieldValues>}
                                         Input={({ value, onChange }) => (
                                             <Switch
                                                 checked={value}

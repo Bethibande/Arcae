@@ -112,24 +112,22 @@ export default function RepositoryEditView() {
                                     };
 
                                     // Ensure nested objects are also merged with defaults for Maven or OCI
-                                    if (repo.packageManager === PackageManager.Maven || repo.packageManager === PackageManager.Oci) {
-                                        mergedSettings.s3Config = {
-                                            ...(currentPmConfig.defaultValues.s3Config || {}),
-                                            ...(settings.s3Config || {})
-                                        };
-                                        if (repo.packageManager === PackageManager.Maven) {
+                                        if (repo.packageManager === PackageManager.Maven || repo.packageManager === PackageManager.Oci) {
+                                            mergedSettings.s3Config = {
+                                                ...(currentPmConfig.defaultValues.s3Config || {}),
+                                                ...(settings.s3Config || {})
+                                            };
                                             mergedSettings.mirrorConfig = {
                                                 ...(currentPmConfig.defaultValues.mirrorConfig || {}),
                                                 ...(settings.mirrorConfig || {})
                                             };
+                                            if (repo.packageManager === PackageManager.Oci) {
+                                                mergedSettings.routingConfig = {
+                                                    ...(currentPmConfig.defaultValues.routingConfig || {}),
+                                                    ...(settings.routingConfig || {})
+                                                };
+                                            }
                                         }
-                                        if (repo.packageManager === PackageManager.Oci) {
-                                            mergedSettings.routingConfig = {
-                                                ...(currentPmConfig.defaultValues.routingConfig || {}),
-                                                ...(settings.routingConfig || {})
-                                            };
-                                        }
-                                    }
 
                                     form.setValue(currentPmConfig.configKey as keyof DynamicFormValues, mergedSettings);
                                 }
@@ -235,11 +233,6 @@ export default function RepositoryEditView() {
 
     const sections = [
         {id: "general", label: "General", icon: Settings},
-        ...(selectedPackageManager === PackageManager.Maven ? [{
-            id: "replication",
-            label: "Replication/Mirroring",
-            icon: RefreshCw
-        }] : []),
         ...(selectedPackageManager === PackageManager.Maven || selectedPackageManager === PackageManager.Oci ? [{
             id: "behavior",
             label: "Behavioral Policies",
@@ -250,6 +243,11 @@ export default function RepositoryEditView() {
             id: "external-access",
             label: "External Access",
             icon: Globe
+        }] : []),
+        ...(selectedPackageManager === PackageManager.Maven || selectedPackageManager === PackageManager.Oci ? [{
+            id: "replication",
+            label: "Replication/Mirroring",
+            icon: RefreshCw
         }] : []),
         {id: "cleanup", label: "Cleanup Policies", icon: Trash2},
         {id: "permissions", label: "Permissions", icon: Lock},

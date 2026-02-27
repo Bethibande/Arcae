@@ -85,7 +85,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         this.executor = executor;
 
         this.backend = new S3Backend(config.s3Config());
-        this.mirrorSupport = new OCIMirrorSupport(config);
+        this.mirrorSupport = new OCIMirrorSupport(config, info);
     }
 
     @Override
@@ -285,7 +285,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
             if (result != null) return result;
         }
 
-        if (this.mirrorSupport.isMirroringEnabled()) {
+        if (this.mirrorSupport.isMirroringEnabled() && this.mirrorSupport.canMirror(auth)) {
             final ArtifactVersion version = getArtifactVersionByReference(namespace, reference, LockModeType.NONE);
 
             if (version == null || version.mirrorTTLExpired(Instant.now())) {
@@ -318,7 +318,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         final OCIContentInfo localInfo = getManifestInfoInternal(namespace, reference);
         final boolean isDigest = isDigest(reference);
 
-        if (this.mirrorSupport.isMirroringEnabled()) {
+        if (this.mirrorSupport.isMirroringEnabled() && this.mirrorSupport.canMirror(auth)) {
             final ArtifactVersion version = getArtifactVersionByReference(namespace, reference, LockModeType.NONE);
             final boolean needsSync = (localInfo == null) || (!isDigest && version.mirrorTTLExpired(Instant.now()));
 
@@ -376,7 +376,7 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
 
         final ObjectInfo info = this.backend.headObject(toBlobKey(namespace, digest));
         if (info == null) {
-            if (this.mirrorSupport.isMirroringEnabled()) {
+            if (this.mirrorSupport.isMirroringEnabled() && this.mirrorSupport.canMirror(auth)) {
                 return this.mirrorSupport.headBlobFromMirror(namespace, digest);
             }
             return null;
@@ -388,7 +388,9 @@ public class OCIRepository implements ManagedRepository, RepositoryUpdatedNotifi
         checkViewAccess(auth);
         final StreamHandle handle = this.backend.get(toBlobKey(namespace, digest));
 
-        if (handle == null && this.mirrorSupport.isMirroringEnabled()) {
+        if (handle == null
+                && this.mirrorSupport.isMirroringEnabled()
+                && this.mirrorSupport.canMirror(auth)) {
             final OCIStreamHandle result = this.mirrorSupport.getBlobFromMirror(namespace, digest);
             if (result != null && this.mirrorSupport.isStoreArtifacts()) {
                 final StreamHandle resultHandle = result.streamHandle();

@@ -1,10 +1,12 @@
 package com.bethibande.repository.repository.oci;
 
+import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.maven.MirrorConnectionSettings;
 import com.bethibande.repository.repository.mirror.StandardMirrorConfig;
 import com.bethibande.repository.repository.oci.client.OCIClient;
 import com.bethibande.repository.repository.oci.client.OCITokenCache;
 import com.bethibande.repository.repository.oci.config.OCIRepositoryConfig;
+import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.util.CallableFunction;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
@@ -21,6 +23,7 @@ public class OCIMirrorSupport implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OCIMirrorSupport.class);
 
     private final OCIRepositoryConfig config;
+    private final Repository repository;
 
     private final OCITokenCache tokenCache;
 
@@ -28,8 +31,9 @@ public class OCIMirrorSupport implements AutoCloseable {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
-    public OCIMirrorSupport(final OCIRepositoryConfig config) {
+    public OCIMirrorSupport(final OCIRepositoryConfig config, final Repository repository) {
         this.config = config;
+        this.repository = repository;
 
         try (final InstanceHandle<OCITokenCache> handle = Arc.container().instance(OCITokenCache.class)) {
             this.tokenCache = handle.get();
@@ -97,6 +101,10 @@ public class OCIMirrorSupport implements AutoCloseable {
 
     public boolean isMirroringEnabled() {
         return this.config.mirrorConfig() != null && this.config.mirrorConfig().enabled();
+    }
+
+    public boolean canMirror(final AuthContext auth) {
+        return this.config.mirrorConfig().canMirror(auth, this.repository);
     }
 
     public boolean isStoreArtifacts() {

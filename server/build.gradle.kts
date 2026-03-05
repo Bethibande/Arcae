@@ -15,7 +15,7 @@ version = "1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     maven {
-        url = uri("https://pckg.bethibande.com/repository/maven-releases/")
+        url = uri("https://repo.bethibande.com/repositories/maven/releases")
         name = "bethibande-releases"
     }
 }
@@ -44,8 +44,9 @@ dependencies {
 
     implementation("io.hypersistence:hypersistence-utils-hibernate-71:3.14.1")
 
-    implementation("com.bethibande.process:annotations:1.5")
     implementation("io.quarkus:quarkus-kubernetes-client")
+
+    implementation("com.bethibande.process:annotations:1.5")
     annotationProcessor("com.bethibande.process:processor:1.5")
 
     // Jackson & Hibernate Search ORM
@@ -58,6 +59,7 @@ dependencies {
     // Security
     implementation("io.quarkus:quarkus-security-jpa")
     implementation("io.quarkus:quarkus-security")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.83")
 
     // Web
     implementation("io.quarkiverse.quinoa:quarkus-quinoa:2.6.2")

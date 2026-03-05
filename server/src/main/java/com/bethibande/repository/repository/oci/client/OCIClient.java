@@ -5,8 +5,11 @@ import com.bethibande.repository.repository.maven.MirrorConnectionSettings;
 import com.bethibande.repository.repository.mirror.MirrorAuthType;
 import com.bethibande.repository.repository.oci.OCIContentInfo;
 import com.bethibande.repository.repository.oci.OCIStreamHandle;
+import com.bethibande.repository.util.HttpClientUtil;
 import com.bethibande.repository.web.repositories.OCIRepositoryEndpoint;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,30 +20,69 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// TODO: Clean this mess up
+/**
+ * A simple OCI client implementation used for retrieving data from remote registries.
+ * This implementation also ensures requests are automatically authenticated and retried if required.
+ * Access tokens retrieved from remote registries are cached internally for 10 minutes.
+ *
+ * @see OCIClient#headBlob(String, String)
+ * @see OCIClient#getBlob(String, String)
+ * @see OCIClient#headManifest(String, String)
+ * @see OCIClient#getManifest(String, String)
+ */
 public class OCIClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OCIClient.class);
 
+    private static final Cache<String, String> TOKEN_CACHE = Caffeine.newBuilder()
+            .maximumSize(1_000)
+            .expireAfterWrite(Duration.ofMinutes(10))
+            .build();
+
     private static final Pattern AUTHENTICATE_HEADER_PATTERN = Pattern.compile("(\\w+)=\"([^\"]*)\"");
 
-    private final OCIWebClient client;
-    private final OCITokenCache tokenCache;
+    private final HttpClient client;
 
     private final MirrorConnectionSettings connection;
 
-    public OCIClient(final HttpClient client, final MirrorConnectionSettings connection, final OCITokenCache tokenCache) {
-        this.client = new OCIWebClient(client, connection);
-        this.tokenCache = tokenCache;
+    public OCIClient(final HttpClient client, final MirrorConnectionSettings connection) {
+        this.client = client;
         this.connection = connection;
     }
 
-    public static Map<String, String> parse(String header) {
+    private HttpRequest buildRequest(final OCIRequest<?> request) {
+        final HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(this.connection.url().replaceAll("/+$", "") + "/v2/" + request.namespace() + request.subpath()))
+                .method(request.method(), HttpRequest.BodyPublishers.noBody());
+
+        if (request.additionalHeaders() != null) {
+            for (Map.Entry<String, List<String>> entry : request.additionalHeaders().entrySet()) {
+                for (String value : entry.getValue()) {
+                    requestBuilder.header(entry.getKey(), value);
+                }
+            }
+        }
+
+        final String authCacheKey = tokenCacheKey(request.namespace());
+        final String token = TOKEN_CACHE.getIfPresent(authCacheKey);
+        if (token != null) requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+
+        return requestBuilder.build();
+    }
+
+    private String tokenCacheKey(final String namespace) {
+        return this.connection.url() + ":" + namespace;
+    }
+
+    public static Map<String, String> parseAuthenticateHeaderParams(String header) {
         final Map<String, String> params = new HashMap<>();
         final Matcher matcher = AUTHENTICATE_HEADER_PATTERN.matcher(header);
         while (matcher.find()) {
@@ -49,12 +91,26 @@ public class OCIClient {
         return params;
     }
 
-    protected String authenticate(final String namespace, final String authHeader) throws IOException {
-        final String existing = this.tokenCache.get(this.connection, namespace);
-        if (existing != null) return existing;
+    public String buildAuthHeader() {
+        final MirrorAuthType type = this.connection.authType();
+        if (type == MirrorAuthType.NONE) return null;
+        if (type == MirrorAuthType.BASIC && this.connection.username() != null && this.connection.password() != null) {
+            final String value = Base64.getEncoder().encodeToString("%s:%s".formatted(this.connection.username(), this.connection.password()).getBytes());
+            return "Basic " + value;
+        }
+        if (type == MirrorAuthType.BEARER && this.connection.password() != null) {
+            return "Bearer " + this.connection.password();
+        }
+        return null;
+    }
 
-        final Map<String, String> params = parse(authHeader);
-        final String auth = this.client.buildAuthHeader();
+    protected boolean authenticate(final String namespace, final String authHeader) throws IOException, InterruptedException {
+        final String cacheKey = tokenCacheKey(namespace);
+        final String existing = TOKEN_CACHE.getIfPresent(cacheKey);
+        if (existing != null) return true;
+
+        final Map<String, String> params = parseAuthenticateHeaderParams(authHeader);
+        final String auth = buildAuthHeader();
 
         final String realm = params.get("realm");
         final String separator = realm.contains("?") ? "&" : "?";
@@ -65,120 +121,112 @@ public class OCIClient {
 
         final HttpRequest request = requestBuilder.build();
 
-        final HttpResponse<Map<String, String>> response = this.client.send(request, new TypeReference<>() {});
+        final HttpResponse<Map<String, String>> response = this.client.send(request, HttpClientUtil.jsonBodyHandler(new TypeReference<>() {
+        }));
         if (response.statusCode() != 200) {
-            return null;
+            return false;
         }
 
         final Map<String, String> result = response.body();
-        if (result == null) return null;
+        if (result == null) return false;
         final String token = result.get("token") != null
                 ? result.get("token")
                 : result.get("access_token");
 
         if (token != null) {
-            this.tokenCache.put(this.connection, namespace, token);
+            TOKEN_CACHE.put(cacheKey, token);
         }
 
-        return token;
+        return token != null;
     }
 
-    protected OCIContentInfo head(final String namespace, final String path, final Map<String, String> additionalHeaders) throws IOException {
-        final HttpRequest.Builder requestBuilder = this.client.head("/v2/" + namespace + path);
-        if (additionalHeaders != null) additionalHeaders.forEach(requestBuilder::header);
-
-        final HttpRequest request = requestBuilder.build();
-        final HttpResponse<Void> response = this.client.sendVoid(request);
-
-        if (response.statusCode() == 404) return null;
-        if (response.statusCode() == 401) {
-            if (additionalHeaders != null && additionalHeaders.containsKey(HttpHeaders.AUTHORIZATION)) {
-                LOGGER.warn("Failed to head object, Authorization was invalid");
-                return null;
-            }
-
-            final String authRequest = response.headers().firstValue(HttpHeaders.WWW_AUTHENTICATE).orElseThrow();
-            final String token = authenticate(namespace, authRequest);
-
-            if (token != null) {
-                return head(namespace, path, Map.of(HttpHeaders.AUTHORIZATION, "Bearer " + token));
-            } else {
-                LOGGER.warn("Failed to authenticate for path HEAD {} on repository {}", path, namespace);
-                return null;
-            }
-        }
-
-        final long contentLength = response.headers()
-                .firstValueAsLong("Content-Length")
-                .orElseThrow();
-
-        final String contentType = response.headers()
-                .firstValue("Content-Type")
-                .orElseThrow();
-
-        final String digest = response.headers()
-                .firstValue(OCIRepositoryEndpoint.HEADER_CONTENT_DIGEST)
+    private boolean tryAuthenticate(final HttpResponse<?> response, final String namespace) throws IOException, InterruptedException {
+        final String authenticateHeader = response.headers()
+                .firstValue(HttpHeaders.WWW_AUTHENTICATE)
                 .orElse(null);
+        if (authenticateHeader == null) return false;
 
-        return new OCIContentInfo(digest, contentLength, contentType);
+        return authenticate(namespace, authenticateHeader);
     }
 
-    protected OCIStreamHandle get(final String namespace,
-                                  final String path,
-                                  final Map<String, String> additionalHeaders) throws IOException {
-        final HttpRequest.Builder requestBuilder = this.client.get("/v2/" + namespace + path);
-        if (additionalHeaders != null) {
-            additionalHeaders.forEach(requestBuilder::header);
-        }
+    private <T> HttpResponse<T> send(final OCIRequest<T> request) throws IOException {
+        try {
+            final HttpRequest actualRequest = buildRequest(request);
 
-        final HttpRequest request = requestBuilder.build();
-        final HttpResponse<InputStream> response = this.client.send(request);
+            final HttpResponse<T> response = this.client.send(actualRequest, request.bodyHandler());
+            if (response.statusCode() == 401) {
+                // Return if sent request already contained the authorization header and still failed
+                if (actualRequest.headers().firstValue(HttpHeaders.AUTHORIZATION).isPresent()) return response;
+
+                if (tryAuthenticate(response, request.namespace())) {
+                    return send(request); // Re-try
+                } else {
+                    LOGGER.warn("Failed to authenticate for path {} on repository {} with method {}", request.subpath(), request.namespace(), request.method());
+                }
+            }
+
+            return response;
+        } catch (final InterruptedException ex) {
+            throw new IOException("Interrupted while sending request", ex);
+        }
+    }
+
+    private OCIContentInfo extractInfo(final HttpResponse<?> response) {
+        final java.net.http.HttpHeaders headers = response.headers();
+        final String contentType = headers.firstValue(HttpHeaders.CONTENT_TYPE).orElseThrow();
+        final long contentLength = headers.firstValueAsLong(HttpHeaders.CONTENT_LENGTH).orElseThrow();
+        final String contentDigest = headers.firstValue(OCIRepositoryEndpoint.HEADER_CONTENT_DIGEST).orElse(null);
+
+        return new OCIContentInfo(contentDigest, contentLength, contentType);
+    }
+
+    private OCIContentInfo head(final String namespace, final String subpath) throws IOException {
+        final HttpResponse<Void> response = send(new OCIRequest<>(
+                namespace,
+                subpath,
+                "HEAD",
+                HttpResponse.BodyHandlers.discarding(),
+                null
+        ));
 
         if (response.statusCode() == 404) return null;
-        if (response.statusCode() == 401) {
-            if (additionalHeaders != null && additionalHeaders.containsKey(HttpHeaders.AUTHORIZATION)) {
-                LOGGER.warn("Failed to fetch object, Authorization was invalid");
-                return null;
-            }
-
-            final String authRequest = response.headers().firstValue(HttpHeaders.WWW_AUTHENTICATE).orElseThrow();
-            final String token = authenticate(namespace, authRequest);
-
-            if (token != null) {
-                final Map<String, String> headers = new HashMap<>();
-                if (additionalHeaders != null) headers.putAll(additionalHeaders);
-                headers.put(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-
-                return get(namespace, path, headers);
-            } else {
-                LOGGER.warn("Failed to authenticate for path GET {} on repository {}", path, namespace);
-                return null;
-            }
+        if (response.statusCode() != 200) {
+            throw new IOException("Failed to head object: %d - %s".formatted(response.statusCode(), response.body()));
         }
 
-        final long contentLength = response.headers()
-                .firstValueAsLong("Content-Length")
-                .orElseThrow();
-        final String contentType = response.headers()
-                .firstValue("Content-Type")
-                .orElseThrow();
+        return extractInfo(response);
+    }
 
-        final String digest = response.headers()
-                .firstValue(OCIRepositoryEndpoint.HEADER_CONTENT_DIGEST)
-                .orElse(null);
+    private OCIStreamHandle get(final String namespace,
+                                final String subpath,
+                                final Map<String, List<String>> additionalHeaders) throws IOException {
+        final HttpResponse<InputStream> response = send(new OCIRequest<>(
+                namespace,
+                subpath,
+                "GET",
+                HttpResponse.BodyHandlers.ofInputStream(),
+                additionalHeaders
+        ));
+
+        if (response.statusCode() == 404) return null;
+        if (response.statusCode() != 200) {
+            throw new IOException("Failed to fetch object: %d - %s".formatted(response.statusCode(), response.body()));
+        }
+
+        final OCIContentInfo info = extractInfo(response);
 
         return new OCIStreamHandle(
-                new StreamHandle(response.body(), contentType, contentLength),
-                digest
+                new StreamHandle(response.body(), info.contentType(), info.size()),
+                info.digest()
         );
     }
 
     public OCIContentInfo headBlob(final String namespace, final String digest) throws IOException {
-        return head(namespace, "/blobs/" + digest, null);
+        return head(namespace, "/blobs/" + digest);
     }
 
     public OCIContentInfo headManifest(final String namespace, final String reference) throws IOException {
-        return head(namespace, "/manifests/" + reference, null);
+        return head(namespace, "/manifests/" + reference);
     }
 
     public OCIStreamHandle getBlob(final String namespace, final String digest) throws IOException {
@@ -187,13 +235,12 @@ public class OCIClient {
 
     public OCIStreamHandle getBlobRange(final String namespace,
                                         final String digest,
-                                        final long start,
+                                        final long offset,
                                         final long end) throws IOException {
-        return get(namespace, "/blobs/" + digest, Map.of(HttpHeaders.RANGE, "bytes=%d-%d".formatted(start, end)));
+        return get(namespace, "/blobs/" + digest, Map.of("Range", List.of("bytes=%d-%d".formatted(offset, end))));
     }
 
     public OCIStreamHandle getManifest(final String namespace, final String reference) throws IOException {
         return get(namespace, "/manifests/" + reference, null);
     }
-
 }

@@ -1,4 +1,4 @@
-package com.bethibande.repository.web.repositories.oci;
+package com.bethibande.repository.repository.oci;
 
 import java.util.regex.Pattern;
 

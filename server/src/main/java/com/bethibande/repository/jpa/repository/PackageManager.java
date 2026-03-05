@@ -5,7 +5,6 @@ import com.bethibande.repository.repository.RepositoryApplicationContext;
 import com.bethibande.repository.repository.maven.MavenRepository;
 import com.bethibande.repository.repository.oci.OCIRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public enum PackageManager {
 

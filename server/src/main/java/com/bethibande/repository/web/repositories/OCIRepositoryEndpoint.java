@@ -14,7 +14,7 @@ import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.security.BearerTokenIdentityProvider;
 import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.exception.RangeNotSatisfiableException;
-import com.bethibande.repository.web.repositories.oci.OCIDigestHelper;
+import com.bethibande.repository.repository.oci.OCIDigestHelper;
 import com.bethibande.repository.web.repositories.oci.OCIError;
 import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -41,7 +41,6 @@ import jakarta.ws.rs.core.UriInfo;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHeaders;
 import org.apache.http.entity.ContentType;
-import org.hibernate.Hibernate;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -434,11 +433,12 @@ public class OCIRepositoryEndpoint {
         final User user = authenticatedUser.getSelf();
 
         final String actualReference = OCIDigestHelper.referenceOrDigest(reference);
-        final PutOCIManifestResult result = repository.putManifest(
+        final OCIPutManifestResult result = repository.putManifest(
                 AuthContext.ofUser(user),
                 namespace,
                 actualReference,
-                new StreamHandle(data, contentType, contentLength)
+                new StreamHandle(data, contentType, contentLength),
+                false
         );
 
         final String url = "/v2/%s/manifests/%s".formatted(namespace, actualReference);

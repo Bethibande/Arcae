@@ -35,7 +35,9 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
     }
 
     public String createMultipartUpload(final String path) {
-        return this.client.createMultipartUpload(b -> b.bucket(this.config.bucket()).key(path).contentType("application/octet-stream"))
+        return this.client.createMultipartUpload(b -> b.bucket(this.config.bucket())
+                        .key(path)
+                        .contentType("application/octet-stream"))
                 .uploadId();
     }
 

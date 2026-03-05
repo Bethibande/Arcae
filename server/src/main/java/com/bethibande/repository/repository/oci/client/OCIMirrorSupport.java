@@ -1,15 +1,13 @@
-package com.bethibande.repository.repository.oci;
+package com.bethibande.repository.repository.oci.client;
 
 import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.maven.MirrorConnectionSettings;
 import com.bethibande.repository.repository.mirror.StandardMirrorConfig;
-import com.bethibande.repository.repository.oci.client.OCIClient;
-import com.bethibande.repository.repository.oci.client.OCITokenCache;
+import com.bethibande.repository.repository.oci.OCIContentInfo;
+import com.bethibande.repository.repository.oci.OCIStreamHandle;
 import com.bethibande.repository.repository.oci.config.OCIRepositoryConfig;
 import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.util.CallableFunction;
-import io.quarkus.arc.Arc;
-import io.quarkus.arc.InstanceHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,8 +23,6 @@ public class OCIMirrorSupport implements AutoCloseable {
     private final OCIRepositoryConfig config;
     private final Repository repository;
 
-    private final OCITokenCache tokenCache;
-
     private final HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
@@ -34,23 +30,19 @@ public class OCIMirrorSupport implements AutoCloseable {
     public OCIMirrorSupport(final OCIRepositoryConfig config, final Repository repository) {
         this.config = config;
         this.repository = repository;
-
-        try (final InstanceHandle<OCITokenCache> handle = Arc.container().instance(OCITokenCache.class)) {
-            this.tokenCache = handle.get();
-        }
     }
 
-    private OCIContentInfo headFromMirror(final CallableFunction<OCIClient, OCIContentInfo, IOException> func) {
+    private <T> T accessMirror(final CallableFunction<OCIClient, T, IOException> func) {
         final StandardMirrorConfig mirrorConfig = this.config.mirrorConfig();
         final List<MirrorConnectionSettings> connections = mirrorConfig.connections();
 
         for (int i = 0; i < connections.size(); i++) {
             final MirrorConnectionSettings connection = connections.get(i);
-            final OCIClient client = new OCIClient(this.httpClient, connection, this.tokenCache);
+            final OCIClient client = new OCIClient(this.httpClient, connection);
 
             try {
-                final OCIContentInfo info = func.call(client);
-                if (info != null) return info;
+                final T result = func.call(client);
+                if (result != null) return result;
             } catch (final IOException | NoSuchElementException ex) {
                 LOGGER.warn("Failed to fetch object info from mirror: {}", ex.getMessage());
             }
@@ -58,45 +50,24 @@ public class OCIMirrorSupport implements AutoCloseable {
         return null;
     }
 
-    private OCIStreamHandle getFromMirror(final CallableFunction<OCIClient, OCIStreamHandle, IOException> func) {
-        final StandardMirrorConfig mirrorConfig = this.config.mirrorConfig();
-        final List<MirrorConnectionSettings> connections = mirrorConfig.connections();
-
-        for (int i = 0; i < connections.size(); i++) {
-            final MirrorConnectionSettings connection = connections.get(i);
-            final OCIClient client = new OCIClient(this.httpClient, connection, this.tokenCache);
-
-            try {
-                final OCIStreamHandle handle = func.call(client);
-                if (handle != null) return handle;
-            } catch (final IOException | NoSuchElementException ex) {
-                LOGGER.warn("Failed to fetch object from mirror: {}", ex.getMessage());
-            }
-        }
-        return null;
-    }
-
     public OCIContentInfo headBlobFromMirror(final String namespace, final String digest) {
-        return headFromMirror(client -> client.headBlob(namespace, digest));
+        return accessMirror(client -> client.headBlob(namespace, digest));
     }
 
     public OCIStreamHandle getBlobFromMirror(final String namespace, final String digest) {
-        return getFromMirror(client -> client.getBlob(namespace, digest));
+        return accessMirror(client -> client.getBlob(namespace, digest));
     }
 
-    public OCIStreamHandle getBlobRangeFromMirror(final String namespace,
-                                                  final String digest,
-                                                  final long start,
-                                                  final long end) {
-        return getFromMirror(client -> client.getBlobRange(namespace, digest, start, end));
+    public OCIStreamHandle getBlobRangeFromMirror(final String namespace, final String digest, final long offset, final long end) {
+        return accessMirror(client -> client.getBlobRange(namespace, digest, offset, end));
     }
 
     public OCIContentInfo headManifestFromMirror(final String namespace, final String reference) {
-        return headFromMirror(client -> client.headManifest(namespace, reference));
+        return accessMirror(client -> client.headManifest(namespace, reference));
     }
 
     public OCIStreamHandle getManifestFromMirror(final String namespace, final String reference) {
-        return getFromMirror(client -> client.getManifest(namespace, reference));
+        return accessMirror(client -> client.getManifest(namespace, reference));
     }
 
     public boolean isMirroringEnabled() {

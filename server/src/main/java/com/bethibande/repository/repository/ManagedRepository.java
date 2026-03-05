@@ -4,7 +4,7 @@ import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
 import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
-import com.bethibande.repository.jpa.user.User;
+import com.bethibande.repository.repository.oci.OCIRepository;
 import com.bethibande.repository.repository.security.AuthContext;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
@@ -17,7 +17,7 @@ import java.time.Instant;
  *
  * @see RepositoryUpdatedNotifier
  * @see com.bethibande.repository.repository.maven.MavenRepository
- * @see com.bethibande.repository.repository.oci.OCIRepository
+ * @see OCIRepository
  */
 public interface ManagedRepository {
 

@@ -26,6 +26,10 @@ const JOB_TRANSLATIONS: Record<JobType, { title: string; description: string }> 
         title: "Clear Expired Sessions",
         description: "Removes expired user sessions from the database",
     },
+    [JobType.CleanUpExpiredUploads]: {
+        title: "Cleanup Expired Uploads",
+        description: "Cleans up expired uploads",
+    }
 };
 
 export default function SystemJobsView() {

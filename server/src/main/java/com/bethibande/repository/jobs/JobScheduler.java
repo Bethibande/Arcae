@@ -162,7 +162,7 @@ public class JobScheduler {
     }
 
     public void failJob(final ScheduledJob job) {
-        job.runner = null;
+        ScheduledJob.update("runner = NULL where id = ?1", job.id);
     }
 
     public void completeJob(final ScheduledJob job, final Instant now) {

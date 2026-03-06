@@ -16,6 +16,7 @@ public sealed interface AuthContext permits AbstractAuthContext {
     }
 
     static AuthContext ofSystem(final AuthContext parent) {
+        if (parent instanceof SystemAuthContext) return parent;
         return new SystemAuthContext(parent);
     }
 

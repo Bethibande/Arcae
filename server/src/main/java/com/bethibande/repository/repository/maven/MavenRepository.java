@@ -10,6 +10,7 @@ import com.bethibande.repository.repository.StreamHandle;
 import com.bethibande.repository.repository.backend.S3Backend;
 import com.bethibande.repository.repository.mirror.StandardMirrorConfig;
 import com.bethibande.repository.repository.security.AuthContext;
+import com.bethibande.repository.util.CopyingInputStream;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
@@ -21,8 +22,7 @@ import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -30,6 +30,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public class MavenRepository implements ManagedRepository {
 
@@ -41,18 +42,24 @@ public class MavenRepository implements ManagedRepository {
     private final Repository info;
     private final MavenRepositoryConfig config;
     private final MavenFileIndexer fileIndexer;
+    private final MavenMirrorSupport mirrorSupport;
 
     private final S3Backend backend;
+    private final Executor executor;
 
     public MavenRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
-        this(info, ctx.objectMapper().readValue(info.settings, MavenRepositoryConfig.class));
+        this(info, ctx.objectMapper().readValue(info.settings, MavenRepositoryConfig.class), ctx.executor());
     }
 
-    public MavenRepository(final Repository info, final MavenRepositoryConfig config) {
+    public MavenRepository(final Repository info,
+                           final MavenRepositoryConfig config,
+                           final Executor executor) {
         this.info = info;
         this.config = config;
         this.backend = new S3Backend(config.s3Config());
         this.fileIndexer = new MavenFileIndexer(info, this);
+        this.mirrorSupport = new MavenMirrorSupport(this, config.mirrorConfig());
+        this.executor = executor;
     }
 
     @Override
@@ -66,57 +73,27 @@ public class MavenRepository implements ManagedRepository {
         StoredFile.deleteById(file.id);
     }
 
-    protected StreamHandle mirrorGet(final AuthContext auth, final String path, final MirrorConnectionSettings mirror) {
-        try (final HttpClient client = HttpClient.newHttpClient()) {
-            final String remoteUrl = "%s/%s".formatted(mirror.url().replaceAll("/+$", ""), path);
+    /**
+     * Pipes the given stream to the backend and sinks a copy of the data into the returned stream.
+     * Closing the returned stream will not cause the store operation to abort or otherwise fail.
+     */
+    protected StreamHandle pipeAndStore(final AuthContext auth, final StreamHandle handle, final String path) throws IOException {
+        final PipedInputStream sink = new PipedInputStream(1024 * 1024);
+        final PipedOutputStream pipe = new PipedOutputStream(sink);
 
-            final HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(remoteUrl))
-                    .GET();
+        final CopyingInputStream source = new CopyingInputStream(handle.stream(), pipe);
 
-            switch (mirror.authType()) {
-                case BASIC -> {
-                    final String value = "Basic " + Base64.getEncoder().encodeToString("%s:%s".formatted(mirror.username(), mirror.password()).getBytes());
-                    builder.header(HttpHeaders.AUTHORIZATION, value);
-                }
-                case BEARER -> builder.header(HttpHeaders.AUTHORIZATION, "Bearer " + mirror.password());
-            }
+        this.executor.execute(() -> this.put(
+                AuthContext.ofSystem(auth),
+                path,
+                new StreamHandle(source, handle.contentType(), handle.contentLength())
+        ));
 
-            final HttpRequest request = builder.build();
-
-            final HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() == 404) return null;
-
-            final InputStream stream = response.body();
-            final long contentLength = response.headers()
-                    .firstValueAsLong(HttpHeaders.CONTENT_LENGTH)
-                    .orElse(-1L);
-            final String contentType = response.headers()
-                    .firstValue(HttpHeaders.CONTENT_TYPE)
-                    .orElse(null);
-
-            final StreamHandle handle = new StreamHandle(stream, contentType, contentLength);
-
-            if (this.config.mirrorConfig().storeArtifacts()) {
-                put(auth, path, handle, true);
-                return get(auth, path);
-            }
-
-            return handle;
-        } catch (final Throwable th) {
-            LOGGER.error("Failed to fetch remote artifact for path {} on repository {}", path, info.name, th);
-            return null;
-        }
-    }
-
-    protected StreamHandle mirrorGet(final AuthContext auth, final String path) {
-        final StandardMirrorConfig mirrors = this.config.mirrorConfig();
-        for (int i = 0; i < mirrors.connections().size(); i++) {
-            final MirrorConnectionSettings mirror = mirrors.connections().get(i);
-            final StreamHandle result = mirrorGet(auth, path, mirror);
-            if (result != null) return result;
-        }
-
-        throw new NotFoundException("Artifact not found");
+        return new StreamHandle(
+                sink, // Pass sink to the client to ensure a fail client connection doesn't abort the store operation
+                handle.contentType(),
+                handle.contentLength()
+        );
     }
 
     protected StreamHandle fetchHash(final String path) {
@@ -136,6 +113,18 @@ public class MavenRepository implements ManagedRepository {
         });
     }
 
+    protected StreamHandle getFromMirror(final AuthContext auth, final String path) {
+        final StreamHandle result = this.mirrorSupport.getFileFromMirror(auth, path);
+        if (result != null && this.mirrorSupport.shouldStore(auth)) {
+            try {
+                return this.pipeAndStore(auth, result, path);
+            } catch (final IOException ex) {
+                LOGGER.error("Failed to store file from mirror", ex);
+            }
+        }
+        return result;
+    }
+
     public StreamHandle get(final AuthContext auth, final String path) {
         if (!this.info.canView(auth)) throw new UnauthorizedException();
 
@@ -143,18 +132,15 @@ public class MavenRepository implements ManagedRepository {
                 ? fetchHash(path)
                 : this.backend.get("%s/%s".formatted(info.name, path));
 
-        if (result == null
-                && this.config.mirrorConfig() != null
-                && this.config.mirrorConfig().enabled()
-                && this.config.mirrorConfig().canMirror(auth, this.info)) {
-            return mirrorGet(auth, path);
+        if (result == null && this.mirrorSupport.enabled()) {
+            return getFromMirror(auth, path);
         }
 
         return result;
     }
 
-    public void put(final AuthContext auth, final String path, final StreamHandle handle, final boolean skipAuth) {
-        if (!this.info.canWrite(auth) && !skipAuth) throw new UnauthorizedException();
+    public void put(final AuthContext auth, final String path, final StreamHandle handle) {
+        if (!this.info.canWrite(auth)) throw new UnauthorizedException();
 
         final String namespacedPath = "%s/%s".formatted(info.name, path);
 
@@ -231,7 +217,7 @@ public class MavenRepository implements ManagedRepository {
             final String result = this.fileIndexer.removeVersionFromMetadata(fileContent, version);
 
             final StreamHandle newMetadataHandle = stringToStreamHandle(result, metadataHandle.contentType());
-            put(auth, metadataFile.key, newMetadataHandle, true);
+            put(AuthContext.ofSystem(auth), metadataFile.key, newMetadataHandle);
         }
     }
 
@@ -248,5 +234,6 @@ public class MavenRepository implements ManagedRepository {
     @Override
     public void close() {
         this.backend.close();
+        this.mirrorSupport.close();
     }
 }

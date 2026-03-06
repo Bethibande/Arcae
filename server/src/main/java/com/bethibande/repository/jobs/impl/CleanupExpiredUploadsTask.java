@@ -63,7 +63,11 @@ public class CleanupExpiredUploadsTask implements JobTask<Object> {
                 for (int i = 0; i < sessions.size(); i++) {
                     final FileUploadSession session = sessions.get(i);
                     hasUploadSessions.abortUploadSession(session);
+
+                    FileUploadSession.deleteById(session.id);
                 }
+
+                next.set(!sessions.isEmpty());
             });
         }
     }

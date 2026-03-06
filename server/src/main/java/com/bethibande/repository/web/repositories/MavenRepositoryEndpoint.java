@@ -48,7 +48,7 @@ public class MavenRepositoryEndpoint {
         final MavenRepository repo = getRepositoryOrThrow(repository);
         final User user = this.authenticatedUser.getSelf();
 
-        repo.put(AuthContext.ofUser(user), path, new StreamHandle(data, contentType, contentLength), false);
+        repo.put(AuthContext.ofUser(user), path, new StreamHandle(data, contentType, contentLength));
     }
 
     @GET

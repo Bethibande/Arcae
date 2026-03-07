@@ -8,6 +8,7 @@
 .kotlin
 
 server/src/main/webui/src/generated
+server/src/main/webui-2/src/generated
 
 ### IntelliJ IDEA ###
 .idea

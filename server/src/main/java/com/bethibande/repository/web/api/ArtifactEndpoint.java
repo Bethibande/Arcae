@@ -48,8 +48,16 @@ public class ArtifactEndpoint {
     ) {
     }
 
+    public record VersionQuery(
+            @QueryParam("q") String text,
+            @QueryParam("p") @Min(0) int page,
+            @QueryParam("s") @Max(100) @Min(1) int pageSize,
+            @QueryParam("o") ArtifactSortOrder sortOrder
+    ) {
+    }
+
     @Inject
-    public SearchSession searchSession;
+    protected SearchSession searchSession;
 
     @GET
     @Transactional
@@ -93,6 +101,48 @@ public class ArtifactEndpoint {
         );
     }
 
+
+    @GET
+    @Transactional
+    @Path("/{id}/versions/search")
+    public PagedResponse<ArtifactVersionDTO> searchVersions(final @PathParam("id") long id, final @BeanParam VersionQuery query) {
+        final Artifact artifact = Artifact.findById(id);
+        if (artifact == null) throw new NotFoundException();
+
+        final User self = authenticatedUser.getSelf();
+        final Repository repository = artifact.repository;
+        if (!repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
+
+        final SearchResult<ArtifactVersion> result = searchSession.search(ArtifactVersion.class)
+                .where(q -> {
+                    final List<PredicateFinalStep> predicates = new ArrayList<>();
+                    predicates.add(q.match().field("artifact.id").matching(id));
+                    if (query.text() != null) {
+                        predicates.add(q.match().field("version").matching(query.text()));
+                    }
+
+                    final BooleanPredicateClausesStep<?, ?> step = q.bool();
+                    predicates.forEach(step::must);
+
+                    return step;
+                })
+                .sort(query.sortOrder == ArtifactSortOrder.LAST_UPDATED ? (b -> b.field("updated").desc()) : TypedSearchSortFactory::score)
+                .fetch(query.page() * query.pageSize(), query.pageSize());
+
+        final long total = result.total().hitCount();
+        final int totalPages = (int) Math.ceil(total / (double) query.pageSize());
+
+        return new PagedResponse<>(
+                result.hits()
+                        .stream()
+                        .map(ArtifactVersionDTO::from)
+                        .toList(),
+                query.page(),
+                totalPages,
+                (int) total
+        );
+    }
+
     @GET
     @Transactional
     @Path("/{id}")
@@ -104,6 +154,20 @@ public class ArtifactEndpoint {
         if (!artifact.repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
 
         return ArtifactDTO.from(artifact);
+    }
+
+    @GET
+    @Transactional
+    @Path("/version/{id}")
+    public ArtifactVersionDTO getArtifactVersion(final @PathParam("id") long versionId) {
+        final ArtifactVersion version = ArtifactVersion.findById(versionId);
+        if (version == null) throw new NotFoundException("Unknown version");
+
+        final User self = authenticatedUser.getSelf();
+        final Repository repository = version.artifact.repository;
+        if (!repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
+
+        return ArtifactVersionDTO.from(version);
     }
 
     @GET

@@ -1,14 +1,19 @@
 package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.process.annotation.EntityDTO;
+import com.bethibande.process.annotation.VirtualDTOField;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
 import com.bethibande.repository.jpa.user.UserRole;
+import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.cleanup.CleanupPolicies;
 import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.repository.security.UserAuthContext;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import io.quarkus.arc.Arc;
+import io.quarkus.arc.InstanceHandle;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import org.hibernate.annotations.Type;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
@@ -40,30 +45,23 @@ public class Repository extends PanacheEntityBase {
 
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    public Map<RepositoryMetadataKey, Object> metadata;
+    public Map<String, Object> metadata;
 
     @Type(JsonBinaryType.class)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "jsonb", nullable = false)
     public CleanupPolicies cleanupPolicies;
 
     @OneToMany(mappedBy = "repository", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<PermissionScope> permissions;
 
-    @SuppressWarnings("unchecked")
-    public <T> T getMetadata(final RepositoryMetadataKey key) {
-        return (T) metadata.get(key);
-    }
+    @PreUpdate
+    @PrePersist
+    public void updateMetadata() {
+        try (final InstanceHandle<RepositoryManager> handle = Arc.container().instance(RepositoryManager.class)) {
+            final RepositoryManager manager = handle.get();
+            final ManagedRepository repository = manager.manage(this);
 
-    public <T> T getMetadataOrDefault(final RepositoryMetadataKey key, final T defaultValue) {
-        final T value = getMetadata(key);
-        return value != null ? value : defaultValue;
-    }
-
-    public void setMetadata(final RepositoryMetadataKey key, final Object value) {
-        if (value == null) {
-            metadata.remove(key);
-        } else {
-            metadata.put(key, value);
+            this.metadata = repository.generateMetadata();
         }
     }
 

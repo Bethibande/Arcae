@@ -19,7 +19,7 @@ export default function MainLayout() {
 
     return (
         <SidebarProvider>
-            <div className="flex flex-col w-full h-full min-h-screen bg-background">
+            <div className="flex flex-col w-full h-screen bg-background overflow-hidden">
                 {/* Header */}
                 <header className="flex h-16 items-center justify-between border-b px-6 shrink-0">
                     <Link to="/" className="flex items-center gap-4">
@@ -71,8 +71,8 @@ export default function MainLayout() {
                     </div>
                 </header>
 
-                <main className="flex-1 relative min-h-0 overflow-hidden">
-                    <div className={"overflow-y-auto h-full max-h-full"}>
+                <main className="flex-1 min-h-0 overflow-hidden">
+                    <div className="h-full overflow-y-auto">
                         <Outlet/>
                         <ThemeToggle/>
                     </div>

@@ -29,7 +29,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 public class MavenRepository implements ManagedRepository {
@@ -44,7 +46,7 @@ public class MavenRepository implements ManagedRepository {
     private final MavenFileIndexer fileIndexer;
     private final MavenMirrorSupport mirrorSupport;
 
-    private final S3Backend backend;
+    private final S3Backend backend; // TODO: Make this lazy
     private final Executor executor;
 
     public MavenRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
@@ -65,6 +67,11 @@ public class MavenRepository implements ManagedRepository {
     @Override
     public Repository getInfo() {
         return info;
+    }
+
+    @Override
+    public Map<String, Object> generateMetadata() {
+        return Collections.emptyMap();
     }
 
     @Override

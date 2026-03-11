@@ -12,6 +12,8 @@ import DashboardPage from "@/pages/dashboard/page.tsx"
 import RepositoryBrowsePage from "@/pages/repository/browse/page.tsx"
 import ArtifactPage from "@/pages/artifact/page.tsx"
 import {TooltipProvider} from "@/components/ui/tooltip.tsx";
+import RepositorySettingsPage from "@/pages/repository/settings/page.tsx";
+import {Toaster} from "@/components/ui/sonner.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -19,6 +21,7 @@ createRoot(document.getElementById("root")!).render(
       <ThemeProvider>
         <TooltipProvider>
           <AuthProvider>
+            <Toaster/>
             <Routes>
               <Route element={<MainLayout />}>
                 <Route path="/" element={<DashboardPage />} />
@@ -26,6 +29,8 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/artifact/:id" element={<ArtifactPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route element={<ProtectedRoute />}>
+                  <Route path="/repository/new" element={<RepositorySettingsPage />} />
+                  <Route path="/repository/:id/settings" element={<RepositorySettingsPage />} />
                   {/* Add protected routes here later if needed */}
                 </Route>
               </Route>

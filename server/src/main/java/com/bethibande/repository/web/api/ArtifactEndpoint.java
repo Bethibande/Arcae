@@ -101,7 +101,6 @@ public class ArtifactEndpoint {
         );
     }
 
-
     @GET
     @Transactional
     @Path("/{id}/versions/search")

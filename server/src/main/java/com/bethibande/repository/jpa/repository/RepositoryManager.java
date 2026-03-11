@@ -57,9 +57,14 @@ public class RepositoryManager {
         return manage(repo);
     }
 
-    @SuppressWarnings("unchecked")
     public <T extends ManagedRepository> T manage(final Repository repo) {
+        return manage(repo, true);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends ManagedRepository> T manage(final Repository repo, final boolean useCache) {
         if (!Hibernate.isInitialized(repo.permissions)) Hibernate.initialize(repo.permissions);
+        if (!useCache) return (T) repo.packageManager.createRepository(repo, this.ctx);
 
         return (T) this.repositoryCache.get(repo.name, (_) -> repo.packageManager.createRepository(repo, this.ctx));
     }

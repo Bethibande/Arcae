@@ -33,8 +33,8 @@ public class DeleteOldVersionsTask implements JobTask<Object> {
                 () -> Repository.<Repository>listAll()
                         .stream()
                         .filter(repo -> repo.cleanupPolicies != null)
-                        .filter(repo -> repo.cleanupPolicies.maxVersionCountPolicy() != null)
-                        .filter(repo -> repo.cleanupPolicies.maxVersionCountPolicy().enabled())
+                        .filter(repo -> repo.cleanupPolicies.maxAgePolicy() != null)
+                        .filter(repo -> repo.cleanupPolicies.maxAgePolicy().enabled())
                         .map(repo -> this.repositoryManager.<MavenRepository>manage(repo))
                         .toList()
         );

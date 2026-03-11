@@ -41,7 +41,7 @@ public class RepositoryEndpoint {
     }
 
     protected void processUpdate(final Repository entity, final UpdateType type) {
-        final ManagedRepository managed = repositoryManager.manage(entity);
+        final ManagedRepository managed = this.repositoryManager.manage(entity, false);
         if (managed instanceof RepositoryUpdatedNotifier notifier) {
             notifier.processUpdate(type);
         }
@@ -54,7 +54,6 @@ public class RepositoryEndpoint {
         repository.name = dto.name();
         repository.packageManager = dto.packageManager();
         repository.settings = dto.settings();
-        repository.metadata = dto.metadata();
         repository.cleanupPolicies = dto.cleanupPolicies();
 
         repository.persist();
@@ -72,7 +71,6 @@ public class RepositoryEndpoint {
 
         repository.name = dto.name();
         repository.settings = dto.settings();
-        repository.metadata = dto.metadata();
         repository.cleanupPolicies = dto.cleanupPolicies();
         repository.persist();
 

@@ -608,4 +608,18 @@
                     type="varchar(1024)"/>
         </addColumn>
     </changeSet>
+
+    <changeSet id="1773047645055-1" author="bethibande">
+        <sql>
+            update Repository set cleanupPolicies = '{"maxAgePolicy": {"time": 4, "unit": "HOURS", "enabled": false}, "maxVersionCountPolicy": {"enabled": false, "maxVersions": 1}}' where cleanupPolicies is null;
+        </sql>
+    </changeSet>
+
+    <changeSet id="1772964549826-1"
+               author="bethibande">
+        <addNotNullConstraint columnDataType="jsonb"
+                              columnName="cleanupPolicies"
+                              tableName="Repository"
+                              validate="true"/>
+    </changeSet>
 </databaseChangeLog>

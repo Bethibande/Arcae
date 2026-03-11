@@ -102,9 +102,9 @@ export function RepositoryCard({ repository: overview, onDelete }: RepositoryCar
                                     <ExternalLink className="size-4 mr-2"/>
                                     Browse
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/edit`); }}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/settings`); }}>
                                     <Pencil className="size-4 mr-2"/>
-                                    Edit
+                                    Settings
                                 </DropdownMenuItem>
                                 <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}>
                                     <Trash2 className="size-4 mr-2"/>

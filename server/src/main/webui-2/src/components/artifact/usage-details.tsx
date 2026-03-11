@@ -48,7 +48,7 @@ export function UsageDetails({ artifact, version, packageManager, repository }: 
         }
 
         if (packageManager === PackageManager.Oci) {
-            const externalHost = repository.repository.metadata?.["HOST_NAME"] || window.location.host;
+            const externalHost = repository.repository.metadata!["HOST_NAME"] || window.location.host;
             const imageRef = `${externalHost}/${artifact.groupId ? `${artifact.groupId}/` : ""}${artifact.artifactId}:${version.version}`;
 
             return [

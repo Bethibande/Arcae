@@ -71,7 +71,7 @@ export const ociSettingsSchema = z.object({
     s3Config: s3ConfigSchema,
     mirrorConfig: mirrorConfigSchema,
     routingConfig: ociRoutingConfig,
-    externalHostname: z.string(),
+    externalHostname: z.string().nonempty(),
 })
 
 export type MavenSettingsSchema = z.infer<typeof mavenSettingsSchema>;
@@ -92,13 +92,13 @@ export const defaultMirrorConfig = {
     connections: [],
 }
 
-export const defaultMavenSettings = {
+export const defaultMavenSettings: MavenSettingsSchema = {
     allowRedeployments: false,
     s3Config: defaultS3Config,
     mirrorConfig: defaultMirrorConfig,
 }
 
-export const defaultOciSettings: any = {
+export const defaultOciSettings: OciSettingsSchema = {
     allowRedeployments: true,
     s3Config: defaultS3Config,
     mirrorConfig: defaultMirrorConfig,

@@ -127,9 +127,9 @@ public class JobScheduler {
             }
 
             job.persist();
-
-            if (!job.nextRunAt.isAfter(now)) scheduleNow(job);
         });
+
+        if (!job.nextRunAt.isAfter(now)) scheduleNow(job);
     }
 
     private void scheduleNow(final ScheduledJob job) {

@@ -35,12 +35,10 @@ And then navigate to ``http://localhost:8080/setup`` to create your admin user.
 
 
 ### Screenshots
-| Dashboard                                                             | Artifact browser                                                         |
-|-----------------------------------------------------------------------|--------------------------------------------------------------------------|
-| ![dashboard view](screenshots/dashboard.png)                          | ![artifact browser](screenshots/artifacts.png)                           |
-| Version listing                                                       | Repository settings                                                      |
-| ![artifact version listing](screenshots/versions.png)                 | ![general repository settings](screenshots/repository-settings-1.png)    |
-| Repository mirror settings                                            | Repository s3 settings                                                   |
-| ![repository mirror settings](screenshots/repository-settings-2.png)  | ![repository s3 storage settings](screenshots/repository-settings-3.png) |
-| Repository cleanup policies                                           | Repository permissions                                                   |
-| ![repository cleanup policies](screenshots/repository-settings-4.png) | ![repository user permissions](screenshots/repository-settings-5.png)    |
+| Dashboard                                             | Artifact browser                                                    |
+|-------------------------------------------------------|---------------------------------------------------------------------|
+| ![dashboard view](screenshots/dashboard.png)          | ![artifact browser](screenshots/artifact-browser.png)               |
+| Version listing                                       | Repository settings                                                 |
+| ![artifact version listing](screenshots/versions.png) | ![general repository settings](screenshots/repository-settings.png) |
+| Access Tokens                                         | Jobs                                                                |
+| ![access token view](screenshots/access-tokens.png)   | ![system jobs view](screenshots/jobs.png)                           |

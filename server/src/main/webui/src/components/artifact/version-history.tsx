@@ -86,7 +86,7 @@ export function VersionHistory({
                                 className={cn(
                                     "px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-all border flex items-center justify-between",
                                     selectedVersion?.id === v.id
-                                        ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm"
+                                        ? "border-primary bg-primary/5 border-1 ring-primary shadow-sm"
                                         : "border-transparent hover:border-muted hover:bg-muted/50"
                                 )}
                             >

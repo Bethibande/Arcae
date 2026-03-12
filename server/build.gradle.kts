@@ -86,16 +86,16 @@ tasks.withType<GenerateTask> {
 
 tasks.register<Sync>("copyOpenAPITypes") {
     from("${layout.buildDirectory.get()}/generated/openapi")
-    into("${layout.projectDirectory}/src/main/webui-2/src/generated")
+    into("${layout.projectDirectory}/src/main/webui/src/generated")
 
     doLast {
-        kotlin.io.path.Path("${layout.projectDirectory}/src/main/webui-2/src/generated")
+        kotlin.io.path.Path("${layout.projectDirectory}/src/main/webui/src/generated")
             .walk()
             .forEach { path -> path.writeText("// @ts-nocheck\n" + path.readText()) }
 
         // Yeah, the open-api-generator sucks...
         // Adding a server with the url "/" still doesn't result in an empty base path...
-        val runtime = kotlin.io.path.Path("${layout.projectDirectory}/src/main/webui-2/src/generated/runtime.ts")
+        val runtime = kotlin.io.path.Path("${layout.projectDirectory}/src/main/webui/src/generated/runtime.ts")
         runtime.writeText(runtime.readText().replace("export const BASE_PATH = \"http://localhost\".replace(/\\/+\$/, \"\");", "export const BASE_PATH = \"\";"))
     }
 }

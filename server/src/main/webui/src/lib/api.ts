@@ -1,27 +1,32 @@
 import {
-    AccessTokenEndpointApi,
-    ArtifactEndpointApi,
-    AuthenticationEndpointApi,
-    Configuration,
-    JobEndpointApi,
-    RepositoryEndpointApi,
-    RepositoryPermissionEndpointApi,
-    SetupEndpointApi,
-    SystemEndpointApi,
-    UserEndpointApi
-} from "@/generated";
-import {RefreshMiddleware} from "@/lib/middleware.ts";
+  Configuration,
+  AuthenticationEndpointApi,
+  AccessTokenEndpointApi,
+  ArtifactEndpointApi,
+  JobEndpointApi,
+  MavenRepositoryEndpointApi,
+  OCIRepositoryEndpointApi,
+  RepositoryEndpointApi,
+  RepositoryPermissionEndpointApi,
+  SetupEndpointApi,
+  SystemEndpointApi,
+  UserEndpointApi,
+} from "@/generated"
+import { RefreshMiddleware } from "@/lib/middleware"
 
-export const apiConfig = new Configuration({
-    middleware: [RefreshMiddleware],
-});
+const configuration = new Configuration({
+  basePath: "",
+  middleware: [RefreshMiddleware],
+})
 
-export const accessTokenApi = new AccessTokenEndpointApi(apiConfig);
-export const artifactApi = new ArtifactEndpointApi(apiConfig);
-export const authApi = new AuthenticationEndpointApi(apiConfig);
-export const jobApi = new JobEndpointApi(apiConfig);
-export const repositoryApi = new RepositoryEndpointApi(apiConfig);
-export const repositoryPermissionApi = new RepositoryPermissionEndpointApi(apiConfig);
-export const setupApi = new SetupEndpointApi(apiConfig);
-export const systemApi = new SystemEndpointApi(apiConfig);
-export const userApi = new UserEndpointApi(apiConfig);
+export const authApi = new AuthenticationEndpointApi(configuration)
+export const accessTokenApi = new AccessTokenEndpointApi(configuration)
+export const artifactApi = new ArtifactEndpointApi(configuration)
+export const jobApi = new JobEndpointApi(configuration)
+export const mavenRepositoryApi = new MavenRepositoryEndpointApi(configuration)
+export const ociRepositoryApi = new OCIRepositoryEndpointApi(configuration)
+export const repositoryApi = new RepositoryEndpointApi(configuration)
+export const repositoryPermissionApi = new RepositoryPermissionEndpointApi(configuration)
+export const setupApi = new SetupEndpointApi(configuration)
+export const systemApi = new SystemEndpointApi(configuration)
+export const userApi = new UserEndpointApi(configuration)

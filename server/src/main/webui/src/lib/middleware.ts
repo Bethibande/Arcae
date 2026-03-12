@@ -29,7 +29,13 @@ export const RefreshMiddleware: Middleware = {
                 return
             }
 
-            return context.fetch(context.url, context.init)
+            const retried = await context.fetch(context.url, context.init)
+            if (retried.status === 401) {
+                window.location.href = "/login";
+                return
+            }
+
+            return retried
         }
 
         return context.response

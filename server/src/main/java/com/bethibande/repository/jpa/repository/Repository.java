@@ -43,6 +43,10 @@ public class Repository extends PanacheEntityBase {
     @Column(columnDefinition = "jsonb")
     public String settings;
 
+    /**
+     * This ia a generated field. Call {@link #updateMetadata()} to update its value.
+     * Never overwrite this value manually, any changes will be lost when persisting the entity.
+     */
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     public Map<String, Object> metadata;

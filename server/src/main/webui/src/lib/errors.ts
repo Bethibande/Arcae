@@ -9,25 +9,37 @@ export async function showHttpErrorAndContinue(response: Response): Promise<Resp
     return response
 }
 
-export function showHttpError(response: Response) {
-    const contentLength = parseInt(response.headers.get("Content-Length") || "0")
+export async function getHttpErrorMessage(response: Response): Promise<string> {
     const contentType = response.headers.get("Content-Type") || ""
 
-    if (contentLength > 0 && contentType.startsWith("application/json")) {
-        response.json().then(() => {
-            showErrorMessage(response.statusText)
-        })
-    } else {
-        showErrorMessage(response.statusText)
+    try {
+        if (contentType.startsWith("application/json")) {
+            const body = await response.json()
+            return body?.message ?? body?.title ?? response.statusText
+        } else {
+            const text = await response.text()
+            return text.trim() || response.statusText
+        }
+    } catch {
+        return response.statusText
     }
 }
 
-export function showError(error: any) {
-    if (error.response) {
-        showHttpError(error.response)
-    } else {
-        showErrorMessage(error.message)
+export function showHttpError(response: Response) {
+    getHttpErrorMessage(response).then(showErrorMessage)
+}
+
+export async function getErrorMessage(error: unknown): Promise<string> {
+    if (error && typeof error === "object" && "response" in error && error.response instanceof Response) {
+        return getHttpErrorMessage(error.response)
+    } else if (error instanceof Error) {
+        return error.message
     }
+    return String(error)
+}
+
+export function showError(error: unknown) {
+    getErrorMessage(error).then(showErrorMessage)
 }
 
 export function showErrorMessage(message: string) {

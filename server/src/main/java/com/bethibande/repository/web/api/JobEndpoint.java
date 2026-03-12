@@ -16,6 +16,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
 import org.apache.http.HttpHeaders;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,6 +29,8 @@ import java.time.Instant;
 @ApplicationScoped
 @Path("/api/v1/job")
 public class JobEndpoint {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobEndpoint.class);
 
     @Inject
     protected JobScheduler scheduler;
@@ -71,13 +75,17 @@ public class JobEndpoint {
         }
     }
 
-    protected <T> T propagate(final String path, final String method, final Class<T> clazz, final Object requestBody) throws IOException, InterruptedException {
+    protected <T> T propagate(final String path,
+                              final String method,
+                              final Class<T> clazz,
+                              final Object requestBody) throws IOException, InterruptedException {
         final HttpRequest request = requestBuilder(path)
                 .method(method, requestBody == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(this.toJson(requestBody)))
                 .build();
 
         final HttpResponse<T> response = this.client.send(request, HttpClientUtil.jsonBodyHandler(clazz));
         if (response.statusCode() != 200) {
+            LOGGER.warn("Failed to propagate request to remote worker: {} - {}", response.statusCode(), response.body());
             throw new WebApplicationException(response.statusCode());
         }
 
@@ -99,9 +107,10 @@ public class JobEndpoint {
     @Transactional
     @Path("/schedule")
     @RolesAllowed("ADMIN")
-    public ScheduledJobDTO scheduleJob(final ScheduledJobDTOWithoutId dto) throws IOException, InterruptedException {
+    public ScheduledJobDTO scheduleJob(final ScheduledJobDTOWithoutId dto,
+                                       final @QueryParam("now") @DefaultValue("false") boolean now) throws IOException, InterruptedException {
         if (scheduler.isDistributed() && !kubernetesLeaderService.isLeader()) {
-            return propagate("/api/v1/job/schedule", "POST", ScheduledJobDTO.class, dto);
+            return propagate("/api/v1/job/schedule?now=" + now, "POST", ScheduledJobDTO.class, dto);
         }
 
         final ScheduledJob job = new ScheduledJob();
@@ -109,6 +118,7 @@ public class JobEndpoint {
         job.settings = dto.settings();
         job.deleteAfterRun = dto.deleteAfterRun();
         job.cronSchedule = dto.cronSchedule();
+        job.nextRunAt = now ? Instant.now() : null;
 
         scheduler.schedule(job, Instant.now());
 

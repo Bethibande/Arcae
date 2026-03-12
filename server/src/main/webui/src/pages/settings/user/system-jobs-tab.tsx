@@ -4,11 +4,23 @@ import {jobApi, systemApi} from "@/lib/api.ts";
 import {DataTable, type ColumnDef} from "@/components/ui/data-table.tsx";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
-import {Play, RefreshCcw, Settings} from "lucide-react";
+import {Play, RefreshCcw, Settings, Search} from "lucide-react";
 import {toast} from "sonner";
 import {showError} from "@/lib/errors.ts";
 import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";
 import {cn} from "@/lib/utils.ts";
+import {Card, CardContent} from "@/components/ui/card.tsx";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog.tsx";
 
 const JOB_TRANSLATIONS: Record<JobType, { title: string; description: string }> = {
     [JobType.DeleteOldVersions]: {
@@ -26,6 +38,10 @@ const JOB_TRANSLATIONS: Record<JobType, { title: string; description: string }> 
     [JobType.CleanUpExpiredUploads]: {
         title: "Cleanup Expired Uploads",
         description: "Cleans up expired uploads",
+    },
+    [JobType.UpdateSearchIndex]: {
+        title: "Update Search Index",
+        description: "Re-indexes all artifacts and versions for search",
     }
 };
 
@@ -75,6 +91,25 @@ export function SystemJobsTab() {
             fetchData();
         } catch (error) {
             console.error("Failed to trigger job", error);
+            showError(error);
+        }
+    }, [fetchData]);
+
+    const runOneOff = useCallback(async (type: JobType) => {
+        try {
+            await jobApi.apiV1JobSchedulePost({
+                scheduledJobDTOWithoutId: {
+                    type,
+                    deleteAfterRun: true,
+                    cronSchedule: "* * * * *",
+                    settings: "{}",
+                },
+                now: true
+            });
+            toast.success("Job scheduled successfully");
+            fetchData();
+        } catch (error) {
+            console.error("Failed to schedule one-off job", error);
             showError(error);
         }
     }, [fetchData]);
@@ -288,6 +323,47 @@ export function SystemJobsTab() {
                 loading={loading}
                 emptyMessage="No system jobs found."
             />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                    <Play className="size-4" /> One-off Jobs
+                </h3>
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <h4 className="font-semibold flex items-center gap-2">
+                                    <Search className="size-4" /> Update Search Index
+                                </h4>
+                                <p className="text-sm text-muted-foreground">
+                                    Re-indexes all artifacts for search. This may take a while depending on the number of artifacts.
+                                </p>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" className="gap-2">
+                                        <Play className="size-4" /> Run Now
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be cancelled. It might cause small disruptions and take a long time to complete, depending on your database size.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => runOneOff(JobType.UpdateSearchIndex)}>
+                                            Run Now
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </section>
     );
 }

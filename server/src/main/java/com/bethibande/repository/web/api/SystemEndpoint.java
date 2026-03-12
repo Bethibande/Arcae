@@ -18,8 +18,9 @@ public class SystemEndpoint {
 
     @Inject
     protected KubernetesLeaderService kubernetesLeaderService;
+
     @Inject
-    JobScheduler jobScheduler;
+    protected JobScheduler jobScheduler;
 
     public record KubernetesCapabilities(
             @NotNull boolean enabled,

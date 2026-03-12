@@ -7,4 +7,7 @@ public enum JobType {
     CLEAN_UP_ORPHANED_FILES,
     CLEAN_UP_EXPIRED_UPLOADS,
 
+    // One-off jobs
+    UPDATE_SEARCH_INDEX
+
 }

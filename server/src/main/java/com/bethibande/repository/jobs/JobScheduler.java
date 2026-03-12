@@ -117,17 +117,19 @@ public class JobScheduler {
     }
 
     public void schedule(final ScheduledJob job, final Instant now) {
-        final Cron cron = this.cronParser.parse(job.cronSchedule);
-        if (job.nextRunAt == null) {
-            job.nextRunAt = ExecutionTime.forCron(cron)
-                    .nextExecution(now.atZone(ZoneOffset.UTC))
-                    .map(ZonedDateTime::toInstant)
-                    .orElse(null);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            final Cron cron = this.cronParser.parse(job.cronSchedule);
+            if (job.nextRunAt == null) {
+                job.nextRunAt = ExecutionTime.forCron(cron)
+                        .nextExecution(now.atZone(ZoneOffset.UTC))
+                        .map(ZonedDateTime::toInstant)
+                        .orElse(null);
+            }
 
-        job.persist();
+            job.persist();
 
-        if (!job.nextRunAt.isAfter(now)) scheduleNow(job);
+            if (!job.nextRunAt.isAfter(now)) scheduleNow(job);
+        });
     }
 
     private void scheduleNow(final ScheduledJob job) {

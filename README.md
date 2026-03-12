@@ -4,8 +4,7 @@
 
 > [!WARNING]
 > This project is in very early development, please use it with caution. Bugs should be expected.
-> The performance is also quite lacking due to missing database indices and caching in most areas.
-> And yes, most of the front-end is vibe-coded, deal with it. I'm a back-end developer. React makes me want to cry.
+> Performance is also still a work-in-progress.
 
 ### Quick links
 - [Features](#features)

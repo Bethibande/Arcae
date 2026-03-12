@@ -9,6 +9,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 
+import java.util.Comparator;
 import java.util.List;
 
 @RolesAllowed("ADMIN")
@@ -56,6 +57,7 @@ public class RepositoryPermissionEndpoint {
         if (repository == null) throw new NotFoundException("Unknown repository");
 
         return repository.permissions.stream()
+                .sorted(Comparator.comparing(p -> p.id))
                 .map(PermissionScopeDTO::from)
                 .toList();
     }

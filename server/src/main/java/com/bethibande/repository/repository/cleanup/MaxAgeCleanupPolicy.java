@@ -7,6 +7,7 @@ import com.bethibande.repository.repository.security.AuthContext;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public record MaxAgeCleanupPolicy(
         boolean enabled,
         long time,
+        @NotNull
         ChronoUnit unit
 ) {
 

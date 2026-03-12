@@ -10,20 +10,21 @@ interface InputProps<TFieldValues extends FieldValues = FieldValues, TName exten
 export interface FormFieldProps<TFieldValues extends FieldValues = FieldValues, TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>, TContext = any, TTransformedValues = TFieldValues> {
     fieldName: TName,
     label: string,
-    Input?: FunctionComponent<InputProps<TFieldValues, TName>>,
+    Input?: FunctionComponent<InputProps<TFieldValues, TName>> | any,
     control: Control<TFieldValues, TContext, TTransformedValues>,
     placeholder?: string,
-    type?: string
+    type?: string,
+    className?: string
 }
 
 export function FormField<TFieldValues extends FieldValues = FieldValues, TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,  TContext = any, TTransformedValues = TFieldValues>(props: FormFieldProps<TFieldValues, TName, TContext, TTransformedValues>) {
-    const {fieldName, label, Input, control, placeholder, type} = props;
+    const {fieldName, label, Input, control, placeholder, type, className} = props;
 
     return (
         <Controller name={fieldName}
                     control={control}
                     render={({field, fieldState}) => (
-                        <Field data-invalid={fieldState.invalid}>
+                        <Field data-invalid={fieldState.invalid} className={className}>
                             <FieldLabel htmlFor={fieldName}>{label}</FieldLabel>
 
                             {Input ? (

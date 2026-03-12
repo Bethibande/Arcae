@@ -7,6 +7,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import io.quarkus.panache.common.Sort;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Type;
+import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
@@ -35,11 +36,11 @@ public class ArtifactVersion extends PanacheEntity {
     @Column(nullable = false, columnDefinition = "varchar(128)")
     public String version;
 
-    @GenericField
+    @GenericField(sortable = Sortable.YES)
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant created;
 
-    @GenericField
+    @GenericField(sortable = Sortable.YES)
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant updated;
 

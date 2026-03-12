@@ -12,6 +12,7 @@ public record OCIRepositoryConfig(
         @NotNull
         OCIRoutingConfig routingConfig,
         Boolean allowRedeployments,
-        StandardMirrorConfig mirrorConfig
+        StandardMirrorConfig mirrorConfig,
+        @NotNull String externalHostname
 ) {
 }

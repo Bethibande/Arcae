@@ -154,12 +154,13 @@ public class UserEndpoint {
             throw new WebApplicationException("Duplicate email", HttpStatus.SC_CONFLICT);
 
         final User self = authenticatedUser.getSelf();
-        if (!BcryptUtil.matches(dto.password(), self.password)) throw new UnauthorizedException("Invalid password");
+        if (!BcryptUtil.matches(dto.password(), self.password)) throw new ForbiddenException("Invalid password");
 
-        self.name = dto.name();
-        self.email = dto.email();
+        final User user = User.findById(self.id); // Load the user to ensure it is attached to our transaction
+        user.name = dto.name();
+        user.email = dto.email();
 
-        self.persist();
+        user.persist();
 
         return authenticationEndpoint.doLogin(self);
     }
@@ -179,7 +180,7 @@ public class UserEndpoint {
         if (BcryptUtil.matches(form.current, self.password)) {
             self.password = BcryptUtil.bcryptHash(form.newPassword);
         } else {
-            throw new UnauthorizedException("Invalid current password");
+            throw new ForbiddenException("Invalid current password");
         }
     }
 

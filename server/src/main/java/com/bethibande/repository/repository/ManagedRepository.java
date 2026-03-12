@@ -11,6 +11,7 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Map;
 
 /**
  * A ManagedRepository is an implementation of a repository for a specific package manager backed by a repository entity describing its features/settings.
@@ -20,6 +21,8 @@ import java.time.Instant;
  * @see OCIRepository
  */
 public interface ManagedRepository {
+
+    Map<String, Object> generateMetadata();
 
     Repository getInfo();
 

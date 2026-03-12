@@ -6,7 +6,6 @@ import com.bethibande.repository.jpa.files.FileUploadSession;
 import com.bethibande.repository.jpa.files.OCISubject;
 import com.bethibande.repository.jpa.files.StoredFile;
 import com.bethibande.repository.jpa.repository.Repository;
-import com.bethibande.repository.jpa.repository.RepositoryMetadataKey;
 import com.bethibande.repository.k8s.KubernetesSupport;
 import com.bethibande.repository.repository.*;
 import com.bethibande.repository.repository.backend.MultipartUploadStatus;
@@ -52,7 +51,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     private final OCIRepositoryConfig config;
     private final KubernetesSupport kubernetesSupport;
 
-    private final S3Backend backend;
+    private final S3Backend backend; // TODO: Make this lazy
     private final OCIMirrorSupport mirrorSupport;
     private final OCIImageIndex index;
 
@@ -82,6 +81,13 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     }
 
     @Override
+    public Map<String, Object> generateMetadata() {
+        return Map.of(
+                "HOST_NAME", config.externalHostname()
+        );
+    }
+
+    @Override
     public void delete(final StoredFile file) {
         this.backend.delete(file.key);
         StoredFile.deleteById(file.id);
@@ -97,7 +103,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
             this.kubernetesSupport.createOrUpdateRepositoryHttpRoute(
                     info.name,
                     info.packageManager,
-                    info.getMetadata(RepositoryMetadataKey.HOST_NAME),
+                    config.externalHostname(),
                     routing.targetService(),
                     routing.targetPort(),
                     routing.gatewayName(),
@@ -110,7 +116,6 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                     info.packageManager
             );
         }
-        info.persist();
     }
 
     @Override

@@ -1,10 +1,13 @@
 package com.bethibande.repository.repository.cleanup;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import jakarta.validation.constraints.NotNull;
 
 @RegisterForReflection
 public record CleanupPolicies(
-    MaxAgeCleanupPolicy maxAgePolicy,
-    MaxVersionCountPolicy maxVersionCountPolicy
+        @NotNull
+        MaxAgeCleanupPolicy maxAgePolicy,
+        @NotNull
+        MaxVersionCountPolicy maxVersionCountPolicy
 ) {
 }

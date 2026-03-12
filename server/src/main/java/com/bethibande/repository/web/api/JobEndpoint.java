@@ -119,6 +119,7 @@ public class JobEndpoint {
         job.deleteAfterRun = dto.deleteAfterRun();
         job.cronSchedule = dto.cronSchedule();
         job.nextRunAt = now ? Instant.now() : null;
+        job.persist();
 
         scheduler.schedule(job, Instant.now());
 
@@ -140,6 +141,7 @@ public class JobEndpoint {
         job.settings = dto.settings();
         job.deleteAfterRun = dto.deleteAfterRun();
         job.cronSchedule = dto.cronSchedule();
+        job.persist();
 
         scheduler.schedule(job, Instant.now());
 
@@ -159,6 +161,8 @@ public class JobEndpoint {
         if (job == null) throw new NotFoundException("Job not found");
 
         job.nextRunAt = nextRunAt;
+        job.persist();
+
         scheduler.schedule(job, Instant.now());
 
         return ScheduledJobDTO.from(job);

@@ -21,6 +21,7 @@ import org.apache.http.HttpHeaders;
 import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.utils.Lazy;
 
 import java.io.*;
 import java.net.URI;
@@ -46,7 +47,7 @@ public class MavenRepository implements ManagedRepository {
     private final MavenFileIndexer fileIndexer;
     private final MavenMirrorSupport mirrorSupport;
 
-    private final S3Backend backend; // TODO: Make this lazy
+    private final Lazy<S3Backend> backend;
     private final Executor executor;
 
     public MavenRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
@@ -58,7 +59,7 @@ public class MavenRepository implements ManagedRepository {
                            final Executor executor) {
         this.info = info;
         this.config = config;
-        this.backend = new S3Backend(config.s3Config());
+        this.backend = new Lazy<>(() -> new S3Backend(config.s3Config()));
         this.fileIndexer = new MavenFileIndexer(info, this);
         this.mirrorSupport = new MavenMirrorSupport(this, config.mirrorConfig());
         this.executor = executor;
@@ -76,7 +77,7 @@ public class MavenRepository implements ManagedRepository {
 
     @Override
     public void delete(final StoredFile file) {
-        this.backend.delete("%s/%s".formatted(info.name, file.key));
+        this.backend.getValue().delete("%s/%s".formatted(info.name, file.key));
         StoredFile.deleteById(file.id);
     }
 
@@ -137,7 +138,7 @@ public class MavenRepository implements ManagedRepository {
 
         final StreamHandle result = this.fileIndexer.isHash(path)
                 ? fetchHash(path)
-                : this.backend.get("%s/%s".formatted(info.name, path));
+                : this.backend.getValue().get("%s/%s".formatted(info.name, path));
 
         if (result == null && this.mirrorSupport.enabled()) {
             return getFromMirror(auth, path);
@@ -150,8 +151,9 @@ public class MavenRepository implements ManagedRepository {
         if (!this.info.canWrite(auth)) throw new UnauthorizedException();
 
         final String namespacedPath = "%s/%s".formatted(info.name, path);
+        final S3Backend backend = this.backend.getValue();
 
-        if (!config.allowRedeployments() && this.backend.head(namespacedPath)) {
+        if (!config.allowRedeployments() && backend.head(namespacedPath)) {
             throw new BadRequestException("File already exists");
         }
 
@@ -165,7 +167,7 @@ public class MavenRepository implements ManagedRepository {
 
             final byte[] bytes = handle.readAllBytes();
 
-            this.backend.put(
+            backend.put(
                     namespacedPath,
                     new StreamHandle(
                             new ByteArrayInputStream(bytes),
@@ -176,7 +178,7 @@ public class MavenRepository implements ManagedRepository {
 
             this.fileIndexer.indexPom(bytes);
         } else {
-            this.backend.put(namespacedPath, handle);
+            backend.put(namespacedPath, handle);
         }
     }
 
@@ -187,7 +189,7 @@ public class MavenRepository implements ManagedRepository {
             final StoredFile file = files.get(i);
 
             final String namespacedPath = "%s/%s".formatted(info.name, file.key);
-            this.backend.delete(namespacedPath);
+            this.backend.getValue().delete(namespacedPath);
             file.delete();
         }
 

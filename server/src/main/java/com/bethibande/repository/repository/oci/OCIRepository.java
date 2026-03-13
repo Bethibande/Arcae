@@ -35,6 +35,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.utils.Lazy;
 
 import java.io.*;
 import java.time.Instant;
@@ -51,7 +52,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     private final OCIRepositoryConfig config;
     private final KubernetesSupport kubernetesSupport;
 
-    private final S3Backend backend; // TODO: Make this lazy
+    private final Lazy<S3Backend> backend;
     private final OCIMirrorSupport mirrorSupport;
     private final OCIImageIndex index;
 
@@ -75,7 +76,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         this.kubernetesSupport = kubernetesSupport;
         this.executor = executor;
 
-        this.backend = new S3Backend(config.s3Config());
+        this.backend = new Lazy<>(() -> new S3Backend(config.s3Config()));
         this.mirrorSupport = new OCIMirrorSupport(config, info);
         this.index = new OCIImageIndex(this);
     }
@@ -89,7 +90,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
     @Override
     public void delete(final StoredFile file) {
-        this.backend.delete(file.key);
+        this.backend.getValue().delete(file.key);
         StoredFile.deleteById(file.id);
     }
 
@@ -207,8 +208,9 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     }
 
     private OCIStreamHandle getManifestInternal(final String namespace, final String reference) {
+        final S3Backend backend = this.backend.getValue();
         if (OCIDigestHelper.isDigest(reference)) {
-            final StreamHandle handle = this.backend.get(toManifestKey(namespace, reference));
+            final StreamHandle handle = backend.get(toManifestKey(namespace, reference));
             if (handle == null) return null;
 
             return new OCIStreamHandle(
@@ -222,7 +224,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
             final String digest = file.key.substring(file.key.lastIndexOf('/') + 1);
 
             return new OCIStreamHandle(
-                    this.backend.get(file.key),
+                    backend.get(file.key),
                     digest
             );
         }
@@ -302,8 +304,9 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     }
 
     private OCIContentInfo getManifestInfoInternal(final String namespace, final String reference) {
+        final S3Backend backend = this.backend.getValue();
         if (OCIDigestHelper.isDigest(reference)) {
-            final ObjectInfo info = this.backend.headObject(toManifestKey(namespace, reference));
+            final ObjectInfo info = backend.headObject(toManifestKey(namespace, reference));
             if (info == null) return null;
             return new OCIContentInfo(
                     reference,
@@ -315,7 +318,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
             if (file == null) return null;
 
             final String digest = file.key.substring(file.key.lastIndexOf('/') + 1);
-            final ObjectInfo info = this.backend.headObject(file.key);
+            final ObjectInfo info = backend.headObject(file.key);
             if (info == null) return null;
 
             return new OCIContentInfo(
@@ -329,7 +332,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     public OCIContentInfo getBlobInfo(final AuthContext auth, final String namespace, final String digest) {
         checkViewAccess(auth);
 
-        final ObjectInfo info = this.backend.headObject(toBlobKey(namespace, digest));
+        final ObjectInfo info = this.backend.getValue().headObject(toBlobKey(namespace, digest));
         if (info != null) return new OCIContentInfo(digest, info.contentLength(), info.contentType());
 
         if (this.mirrorSupport.isMirroringEnabled() && this.mirrorSupport.canMirror(auth)) {
@@ -341,7 +344,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
     public StreamHandle getBlob(final AuthContext auth, final String namespace, final String digest) {
         checkViewAccess(auth);
-        final StreamHandle handle = this.backend.get(toBlobKey(namespace, digest));
+        final StreamHandle handle = this.backend.getValue().get(toBlobKey(namespace, digest));
         if (handle != null) return handle;
 
         if (this.mirrorSupport.isMirroringEnabled() && this.mirrorSupport.canMirror(auth)) {
@@ -408,7 +411,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         checkViewAccess(auth);
 
         final String key = toBlobKey(namespace, digest);
-        final StreamHandle handle = this.backend.get(key, offset, length);
+        final StreamHandle handle = this.backend.getValue().get(key, offset, length);
 
         if (handle == null && this.mirrorSupport.isMirroringEnabled()) {
             return mirrorBlobRange(namespace, digest, offset, length); // Can't store this here as it is just a part of the blob
@@ -429,10 +432,11 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                            final StreamHandle stream) {
         checkWriteAccess(auth);
 
+        final S3Backend backend = this.backend.getValue();
         final String key = toBlobKey(namespace, digest);
         if (this.config.allowRedeployments() != null
                 && !this.config.allowRedeployments()
-                && this.backend.head(key)) {
+                && backend.head(key)) {
             throw createBlobExistsException();
         }
 
@@ -440,13 +444,14 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
             this.index.putBlob(key, digest, stream.contentLength());
         });
 
-        this.backend.put(key, stream);
+        backend.put(key, stream);
     }
 
     @Override
     public void abortUploadSession(final FileUploadSession session) {
-        this.backend.abortMultipartUpload(session.uploadSessionId, session.fileKey);
-        this.backend.delete(session.fileKey); // In case the upload in S3 was completed but not in the database
+        final S3Backend backend = this.backend.getValue();
+        backend.abortMultipartUpload(session.uploadSessionId, session.fileKey);
+        backend.delete(session.fileKey); // In case the upload in S3 was completed but not in the database
     }
 
     public UploadSessionHandle startUploadSession(final AuthContext auth, final String namespace) {
@@ -454,7 +459,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
         final UUID sessionId = UUID.randomUUID();
         final String filePath = toPendingBlobKey(namespace, sessionId.toString());
-        final String uploadId = this.backend.createMultipartUpload(filePath);
+        final String uploadId = this.backend.getValue().createMultipartUpload(filePath);
 
         QuarkusTransaction.requiringNew().run(() -> this.index.recordUploadSession(Instant.now(), filePath, uploadId));
 
@@ -474,7 +479,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                 : new SHA256Digest();
 
         final InputStream stream = new org.bouncycastle.crypto.io.DigestInputStream(handle.stream(), digest);
-        this.backend.uploadPart(
+        this.backend.getValue().uploadPart(
                 sessionHandle.uploadId(),
                 toPendingBlobKey(namespace, sessionHandle.sessionId().toString()),
                 number,
@@ -495,7 +500,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                                                  final UploadSessionHandle handle) {
         checkWriteAccess(auth);
 
-        return this.backend.headUpload(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()));
+        return this.backend.getValue().headUpload(handle.uploadId(), toPendingBlobKey(namespace, handle.sessionId().toString()));
     }
 
     private WebApplicationException createMultiPartAlgorithmNotAllowedException(final String algorithm) {
@@ -545,27 +550,28 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                                       final UploadSessionHandle handle) {
         checkWriteAccess(auth);
 
+        final S3Backend backend = this.backend.getValue();
         final String pendingKey = toPendingBlobKey(namespace, handle.sessionId().toString());
         final String blobKey = toBlobKey(namespace, digest);
 
         if (this.config.allowRedeployments() != null
                 && !this.config.allowRedeployments()
-                && this.backend.head(blobKey)) {
-            this.backend.abortMultipartUpload(handle.uploadId(), pendingKey);
+                && backend.head(blobKey)) {
+            backend.abortMultipartUpload(handle.uploadId(), pendingKey);
             throw createBlobExistsException();
         }
 
         verifyDigestAndAlgorithm(auth, namespace, digest, handle);
 
-        this.backend.completeMultipartUpload(handle.uploadId(), pendingKey);
+        backend.completeMultipartUpload(handle.uploadId(), pendingKey);
 
-        final ObjectInfo blobInfo = this.backend.headObject(pendingKey);
+        final ObjectInfo blobInfo = backend.headObject(pendingKey);
 
         QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).run(() -> {
             this.index.putBlob(blobKey, digest, blobInfo.contentLength());
         });
 
-        this.backend.move(pendingKey, blobKey);
+        backend.move(pendingKey, blobKey);
 
         QuarkusTransaction.joiningExisting().run(() -> this.index.endUploadSession(handle.uploadId()));
     }
@@ -577,7 +583,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         checkWriteAccess(auth);
 
         QuarkusTransaction.joiningExisting().run(() -> this.index.endUploadSession(uploadId));
-        this.backend.abortMultipartUpload(uploadId, toPendingBlobKey(namespace, sessionId.toString()));
+        this.backend.getValue().abortMultipartUpload(uploadId, toPendingBlobKey(namespace, sessionId.toString()));
     }
 
     @Override
@@ -610,7 +616,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
     protected void putFile(final String key, final byte[] contents, final String contentType) {
         final ByteArrayInputStream stream = new ByteArrayInputStream(contents);
-        this.backend.put(key, new StreamHandle(stream, contentType, contents.length));
+        this.backend.getValue().put(key, new StreamHandle(stream, contentType, contents.length));
     }
 
     public void tryDeleteFile(final StoredFile file) {
@@ -619,7 +625,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         OCISubject.delete("source = ?1 OR subject = ?1", file);
 
         StoredFile.deleteById(file.id);
-        this.backend.delete(file.key);
+        this.backend.getValue().delete(file.key);
     }
 
     /**
@@ -661,7 +667,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
         if (this.config.allowRedeployments() != null
                 && !this.config.allowRedeployments()
-                && this.backend.head(fileKey)) {
+                && this.backend.getValue().head(fileKey)) {
             throw new WebApplicationException(Response.status(Response.Status.CONFLICT)
                     .entity(OCIError.of(OCIErrorCodes.DENIED, "Manifest already exists", "The manifest already exists in the repository"))
                     .build());

@@ -72,10 +72,10 @@ public class Repository extends PanacheEntityBase {
     public boolean canView(final AuthContext auth) {
         if (auth.isSystem()) return true;
         if (auth instanceof UserAuthContext userAuth && userAuth.getUser().roles.contains(UserRole.ADMIN)) return true;
-        if (permissions.isEmpty()) return true;
+        if (this.permissions == null || this.permissions.isEmpty()) return true;
 
-        for (int i = 0; i < permissions.size(); i++) {
-            if (permissions.get(i).canView(auth)) return true;
+        for (int i = 0; i < this.permissions.size(); i++) {
+            if (this.permissions.get(i).canView(auth)) return true;
         }
         return false;
     }
@@ -83,8 +83,10 @@ public class Repository extends PanacheEntityBase {
     public boolean canWrite(final AuthContext auth) {
         if (auth.isSystem()) return true;
         if (auth instanceof UserAuthContext userAuth && userAuth.getUser().roles.contains(UserRole.ADMIN)) return true;
-        for (int i = 0; i < permissions.size(); i++) {
-            if (permissions.get(i).canWrite(auth)) return true;
+        if (this.permissions == null || this.permissions.isEmpty()) return false;
+
+        for (int i = 0; i < this.permissions.size(); i++) {
+            if (this.permissions.get(i).canWrite(auth)) return true;
         }
         return false;
     }

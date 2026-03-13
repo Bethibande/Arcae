@@ -1,4 +1,4 @@
-import type {FunctionComponent} from "react";
+import type {FunctionComponent, HTMLInputAutoCompleteAttribute} from "react";
 import {type Control, Controller, type ControllerRenderProps, type FieldPath, type FieldValues} from "react-hook-form";
 import {Field, FieldError, FieldLabel} from "@/components/ui/field.tsx";
 import {Input as UIInput} from "@/components/ui/input.tsx";
@@ -14,11 +14,12 @@ export interface FormFieldProps<TFieldValues extends FieldValues = FieldValues, 
     control: Control<TFieldValues, TContext, TTransformedValues>,
     placeholder?: string,
     type?: string,
+    autoComplete?: HTMLInputAutoCompleteAttribute,
     className?: string
 }
 
 export function FormField<TFieldValues extends FieldValues = FieldValues, TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,  TContext = any, TTransformedValues = TFieldValues>(props: FormFieldProps<TFieldValues, TName, TContext, TTransformedValues>) {
-    const {fieldName, label, Input, control, placeholder, type, className} = props;
+    const {fieldName, label, Input, control, placeholder, type, autoComplete, className} = props;
 
     return (
         <Controller name={fieldName}
@@ -35,6 +36,7 @@ export function FormField<TFieldValues extends FieldValues = FieldValues, TName 
                                 <UIInput {...field}
                                          id={fieldName}
                                          type={type}
+                                         autoComplete={autoComplete}
                                          placeholder={placeholder}
                                          aria-invalid={fieldState.invalid}/>
                             )}

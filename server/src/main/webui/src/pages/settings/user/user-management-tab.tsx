@@ -112,6 +112,7 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: CreateUserDialogPro
                         fieldName="password"
                         label="Password"
                         type="password"
+                        autoComplete={"new-password"}
                         placeholder="Password"
                     />
                     <Field>

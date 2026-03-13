@@ -33,6 +33,7 @@ export function S3Form({form, path = "s3Config"}: S3FormProps) {
                             control={form.control}
                             fieldName={getPath("bucket")}
                             label="Bucket Name"
+                            autoComplete={"off"}
                             placeholder="my-bucket"
                         />
                     </div>
@@ -40,11 +41,13 @@ export function S3Form({form, path = "s3Config"}: S3FormProps) {
                         <FormField
                             control={form.control}
                             fieldName={getPath("accessKey")}
+                            autoComplete={"off"}
                             label="Access Key ID"
                         />
                         <FormField
                             control={form.control}
                             fieldName={getPath("secretKey")}
+                            autoComplete={"off"}
                             label="Secret Access Key"
                             type="password"
                         />

@@ -254,9 +254,9 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         return false;
     }
 
-    private boolean isOutOfDate(final String namespace, final String reference) {
+    private boolean shouldUpdate(final String namespace, final String reference) {
         final ArtifactVersion version = this.index.getArtifactVersionByReference(namespace, reference, LockModeType.NONE);
-        return version == null || version.mirrorTTLExpired(Instant.now());
+        return version == null || (!version.isLocalArtifact() && version.mirrorTTLExpired(Instant.now()));
     }
 
     public OCIStreamHandle getManifest(final AuthContext auth, final String namespace, final String reference) {
@@ -269,7 +269,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
         if (this.mirrorSupport.isMirroringEnabled()
                 && this.mirrorSupport.canMirror(auth)
-                && isOutOfDate(namespace, reference)) {
+                && shouldUpdate(namespace, reference)) {
             if (!this.mirrorSupport.isStoreArtifacts()) {
                 return this.mirrorSupport.getManifestFromMirror(namespace, reference);
             }
@@ -290,7 +290,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
         if (this.mirrorSupport.isMirroringEnabled()
                 && this.mirrorSupport.canMirror(auth)
-                && isOutOfDate(namespace, reference)) {
+                && shouldUpdate(namespace, reference)) {
             if (!this.mirrorSupport.isStoreArtifacts()) {
                 return this.mirrorSupport.headManifestFromMirror(namespace, reference);
             }

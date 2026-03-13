@@ -62,6 +62,10 @@ public class ArtifactVersion extends PanacheEntity {
     @JoinTable(name = "ArtifactVersion_files")
     public List<StoredFile> files;
 
+    public boolean isLocalArtifact() {
+        return this.mirrorTTL == null;
+    }
+
     public boolean mirrorTTLExpired(final Instant now) {
         return this.mirrorTTL != null && now.isAfter(this.mirrorTTL);
     }

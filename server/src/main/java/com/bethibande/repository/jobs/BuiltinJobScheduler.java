@@ -65,6 +65,7 @@ public class BuiltinJobScheduler {
                             "/api/v1/job/schedule?now=%s".formatted(immediate),
                             HttpResponse.BodyHandlers.discarding(),
                             builder -> builder.method("POST", HttpClientUtil.jsonBodyPublisher(body))
+                                    .header("Content-Type", "application/json")
                     ).<Void>thenApply(response -> {
                         if (response.statusCode() != 200) {
                             throw new RuntimeException("Failed to schedule job on leader node, status: " + response.statusCode() + " - " + response.body());

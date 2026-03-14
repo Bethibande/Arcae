@@ -81,6 +81,7 @@ public class JobEndpoint {
                               final Object requestBody) throws IOException, InterruptedException {
         final HttpRequest request = requestBuilder(path)
                 .method(method, requestBody == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(this.toJson(requestBody)))
+                .header(HttpHeaders.CONTENT_TYPE, "application/json")
                 .build();
 
         final HttpResponse<T> response = this.client.send(request, HttpClientUtil.jsonBodyHandler(clazz));

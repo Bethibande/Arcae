@@ -3,6 +3,7 @@ package com.bethibande.repository.jobs.impl;
 import com.bethibande.repository.jobs.JobType;
 import com.bethibande.repository.jpa.security.RefreshToken;
 import com.bethibande.repository.jpa.security.UserSession;
+import com.bethibande.repository.jpa.user.PasswordResetToken;
 import com.bethibande.repository.security.UserSessionService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -31,6 +32,7 @@ public class DeleteExpiredSessionsTask implements JobTask<Object> {
         QuarkusTransaction.requiringNew().run(() -> {
             UserSession.delete("created < ?1", minSessionAge);
             RefreshToken.delete("created < ?1", minRefreshTokenAge);
+            PasswordResetToken.delete("expiration < ?1", now);
         });
     }
 }

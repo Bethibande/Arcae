@@ -15,7 +15,7 @@ import java.time.Instant;
 
 @Entity
 @EntityDTO
-@EntityDTO(excludeProperties = {"id", "nextRunAt", "runner"}, name = "ScheduledJobDTOWithoutId")
+@EntityDTO(excludeProperties = {"id", "nextRunAt", "runner", "status", "executionStartedAt", "lastSuccessfulRun"}, name = "ScheduledJobDTOWithoutId")
 @RegisterForReflection(targets = {JobType.class, ScheduledJobDTO.class, ScheduledJobDTOWithoutId.class})
 public class ScheduledJob extends PanacheEntity {
 

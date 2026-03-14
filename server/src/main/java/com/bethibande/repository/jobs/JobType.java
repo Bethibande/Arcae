@@ -8,6 +8,7 @@ public enum JobType {
     CLEAN_UP_EXPIRED_UPLOADS,
 
     // One-off jobs
-    UPDATE_SEARCH_INDEX
+    UPDATE_SEARCH_INDEX,
+    RESET_PASSWORD
 
 }

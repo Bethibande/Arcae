@@ -44,4 +44,57 @@
         </createIndex>
     </changeSet>
 
+    <changeSet id="1773502055883-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="PasswordResetToken_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1773502055883-2"
+               author="bethibande">
+        <createTable tableName="PasswordResetToken">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_passwordresettoken"/>
+            </column>
+            <column name="user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="token"
+                    type="varchar(9)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1773502055883-3"
+               author="bethibande">
+        <addUniqueConstraint columnNames="token"
+                             constraintName="uc_passwordresettoken_token"
+                             tableName="PasswordResetToken"/>
+    </changeSet>
+    <changeSet id="1773502055883-4"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="user_id"
+                                 baseTableName="PasswordResetToken"
+                                 constraintName="FK_PASSWORDRESETTOKEN_ON_USER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+
+    <changeSet id="1773505919502-1" author="bethibande">
+        <createIndex tableName="passwordresettoken" indexName="idx_PasswordResetToken_token">
+            <column name="token"/>
+        </createIndex>
+        <createIndex tableName="PasswordResetToken" indexName="idx_PasswordResetToken_expiration">
+            <column name="expiration"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>

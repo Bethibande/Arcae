@@ -1,6 +1,7 @@
 import {useState} from "react"
 import {useAuth} from "@/components/auth-provider"
 import {cn} from "@/lib/utils"
+import { Link } from "react-router"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card"
 import {Field, FieldGroup, FieldLabel,} from "@/components/ui/field"
@@ -22,7 +23,7 @@ export function LoginForm({
     setLoading(true)
     try {
       await login({ username: user, password })
-    } catch (err: any) {
+    } catch {
       setError("Invalid email or password")
     } finally {
       setLoading(false)
@@ -55,6 +56,12 @@ export function LoginForm({
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <Link
+                    to="/login/reset"
+                    className="ml-auto text-sm underline-offset-4 hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
                 </div>
                 <Input
                   id="password"

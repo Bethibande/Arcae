@@ -6,6 +6,8 @@ import io.quarkus.qute.TemplateInstance;
 @CheckedTemplate
 public class MailTemplates {
 
-    public static native TemplateInstance testMessage(final int currentYear);
+    public static native TemplateInstance testMessage();
+
+    public static native TemplateInstance passwordReset(final String token, final String username);
 
 }

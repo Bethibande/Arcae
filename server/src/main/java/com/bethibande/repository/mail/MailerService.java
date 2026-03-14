@@ -4,6 +4,7 @@ import com.bethibande.repository.jpa.SystemProperty;
 import com.bethibande.repository.k8s.KubernetesSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.runtime.Startup;
 import io.vertx.core.Vertx;
 import io.vertx.core.dns.DnsClient;
 import io.vertx.core.dns.SrvRecord;
@@ -11,13 +12,14 @@ import io.vertx.ext.mail.*;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
 import java.net.http.HttpRequest;
-import java.time.Year;
 import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+@Startup
 @ApplicationScoped
 public class MailerService {
 
@@ -37,6 +39,7 @@ public class MailerService {
 
     private DnsClient dnsClient;
 
+    @Transactional
     @PostConstruct
     protected void init() {
         this.dnsClient = vertx.createDnsClient();
@@ -78,19 +81,25 @@ public class MailerService {
     }
 
     public CompletionStage<MailResult> sendTestMessage(final String to) {
-        final MailMessage message = new MailMessage();
+        final MailMessage message = createMessage();
         message.setTo(to);
-        message.setFrom(this.config.from());
         message.setSubject("Test mail");
 
-        final String body = MailTemplates.testMessage(Year.now().getValue())
+        final String body = MailTemplates.testMessage()
                 .render();
         message.setHtml(body);
 
         return sendMessage(message);
     }
 
-    private CompletionStage<MailResult> sendMessage(final MailMessage message) {
+    public MailMessage createMessage() {
+        final MailMessage message = new MailMessage();
+        message.setFrom(this.config.from());
+
+        return message;
+    }
+
+    public CompletionStage<MailResult> sendMessage(final MailMessage message) {
         if (!mailerEnabled()) throw new IllegalStateException("Mailer is not enabled");
 
         return this.mailClient.sendMail(message)

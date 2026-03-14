@@ -1,7 +1,10 @@
 package com.bethibande.repository.web.api;
 
+import com.bethibande.repository.jobs.BuiltinJobScheduler;
+import com.bethibande.repository.jobs.impl.PasswordResetTask;
 import com.bethibande.repository.jpa.security.RefreshToken;
 import com.bethibande.repository.jpa.security.UserSession;
+import com.bethibande.repository.jpa.user.PasswordResetToken;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserDTOWithoutPassword;
 import com.bethibande.repository.jpa.user.UserRole;
@@ -26,6 +29,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 @ApplicationScoped
 @Path("/api/v1/auth")
@@ -38,6 +42,12 @@ public class AuthenticationEndpoint {
 
     @Inject
     protected UserSessionService userSessionService;
+
+    @Inject
+    protected BuiltinJobScheduler builtinJobScheduler;
+
+    @Inject
+    protected PasswordResetTask passwordResetTask;
 
     public static class Credentials {
         public String username;
@@ -52,6 +62,44 @@ public class AuthenticationEndpoint {
 
     protected boolean isDevMode() {
         return Objects.equals(profile, "dev");
+    }
+
+    @POST
+    @PermitAll
+    @Path("/reset-request")
+    public CompletableFuture<Response> resetPassword(final @QueryParam("email") String email) {
+        return this.builtinJobScheduler.runOnce(
+                        this.passwordResetTask,
+                        new PasswordResetTask.Config(email)
+                ).thenApply((_) -> Response.ok().build())
+                .exceptionally((ex) -> {
+                    LOGGER.error("Failed to schedule password reset task for email: {}", email, ex);
+                    return Response.serverError().build();
+                });
+    }
+
+    public record PasswordResetCredentials(
+            String email,
+            String token,
+            String newPassword
+    ) {
+    }
+
+    @POST
+    @PermitAll
+    @Transactional
+    @Path("/reset")
+    public Response resetPassword(final PasswordResetCredentials credentials) {
+        final PasswordResetToken token = PasswordResetToken.find("token = ?1", credentials.token).firstResult();
+        if (token == null || token.isExpired(Instant.now())) return Response.status(Response.Status.BAD_REQUEST).build();
+        if (!token.user.email.equalsIgnoreCase(credentials.email)) return Response.status(Response.Status.BAD_REQUEST).build();
+
+        final User user = token.user;
+        user.password = BcryptUtil.bcryptHash(credentials.newPassword);
+
+        PasswordResetToken.delete("user = ?1", user);
+
+        return Response.ok().build();
     }
 
     @POST

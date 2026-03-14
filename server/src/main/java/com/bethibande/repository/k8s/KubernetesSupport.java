@@ -303,6 +303,12 @@ public class KubernetesSupport {
         }
     }
 
+    public String addressToHostname(final InetAddress address) {
+        return address instanceof Inet6Address
+                ? "[%s]".formatted(address.getHostAddress())
+                : address.getHostAddress();
+    }
+
     /**
      * Broadcasts an HTTP request to the management port of all replicas
      * @param path The request path i. e. /api/v1...
@@ -314,9 +320,7 @@ public class KubernetesSupport {
         final List<InetAddress> addresses = getAllPodClusterIPs();
         for (int i = 0; i < addresses.size(); i++) {
             final InetAddress address = addresses.get(i);
-            final String hostname = address instanceof Inet6Address
-                    ? "[%s]".formatted(address.getHostAddress())
-                    : address.getHostAddress();
+            final String hostname = addressToHostname(address);
 
             final URI uri = URI.create("http://%s:%d%s".formatted(hostname, this.managementPort, path));
             final HttpRequest.Builder builder = HttpRequest.newBuilder()

@@ -8,6 +8,7 @@ import {AuthProvider} from "@/components/auth-provider.tsx"
 import {ProtectedRoute} from "@/components/auth/protected-route.tsx"
 import MainLayout from "@/components/layout/main-layout.tsx"
 import LoginPage from "@/pages/login/page.tsx"
+import PasswordResetPage from "@/pages/login/password-reset.tsx"
 import DashboardPage from "@/pages/dashboard/page.tsx"
 import RepositoryBrowsePage from "@/pages/repository/browse/page.tsx"
 import ArtifactPage from "@/pages/artifact/page.tsx"
@@ -23,6 +24,7 @@ import { MailTab } from "@/pages/settings/user/mail-tab.tsx";
 import {Toaster} from "@/components/ui/sonner.tsx";
 import { Navigate, useParams } from "react-router";
 
+// eslint-disable-next-line react-refresh/only-export-components
 function SettingsTabWrapper() {
     const { tab } = useParams();
 
@@ -44,7 +46,6 @@ function SettingsTabWrapper() {
     }
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
@@ -58,6 +59,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/repository/:id/browse" element={<RepositoryBrowsePage />} />
                 <Route path="/artifact/:id" element={<ArtifactPage />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/login/reset" element={<PasswordResetPage />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/repository/new" element={<RepositorySettingsPage />} />
                   <Route path="/repository/:id/settings" element={<RepositorySettingsPage />} />

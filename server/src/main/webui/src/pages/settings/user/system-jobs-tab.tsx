@@ -42,6 +42,10 @@ const JOB_TRANSLATIONS: Record<JobType, { title: string; description: string }> 
     [JobType.UpdateSearchIndex]: {
         title: "Update Search Index",
         description: "Re-indexes all artifacts and versions for search",
+    },
+    [JobType.ResetPassword]: {
+        title: "Reset Password Request",
+        description: "Sends password reset emails to users",
     }
 };
 

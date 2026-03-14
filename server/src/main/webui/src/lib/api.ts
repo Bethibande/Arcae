@@ -5,6 +5,7 @@ import {
   ArtifactEndpointApi,
   JobEndpointApi,
   MavenRepositoryEndpointApi,
+  MailEndpointApi,
   OCIRepositoryEndpointApi,
   RepositoryEndpointApi,
   RepositoryPermissionEndpointApi,
@@ -24,6 +25,7 @@ export const accessTokenApi = new AccessTokenEndpointApi(configuration)
 export const artifactApi = new ArtifactEndpointApi(configuration)
 export const jobApi = new JobEndpointApi(configuration)
 export const mavenRepositoryApi = new MavenRepositoryEndpointApi(configuration)
+export const mailApi = new MailEndpointApi(configuration)
 export const ociRepositoryApi = new OCIRepositoryEndpointApi(configuration)
 export const repositoryApi = new RepositoryEndpointApi(configuration)
 export const repositoryPermissionApi = new RepositoryPermissionEndpointApi(configuration)

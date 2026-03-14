@@ -49,6 +49,10 @@ dependencies {
     implementation("com.bethibande.process:annotations:1.5")
     annotationProcessor("com.bethibande.process:processor:1.5")
 
+    // Emails & Templates
+    implementation("io.quarkus:quarkus-qute")
+    implementation("io.quarkus:quarkus-mailer")
+
     // Jackson & Hibernate Search ORM
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.0")
     implementation("io.quarkus:quarkus-rest-client-jackson")

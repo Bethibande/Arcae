@@ -19,6 +19,7 @@ import { PasswordTab } from "@/pages/settings/user/password-tab.tsx";
 import { TokensTab } from "@/pages/settings/user/tokens-tab.tsx";
 import { UserManagementTab } from "@/pages/settings/user/user-management-tab.tsx";
 import { SystemJobsTab } from "@/pages/settings/user/system-jobs-tab.tsx";
+import { MailTab } from "@/pages/settings/user/mail-tab.tsx";
 import {Toaster} from "@/components/ui/sonner.tsx";
 import { Navigate, useParams } from "react-router";
 
@@ -36,6 +37,8 @@ function SettingsTabWrapper() {
             return <UserManagementTab />;
         case "jobs":
             return <SystemJobsTab />;
+        case "mail":
+            return <MailTab />;
         default:
             return <Navigate to="/settings/profile" replace />;
     }

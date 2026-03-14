@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.33.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+    <changeSet id="1773481713099-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="SystemProperty_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1773481713099-2"
+               author="bethibande">
+        <createTable tableName="SystemProperty">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_systemproperty"/>
+            </column>
+            <column name="key"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value"
+                    type="jsonb">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1773481713099-3"
+               author="bethibande">
+        <addUniqueConstraint columnNames="key"
+                             constraintName="uc_systemproperty_key"
+                             tableName="SystemProperty"/>
+    </changeSet>
+
+    <changeSet id="1773482613718-1" author="bethibande">
+        <createIndex tableName="systemproperty" indexName="idx_SystemProperty_key">
+            <column name="key"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

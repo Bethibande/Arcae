@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title ?: 'Repository'}</title>
+    <style>
+        /* Base styles that work well across many email clients */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #09090b; /* Dark background */
+            color: #fafafa; /* Light text */
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        .header {
+            margin-bottom: 1.5rem;
+        }
+        .header table, .header td, .header th {
+            padding: 0;
+        }
+        .logo-box {
+            background-color: #2563eb; /* primary color */
+            border-radius: 1rem;
+            display: block;
+            padding: 0.5rem;
+        }
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fafafa;
+            letter-spacing: -0.025em;
+            line-height: 1.5rem;
+        }
+        .content {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #d4d4d8;
+        }
+        /* Link styling */
+        a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Logo Section -->
+        <div class="header">
+            <table>
+                <tr>
+                    <td style="vertical-align: middle;">
+                        <div class="logo-box">
+                            <!-- Adjusted SVG to fit within 32x32 container -->
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                                <path d="m3.3 7 8.7 5 8.7-5"></path>
+                                <path d="M12 22V12"></path>
+                            </svg>
+                        </div>
+                    </td>
+                    <td style="vertical-align: middle; padding-left: 0.5rem;">
+                        <span class="logo-text">Repository</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Main Content Section -->
+        <div class="content">
+            {#insert body}No content{/}
+        </div>
+
+    </div>
+</body>
+</html>

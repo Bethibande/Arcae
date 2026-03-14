@@ -36,6 +36,7 @@ public class JobScheduler {
     private static final Logger LOGGER = LoggerFactory.getLogger(JobScheduler.class);
 
     private final KubernetesLeaderService kubernetesLeaderService;
+    private final KubernetesSupport kubernetesSupport;
 
     private final boolean distributed;
 
@@ -65,6 +66,7 @@ public class JobScheduler {
                         final KubernetesSupport kubernetesSupport,
                         final @ConfigProperty(name = "repository.distributed") boolean distributedAllowed) {
         this.kubernetesLeaderService = kubernetesLeaderService;
+        this.kubernetesSupport = kubernetesSupport;
 
         this.distributed = distributedAllowed
                 && kubernetesSupport.isEnabled()
@@ -153,7 +155,7 @@ public class JobScheduler {
 
     private void checkRunnerStatus(final List<ScheduledJob> runningJobs) {
         final Set<String> availableRunners = this.distributed
-                ? new HashSet<>(this.remoteWorkerScheduler.getAllHostNames())
+                ? new HashSet<>(this.kubernetesSupport.getAllReplicaPodNames())
                 : Set.of(String.valueOf(this.startupTime));
 
         final Map<String, List<ScheduledJob>> runningJobsByRunners = runningJobs.stream()

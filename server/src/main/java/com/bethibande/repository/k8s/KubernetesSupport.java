@@ -1,6 +1,10 @@
 package com.bethibande.repository.k8s;
 
 import com.bethibande.repository.jpa.repository.PackageManager;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReview;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReviewBuilder;
 import io.fabric8.kubernetes.api.model.gatewayapi.v1.HTTPRoute;
@@ -10,6 +14,7 @@ import io.fabric8.kubernetes.api.model.gatewayapi.v1.ParentReferenceBuilder;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
+import io.fabric8.kubernetes.client.readiness.Readiness;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -17,6 +22,20 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 @Startup
 @ApplicationScoped
@@ -35,14 +54,32 @@ public class KubernetesSupport {
 
     private String namespace;
 
+    @ConfigProperty(name = "repository.scheduler.discovery-service")
+    protected String discoveryService;
+
     @ConfigProperty(name = "repository.scheduler.cluster-zone")
     protected String clusterDomain;
 
+    @ConfigProperty(name = "repository.management.port")
+    protected int managementPort;
+
+    @ConfigProperty(name = "repository.distributed")
+    protected boolean distributedAllowed;
+
+    protected final HttpClient httpClient = HttpClient.newHttpClient();
+
     protected boolean kubernetesSupport = true;
+    protected boolean serviceDiscovery = false;
     protected boolean canManageHttpRoutes = false;
     protected boolean canElectLeader = false;
     protected boolean canListPods = false;
     protected boolean canInspectServices = false;
+
+    private Map<String, String> labels;
+
+    private final Cache<String, InetAddress> podIPCache = Caffeine.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .build();
 
     protected boolean canAccessApi() {
         try (final KubernetesClient timeoutClient = new KubernetesClientBuilder()
@@ -89,6 +126,26 @@ public class KubernetesSupport {
                 && hasPermission("get", "pods", "");
 
         this.canInspectServices = hasPermission("get", "services", "");
+
+        initDiscovery();
+    }
+
+    protected void initDiscovery() {
+        if (!this.canListPods() || !this.canInspectServices() ||  !this.distributedAllowed) return;
+
+        final Service service = this.client.services()
+                .inNamespace(getNamespace())
+                .withName(this.discoveryService)
+                .get();
+
+        if (service == null) {
+            LOGGER.error("Discovery service {} not found", discoveryService);
+            LOGGER.warn("You can specify your own DNS-only service by setting the property \"repository.scheduler.discovery-service\"");
+            return;
+        }
+
+        this.labels = service.getSpec().getSelector();
+        this.serviceDiscovery = true;
     }
 
     public String getNamespace() {
@@ -117,6 +174,10 @@ public class KubernetesSupport {
 
     public boolean canInspectServices() {
         return this.canInspectServices;
+    }
+
+    public boolean isServiceDiscoveryEnabled() {
+        return this.serviceDiscovery;
     }
 
     protected String toHttpRouteName(final String repository, final PackageManager packageManager) {
@@ -192,6 +253,80 @@ public class KubernetesSupport {
         final SelfSubjectAccessReview result = client.resource(review).create();
 
         return result.getStatus().getAllowed();
+    }
+
+    public InetAddress podNameToClusterIP(final String name) {
+        return this.podIPCache.get(name, (_) -> {
+            final Pod pod = this.client.pods()
+                    .inNamespace(this.getNamespace())
+                    .withName(name)
+                    .get();
+
+            if (pod == null) throw new IllegalStateException("Pod no longer available: " + name);
+            if (!Readiness.isPodReady(pod)) throw new IllegalStateException("Pod not ready: " + name);
+
+            final String ip = pod.getStatus().getPodIP();
+            return InetAddress.ofLiteral(ip);
+        });
+    }
+
+    public List<String> getAllReplicaPodNames() {
+        try {
+            return this.client.pods()
+                    .inNamespace(this.getNamespace())
+                    .withLabels(this.labels)
+                    .list()
+                    .getItems()
+                    .stream()
+                    .filter(Readiness::isPodReady)
+                    .map(pod -> pod.getMetadata().getName())
+                    .toList();
+        } catch (final Exception ex) {
+            throw new RuntimeException("Failed to resolve discovery service addresses", ex);
+        }
+    }
+
+    public List<InetAddress> getAllPodClusterIPs() {
+        try {
+            return this.client.pods()
+                    .inNamespace(this.getNamespace())
+                    .withLabels(this.labels)
+                    .list()
+                    .getItems()
+                    .stream()
+                    .filter(Readiness::isPodReady)
+                    .map(pod -> pod.getStatus().getPodIP())
+                    .map(InetAddress::ofLiteral)
+                    .toList();
+        } catch (final Exception ex) {
+            throw new RuntimeException("Failed to resolve discovery service addresses", ex);
+        }
+    }
+
+    /**
+     * Broadcasts an HTTP request to the management port of all replicas
+     * @param path The request path i. e. /api/v1...
+     */
+    public List<CompletableFuture<HttpResponse<Void>>> broadcastHttp(final String path, final Consumer<HttpRequest.Builder> requestBuilder) {
+        if (!this.serviceDiscovery) return Collections.emptyList();
+
+        final List<CompletableFuture<HttpResponse<Void>>> futures = new ArrayList<>();
+        final List<InetAddress> addresses = getAllPodClusterIPs();
+        for (int i = 0; i < addresses.size(); i++) {
+            final InetAddress address = addresses.get(i);
+            final String hostname = address instanceof Inet6Address
+                    ? "[%s]".formatted(address.getHostAddress())
+                    : address.getHostAddress();
+
+            final URI uri = URI.create("http://%s:%d%s".formatted(hostname, this.managementPort, path));
+            final HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(uri);
+
+            requestBuilder.accept(builder);
+            futures.add(this.httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.discarding()));
+        }
+
+        return futures;
     }
 
 }

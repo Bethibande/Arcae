@@ -26,7 +26,8 @@ public class SystemEndpoint {
             @NotNull boolean enabled,
             @NotNull boolean routing,
             @NotNull boolean leaderElection,
-            @NotNull boolean distributedScheduler
+            @NotNull boolean distributedScheduler,
+            @NotNull boolean serviceDiscovery
     ) {
     }
 
@@ -37,7 +38,8 @@ public class SystemEndpoint {
                 kubernetesSupport.isEnabled(),
                 kubernetesSupport.hasHttpRouteSupport(),
                 kubernetesSupport.hasLeaderElectionSupport(),
-                jobScheduler.isDistributed()
+                jobScheduler.isDistributed(),
+                kubernetesSupport.isServiceDiscoveryEnabled()
         );
     }
 

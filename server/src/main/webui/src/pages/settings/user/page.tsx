@@ -1,6 +1,7 @@
 import { useNavigate, useParams, Link, Outlet } from "react-router";
 import { cn } from "@/lib/utils.ts";
 import {
+    Mail,
     ChevronRight,
     KeyRound,
     Lock,
@@ -11,7 +12,7 @@ import {
 import { useAuth } from "@/components/auth-provider.tsx";
 import { UserRole } from "@/generated";
 
-type Tab = "profile" | "password" | "tokens" | "users" | "jobs";
+type Tab = "profile" | "password" | "tokens" | "users" | "jobs" | "mail";
 
 export default function UserSettingsLayout() {
     const navigate = useNavigate();
@@ -28,6 +29,7 @@ export default function UserSettingsLayout() {
 
     const adminTabs: { id: Tab; label: string; description: string; icon: React.ElementType }[] = [
         { id: "users", label: "User Management", description: "Manage system users and roles", icon: Shield },
+        { id: "mail", label: "Mail Settings", description: "Configure SMTP settings", icon: Mail },
         { id: "jobs", label: "System Jobs", description: "Monitor background tasks", icon: Settings },
     ];
 

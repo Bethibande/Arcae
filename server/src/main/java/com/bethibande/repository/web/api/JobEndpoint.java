@@ -7,6 +7,7 @@ import com.bethibande.repository.util.HttpClientUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -105,7 +106,6 @@ public class JobEndpoint {
     }
 
     @POST
-    @Transactional
     @Path("/schedule")
     @RolesAllowed("ADMIN")
     public ScheduledJobDTO scheduleJob(final ScheduledJobDTOWithoutId dto,
@@ -114,13 +114,17 @@ public class JobEndpoint {
             return propagate("/api/v1/job/schedule?now=" + now, "POST", ScheduledJobDTO.class, dto);
         }
 
-        final ScheduledJob job = new ScheduledJob();
-        job.type = dto.type();
-        job.settings = dto.settings();
-        job.deleteAfterRun = dto.deleteAfterRun();
-        job.cronSchedule = dto.cronSchedule();
-        job.nextRunAt = now ? Instant.now() : null;
-        job.persist();
+        final ScheduledJob job = QuarkusTransaction.requiringNew().call(() -> {
+            final ScheduledJob entity = new ScheduledJob();
+            entity.type = dto.type();
+            entity.settings = dto.settings();
+            entity.deleteAfterRun = dto.deleteAfterRun();
+            entity.cronSchedule = dto.cronSchedule();
+            entity.nextRunAt = now ? Instant.now() : null;
+            entity.persist();
+
+            return entity;
+        });
 
         scheduler.schedule(job, Instant.now());
 

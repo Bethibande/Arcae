@@ -154,7 +154,6 @@ public class JobEndpoint {
     }
 
     @PUT
-    @Transactional
     @RolesAllowed("ADMIN")
     @Path("/{id}/nextRunAt")
     public ScheduledJobDTO setNextExecution(final @PathParam("id") long id, final Instant nextRunAt) throws IOException, InterruptedException {
@@ -162,11 +161,15 @@ public class JobEndpoint {
             return propagate("/api/v1/job/%s/nextRunAt".formatted(id), "PUT", ScheduledJobDTO.class, nextRunAt);
         }
 
-        final ScheduledJob job = ScheduledJob.findById(id);
-        if (job == null) throw new NotFoundException("Job not found");
+        final ScheduledJob job = QuarkusTransaction.requiringNew().call(() -> {
+            final ScheduledJob entity = ScheduledJob.findById(id);
+            if (entity == null) throw new NotFoundException("Job not found");
 
-        job.nextRunAt = nextRunAt;
-        job.persist();
+            entity.nextRunAt = nextRunAt;
+            entity.persist();
+
+            return entity;
+        });
 
         scheduler.schedule(job, Instant.now());
 

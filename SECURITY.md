@@ -23,9 +23,25 @@ In the future we may support further restricting access token permissions.
 ### Proxy headers
 By default, the application accepts all proxy headers (`X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`).
 As such, you should always run the application behind a reverse-proxy that strips and overrides these headers.
-Allowing users to forge these headers may allow them to bypass rate-limits (not yet implemented).
+Allowing users to forge these headers may allow them to bypass rate-limits.
 
 Disabling the proxy headers is not recommended as doing so will break certain features and cause rate-limits to be applied incorrectly.
+
+### Rate Limiting & DoS Protection
+To prevent brute-force attacks and resource exhaustion, we enforce rate limits on sensitive endpoints. These limits are defined in the [application.properties](server/src/main/resources/application.properties).
+**Proxy-Headers** (X-Forwarded-For) are used to track the originating IP address. Do NOT expose the API directly to the internet.
+
+> [!NOTE]
+> Rate limits are currently tracked per-container.
+> In distributed deployments without sticky sessions, effective limits may be higher. For such environments,
+> we recommend implementing sticky sessions at the load balancer or using an external rate-limiting provider.
+
+- **Authentication:** Login attempts are limited to **20 requests per hour, per IP address**.
+- **Password Resets:**
+    - **IP Throttle:** Password reset requests and token verification share a combined limit of **6 requests per 15 minutes** or **15 requests per 24 hours per IP**.
+    - **User Quota:** Each account is limited to **3 pending reset attempts per 24 hours**. After this quota is reached, no further emails will be dispatched until the daily cleanup job runs.
+    - **Security Note:** To prevent account enumeration, the API returns an identical success message regardless of whether the email address exists in the database.
+- **Resource Protection (OCI Blobs):** Downloading OCI blobs is limited to **100 requests per hour** to prevent excessive egress network costs.
 
 ### Kubernetes deployments
 > [!CAUTION]

@@ -11,6 +11,8 @@ import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.security.SecurityAttributes;
 import com.bethibande.repository.security.UserAuthenticationMechanism;
 import com.bethibande.repository.security.UserSessionService;
+import io.quarkiverse.bucket4j.runtime.RateLimited;
+import io.quarkiverse.bucket4j.runtime.resolver.IpResolver;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.PermitAll;
@@ -67,6 +69,7 @@ public class AuthenticationEndpoint {
     @POST
     @PermitAll
     @Path("/reset-request")
+    @RateLimited(bucket = "password-reset", identityResolver = IpResolver.class)
     public CompletableFuture<Response> resetPassword(final @QueryParam("email") String email) {
         return this.builtinJobScheduler.runOnce(
                         this.passwordResetTask,
@@ -89,6 +92,7 @@ public class AuthenticationEndpoint {
     @PermitAll
     @Transactional
     @Path("/reset")
+    @RateLimited(bucket = "password-reset", identityResolver = IpResolver.class)
     public Response resetPassword(final PasswordResetCredentials credentials) {
         final PasswordResetToken token = PasswordResetToken.find("token = ?1", credentials.token).firstResult();
         if (token == null || token.isExpired(Instant.now())) return Response.status(Response.Status.BAD_REQUEST).build();
@@ -105,6 +109,7 @@ public class AuthenticationEndpoint {
     @POST
     @PermitAll
     @Path("/login")
+    @RateLimited(bucket = "auth", identityResolver = IpResolver.class)
     public Response login(final Credentials credentials) {
         final User user = User.find("name = ?1", credentials.username).firstResult();
 
@@ -142,6 +147,7 @@ public class AuthenticationEndpoint {
     @PermitAll
     @Transactional
     @Path("/refresh")
+    @RateLimited(bucket = "auth", identityResolver = IpResolver.class)
     public Response refresh(final @CookieParam(REFRESH_TOKEN_COOKIE_NAME) String refreshToken) {
         final RefreshToken token = RefreshToken.find("token = ?1", refreshToken).firstResult();
         final Instant now = Instant.now();

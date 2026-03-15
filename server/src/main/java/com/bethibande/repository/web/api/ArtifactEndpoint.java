@@ -8,7 +8,6 @@ import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.jpa.repository.RepositoryManager;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.repository.ManagedRepository;
-import com.bethibande.repository.repository.maven.MavenRepository;
 import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.panache.common.Sort;

@@ -1,7 +1,6 @@
 package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.process.annotation.EntityDTO;
-import com.bethibande.process.annotation.VirtualDTOField;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
 import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.repository.ManagedRepository;
@@ -13,7 +12,6 @@ import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import org.hibernate.annotations.Type;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;

@@ -34,8 +34,8 @@ public class MailerService {
     @Inject
     protected KubernetesSupport kubernetesSupport;
 
-    private SMTPConfig config;
-    private MailClient mailClient;
+    private volatile SMTPConfig config;
+    private volatile MailClient mailClient;
 
     private DnsClient dnsClient;
 

@@ -10,7 +10,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
 import java.util.List;
-import java.util.Set;
 
 @Path("/api/v1/setup")
 public class SetupEndpoint {

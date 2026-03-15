@@ -14,7 +14,6 @@ import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.security.BearerTokenIdentityProvider;
 import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.exception.RangeNotSatisfiableException;
-import com.bethibande.repository.repository.oci.OCIDigestHelper;
 import com.bethibande.repository.web.repositories.oci.OCIError;
 import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,6 +22,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import io.quarkiverse.bucket4j.runtime.RateLimited;
+import io.quarkiverse.bucket4j.runtime.resolver.IpResolver;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
@@ -203,8 +204,8 @@ public class OCIRepositoryEndpoint {
         final String[] parts = rangeHeader.substring(6).split("-");
         final long offset = Long.parseLong(parts[0]);
         final long length = parts.length == 2
-            ? Long.parseLong(parts[1]) - offset + 1
-            : Long.MAX_VALUE;
+                ? Long.parseLong(parts[1]) - offset + 1
+                : Long.MAX_VALUE;
 
         return Pair.of(offset, length);
     }
@@ -223,6 +224,7 @@ public class OCIRepositoryEndpoint {
 
     @GET
     @Path("/{namespace: .*}/blobs/{digest}")
+    @RateLimited(bucket = "oci-blobs", identityResolver = IpResolver.class)
     public Response getBlob(final @PathParam("repositoryId") String repositoryId,
                             final @PathParam("namespace") String namespace,
                             final @PathParam("digest") String digest,

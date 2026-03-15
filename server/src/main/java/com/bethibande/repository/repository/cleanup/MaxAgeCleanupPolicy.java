@@ -5,7 +5,6 @@ import com.bethibande.repository.jpa.repository.Repository;
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.security.AuthContext;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.NotNull;
 

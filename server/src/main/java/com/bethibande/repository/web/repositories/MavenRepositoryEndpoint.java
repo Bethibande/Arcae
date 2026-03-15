@@ -13,7 +13,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import org.apache.http.HttpHeaders;
-import org.hibernate.Hibernate;
 
 import java.io.InputStream;
 

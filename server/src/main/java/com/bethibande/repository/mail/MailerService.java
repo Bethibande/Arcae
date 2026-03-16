@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.runtime.Startup;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.dns.DnsClient;
 import io.vertx.core.dns.SrvRecord;
 import io.vertx.ext.mail.*;
@@ -14,6 +15,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.http.HttpRequest;
 import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;

@@ -1,6 +1,6 @@
 package com.bethibande.repository.mail;
 
-import com.bethibande.repository.jpa.SystemProperty;
+import com.bethibande.repository.jpa.system.SystemProperty;
 import com.bethibande.repository.k8s.KubernetesSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;

@@ -1,6 +1,7 @@
-package com.bethibande.repository.jpa;
+package com.bethibande.repository.jpa.system;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
@@ -10,6 +11,11 @@ import org.hibernate.annotations.Type;
 
 @Entity
 public class SystemProperty extends PanacheEntity {
+
+    public static <T> T get(final String key, final TypeReference<T> type, final ObjectMapper mapper) {
+        final SystemProperty systemProperty = SystemProperty.find("key", key).firstResult();
+        return systemProperty == null ? null : systemProperty.valueAs(type, mapper);
+    }
 
     public static <T> T get(final String key, final Class<T> type, final ObjectMapper mapper) {
         final SystemProperty systemProperty = SystemProperty.find("key", key).firstResult();
@@ -39,6 +45,14 @@ public class SystemProperty extends PanacheEntity {
     @Type(JsonBinaryType.class)
     @Column(nullable = false, columnDefinition = "jsonb")
     public String value;
+
+    public <T> T valueAs(final TypeReference<T> type, final ObjectMapper mapper) {
+        try {
+            return mapper.readValue(this.value, type);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to deserialize system property value", e);
+        }
+    }
 
     public <T> T valueAs(final Class<T> type, final ObjectMapper mapper) {
         try {

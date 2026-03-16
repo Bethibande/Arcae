@@ -12,7 +12,7 @@ export function ThemeToggle() {
     return (
         <Button variant={"ghost"}
                 size={"icon"}
-                className={"fixed bottom-5 right-5"}
+                className={"fixed bottom-5 right-5 z-10"}
                 onClick={toggle}>
             {theme === "dark" ? <Sun className="h-4 w-4"/> : <Moon className="h-4 w-4"/>}
         </Button>

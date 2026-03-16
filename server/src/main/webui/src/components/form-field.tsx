@@ -10,7 +10,7 @@ interface InputProps<TFieldValues extends FieldValues = FieldValues, TName exten
 export interface FormFieldProps<TFieldValues extends FieldValues = FieldValues, TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>, TContext = any, TTransformedValues = TFieldValues> {
     fieldName: TName,
     label: string,
-    Input?: FunctionComponent<InputProps<TFieldValues, TName>> | any,
+    Input?: FunctionComponent<InputProps<TFieldValues, TName>>,
     control: Control<TFieldValues, TContext, TTransformedValues>,
     placeholder?: string,
     type?: string,

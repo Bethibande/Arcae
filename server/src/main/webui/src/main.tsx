@@ -14,13 +14,15 @@ import RepositoryBrowsePage from "@/pages/repository/browse/page.tsx"
 import ArtifactPage from "@/pages/artifact/page.tsx"
 import {TooltipProvider} from "@/components/ui/tooltip.tsx";
 import RepositorySettingsPage from "@/pages/repository/settings/page.tsx";
-import UserSettingsLayout from "@/pages/settings/user/page.tsx";
-import { ProfileTab } from "@/pages/settings/user/profile-tab.tsx";
-import { PasswordTab } from "@/pages/settings/user/password-tab.tsx";
-import { TokensTab } from "@/pages/settings/user/tokens-tab.tsx";
-import { UserManagementTab } from "@/pages/settings/user/user-management-tab.tsx";
-import { SystemJobsTab } from "@/pages/settings/user/system-jobs-tab.tsx";
-import { MailTab } from "@/pages/settings/user/mail-tab.tsx";
+import UserSettingsLayout from "@/pages/settings/page.tsx";
+import { ProfileTab } from "@/pages/settings/profile-tab.tsx";
+import { PasswordTab } from "@/pages/settings/password-tab.tsx";
+import { TokensTab } from "@/pages/settings/tokens-tab.tsx";
+import { UserManagementTab } from "@/pages/settings/user-management-tab.tsx";
+import { SystemJobsTab } from "@/pages/settings/system-jobs-tab.tsx";
+import { MailTab } from "@/pages/settings/mail-tab.tsx";
+import { ReferencesTab } from "@/pages/settings/references-tab.tsx";
+import ReferencePage from "@/pages/reference-page.tsx";
 import {Toaster} from "@/components/ui/sonner.tsx";
 import { Navigate, useParams } from "react-router";
 
@@ -41,6 +43,8 @@ function SettingsTabWrapper() {
             return <SystemJobsTab />;
         case "mail":
             return <MailTab />;
+        case "references":
+            return <ReferencesTab />;
         default:
             return <Navigate to="/settings/profile" replace />;
     }
@@ -56,6 +60,7 @@ createRoot(document.getElementById("root")!).render(
             <Routes>
               <Route element={<MainLayout />}>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path="/ref/:label" element={<ReferencePage />} />
                 <Route path="/repository/:id/browse" element={<RepositoryBrowsePage />} />
                 <Route path="/artifact/:id" element={<ArtifactPage />} />
                 <Route path="/login" element={<LoginPage />} />

@@ -1,4 +1,4 @@
-import {createContext, ReactNode, useCallback, useContext, useEffect, useState} from "react";
+import {createContext, type ReactNode, useCallback, useContext, useEffect, useState} from "react";
 import {systemApi} from "@/lib/api.ts";
 import {type SystemReference} from "@/generated";
 
@@ -15,7 +15,7 @@ export function SystemProvider({ children }: { children: ReactNode }) {
 
     const refreshReferences = useCallback(async () => {
         try {
-            const data = await systemApi.apiV1SystemFooterRefsGet();
+            const data = await systemApi.apiV1SystemHeaderRefsGet();
             setReferences(data);
         } catch (error) {
             console.error("Failed to fetch footer references", error);

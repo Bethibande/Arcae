@@ -26,6 +26,30 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+function ReferenceTypeSelect({onChange, value, id}: { onChange: (value: string) => void, value: string, id: string }) {
+    return (
+        <Select onValueChange={onChange} value={value}>
+            <SelectTrigger id={id}>
+                <SelectValue/>
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value={SystemReferenceType.Url}>
+                    <div className="flex items-center">
+                        <ExternalLink className="mr-2 h-4 w-4"/>
+                        External URL
+                    </div>
+                </SelectItem>
+                <SelectItem value={SystemReferenceType.Text}>
+                    <div className="flex items-center">
+                        <FileText className="mr-2 h-4 w-4"/>
+                        Internal Text (Perma Link)
+                    </div>
+                </SelectItem>
+            </SelectContent>
+        </Select>
+    );
+}
+
 export function ReferencesTab() {
     const {refreshReferences} = useSystem();
     const [loading, setLoading] = useState(true);
@@ -53,7 +77,7 @@ export function ReferencesTab() {
 
     const fetchReferences = useCallback(async () => {
         try {
-            const data = await systemApi.apiV1SystemFooterRefsGet();
+            const data = await systemApi.apiV1SystemHeaderRefsGet();
             reset({references: data});
         } catch (error) {
             showError(error)
@@ -73,7 +97,7 @@ export function ReferencesTab() {
     const handleSave = async (data: FormValues) => {
         setSaving(true);
         try {
-            await systemApi.apiV1SystemFooterRefsPut({systemReference: data.references});
+            await systemApi.apiV1SystemHeaderRefsPut({systemReference: data.references});
             await refreshReferences();
             toast.success("Header references saved successfully");
             reset(data); // Reset isDirty
@@ -157,45 +181,16 @@ export function ReferencesTab() {
                                             <FormField fieldName={`references.${index}.type`}
                                                        label={"Type"}
                                                        control={control}
-                                                       Input={(props) => (<Select onValueChange={props.onChange} value={props.value}>
-                                                           <SelectTrigger>
-                                                               <SelectValue/>
-                                                           </SelectTrigger>
-                                                           <SelectContent>
-                                                               <SelectItem value={SystemReferenceType.Url}>
-                                                                   <div className="flex items-center">
-                                                                       <ExternalLink className="mr-2 h-4 w-4"/>
-                                                                       External URL
-                                                                   </div>
-                                                               </SelectItem>
-                                                               <SelectItem value={SystemReferenceType.Text}>
-                                                                   <div className="flex items-center">
-                                                                       <FileText className="mr-2 h-4 w-4"/>
-                                                                       Internal Text (Perma Link)
-                                                                   </div>
-                                                               </SelectItem>
-                                                           </SelectContent>
-                                                       </Select>)}/>
+                                                       Input={ReferenceTypeSelect}/>
                                         </div>
 
                                         <FormField
                                             control={control}
                                             fieldName={`references.${index}.value`}
                                             label={watchedReferences[index]?.type === SystemReferenceType.Url ? 'URL' : 'Content'}
-                                            Input={watchedReferences[index]?.type === SystemReferenceType.Text ? ({
-                                                                                                                      id,
-                                                                                                                      ...props
-                                                                                                                  }: {
-                                                id: string
-                                            }) => (
-                                                <Textarea
-                                                    {...props}
-                                                    id={id}
-                                                    placeholder="Enter the text content here..."
-                                                    className="min-h-32"
-                                                />
-                                            ) : undefined}
-                                            placeholder={watchedReferences[index]?.type === SystemReferenceType.Url ? "https://example.com" : undefined}
+                                            Input={watchedReferences[index]?.type === SystemReferenceType.Text ? Textarea : undefined}
+                                            placeholder={watchedReferences[index]?.type === SystemReferenceType.Url ? "https://example.com" : "Enter the text content here..."}
+                                            className={watchedReferences[index]?.type === SystemReferenceType.Text ? "min-h-32" : undefined}
                                         />
                                     </div>
                                 ))}

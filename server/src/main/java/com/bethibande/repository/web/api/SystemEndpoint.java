@@ -1,8 +1,9 @@
 package com.bethibande.repository.web.api;
 
 import com.bethibande.repository.jobs.JobScheduler;
-import com.bethibande.repository.jpa.system.SystemReference;
 import com.bethibande.repository.jpa.system.SystemProperty;
+import com.bethibande.repository.jpa.system.SystemReference;
+import com.bethibande.repository.jpa.system.SystemReferenceType;
 import com.bethibande.repository.k8s.KubernetesLeaderService;
 import com.bethibande.repository.k8s.KubernetesSupport;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -12,6 +13,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -23,7 +25,7 @@ import java.util.List;
 @Path("/api/v1/system")
 public class SystemEndpoint {
 
-    public static final String PROPERTY_FOOTER_REFERENCES = "footer.references";
+    public static final String PROPERTY_SYSTEM_REFERENCES = "header.references";
 
     @Inject
     protected KubernetesSupport kubernetesSupport;
@@ -74,11 +76,12 @@ public class SystemEndpoint {
     @GET
     @PermitAll
     @Transactional
-    @Path("/footer/refs")
-    public @NotNull List<@NotNull SystemReference> getFooterReferences() {
+    @Path("/header/refs")
+    public @NotNull List<@NotNull SystemReference> getHeaderReferences() {
         final List<SystemReference> references = SystemProperty.get(
-                PROPERTY_FOOTER_REFERENCES,
-                new TypeReference<>() {},
+                PROPERTY_SYSTEM_REFERENCES,
+                new TypeReference<>() {
+                },
                 this.objectMapper
         );
 
@@ -87,10 +90,22 @@ public class SystemEndpoint {
 
     @PUT
     @Transactional
-    @RolesAllowed("ADMIN")
-    @Path("/footer/refs")
-    public void setFooterReferences(final @NotNull List<@NotNull SystemReference> references) {
-        SystemProperty.set(PROPERTY_FOOTER_REFERENCES, references, this.objectMapper);
+    @Path("/header/refs")
+    public void setHeaderReferences(final @NotNull List<@NotNull SystemReference> references) {
+        for (int i = 0; i < references.size(); i++) {
+            final SystemReference reference = references.get(i);
+            if (reference.type() == SystemReferenceType.TEXT) continue;
+
+            final String url = reference.value().toLowerCase();
+            if (url.startsWith("http://")
+                    || url.startsWith("https://")
+                    || url.startsWith("/")
+                    || url.startsWith("mailto")) continue;
+
+            throw new BadRequestException("Invalid URL: " + reference.value());
+        }
+
+        SystemProperty.set(PROPERTY_SYSTEM_REFERENCES, references, this.objectMapper);
     }
 
 }

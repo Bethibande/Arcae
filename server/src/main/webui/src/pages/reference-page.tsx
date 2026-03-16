@@ -15,7 +15,7 @@ export default function ReferencePage() {
     useEffect(() => {
         const fetchReference = async () => {
             try {
-                const refs = await systemApi.apiV1SystemFooterRefsGet();
+                const refs = await systemApi.apiV1SystemHeaderRefsGet();
                 const ref = refs.find(r => r.label === label && r.type === SystemReferenceType.Text);
                 setReference(ref || null);
             } catch (err) {

@@ -100,7 +100,7 @@ public class SystemEndpoint {
             if (url.startsWith("http://")
                     || url.startsWith("https://")
                     || url.startsWith("/")
-                    || url.startsWith("mailto")) continue;
+                    || url.startsWith("mailto:")) continue;
 
             throw new BadRequestException("Invalid URL: " + reference.value());
         }

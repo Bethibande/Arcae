@@ -14,23 +14,33 @@
             color: #fafafa; /* Light text */
             -webkit-font-smoothing: antialiased;
         }
+
         .container {
             max-width: 600px;
             margin: 0 auto;
             padding: 2rem 1rem;
         }
+
         .header {
             margin-bottom: 1.5rem;
         }
+
         .header table, .header td, .header th {
             padding: 0;
         }
+
         .logo-box {
             background-color: #2563eb; /* primary color */
             border-radius: 1rem;
             display: block;
             padding: 0.5rem;
+            overflow: hidden;
         }
+
+        .logo-box img {
+            display: block;
+        }
+
         .logo-text {
             font-size: 1.25rem;
             font-weight: 700;
@@ -38,49 +48,50 @@
             letter-spacing: -0.025em;
             line-height: 1.5rem;
         }
+
         .content {
             font-size: 1rem;
             line-height: 1.6;
             color: #d4d4d8;
         }
+
         /* Link styling */
         a {
             color: #3b82f6;
             text-decoration: none;
         }
+
         a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Logo Section -->
-        <div class="header">
-            <table>
-                <tr>
-                    <td style="vertical-align: middle;">
-                        <div class="logo-box">
-                            <!-- Adjusted SVG to fit within 32x32 container -->
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
-                                <path d="m3.3 7 8.7 5 8.7-5"></path>
-                                <path d="M12 22V12"></path>
-                            </svg>
-                        </div>
-                    </td>
-                    <td style="vertical-align: middle; padding-left: 0.5rem;">
-                        <span class="logo-text">Repository</span>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Main Content Section -->
-        <div class="content">
-            {#insert body}No content{/}
-        </div>
-
+<div class="container">
+    <!-- Logo Section -->
+    <div class="header">
+        <table>
+            <tr>
+                <td style="vertical-align: middle;">
+                    <div class="logo-box">
+                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAACAklEQVR4AbyUvUoDQRSFhw2ihJAQTCOxEoKNvaCVL2CRWguxsbFTzCMEtLMVLBTsLHwBKwt9A+2tVEQREX+I+004k8nuzu42Kp7M3ftzzt27dzfqbD4M/hKRKfHXblXM9mrV3B21zGW/aW18JUpNoQDEIoUQYnynO3UrhC8PQYHF+QnXLQTXt19mff/FrPSezfnVh5EQ4t3lKVIykRKg8GS3YQD2/eOPJYYcEa57x2/Wh01Of6Nmm8FOqowJcOt0RPcUH168244hThbiWzt4NeQQgzxrbE7gbK/hZkoRo+CkOAS/CXIRoUm4VOME5mYq8pnu0qQTc84cY3Y6sjVK6bRHXE6gWRuadKVOGBe2CpMnMZ4VwKaWnHp1yIU9sriKEZorBHHY/mMzChpIPi+b4P2kBOiCeeoZiEwPUMSc8Pi5XCeRElCCL+TvvYjZIjWhmqwzKKBkhLT38vFOAGLyhc5CARXScZYtX+gsLRAiKPL/n4BGwNoVdRWKZ9W6O7iJv5YU8uHSpnBdBlplXjjy2TpO4ATYZ6BkXqIyQuT4uXCwdZADJ8AFQXabcflCWd97xuETU0MtHHAJYwI42W12nC6wEWJsun1ysAExcsgH2MR9pAQUZI7+d4mOFcOGjG7pmu4VS55BARJ9Esg+vwcGYEPMSV4ecgVUKKGFrScDyhCr9hcAAP//RyYj5AAAAAZJREFUAwA8wl3wLBy/XAAAAABJRU5ErkJggg=="
+                             alt="Logo"
+                             width="24"
+                             height="24"/>
+                    </div>
+                </td>
+                <td style="vertical-align: middle; padding-left: 0.5rem;">
+                    <span class="logo-text">Repository</span>
+                </td>
+            </tr>
+        </table>
     </div>
+
+    <!-- Main Content Section -->
+    <div class="content">
+        {#insert body}No content{/}
+    </div>
+
+</div>
 </body>
 </html>

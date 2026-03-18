@@ -63,12 +63,6 @@ This will, however, mean that you may only run one pod at a time. Running additi
 ### User Passwords
 User passwords are stored as bcrypt hashes in the database.
 
-> [!CAUTION]
-> The following issue only applies to distributed deployments:
-> As of right now, user session tokens are cached in memory on each instance.
-> Invalidating a session manually (for example, by logging out) will not invalidate the cache of other pods.
-> As such, it will remain valid in these instances until it expires naturally. This may take up to one hour.
-> This issue will be resolved with #69.
 
 ### Access tokens to remote systems
 Access tokens and other secrets of external systems supplied to the application (such as S3 secrets),

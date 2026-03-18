@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Layers } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { type ArtifactVersionDTO } from "@/generated";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Layers} from "lucide-react";
+import {Badge} from "@/components/ui/badge";
+import {type ArtifactVersionDTO} from "@/generated";
 
 interface OCIManifestsCardProps {
     version: ArtifactVersionDTO;

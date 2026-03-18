@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
-import { User } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card.tsx";
-import { FieldDescription } from "@/components/ui/field.tsx";
-import { Separator } from "@/components/ui/separator.tsx";
-import { Button } from "@/components/ui/button.tsx";
-import { toast } from "sonner";
-import { useAuth } from "@/components/auth-provider.tsx";
-import { userApi } from "@/lib/api.ts";
-import { PasswordConfirmDialog } from "./password-confirm-dialog.tsx";
-import { FormField } from "@/components/form-field.tsx";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {useEffect, useState} from "react";
+import {User} from "lucide-react";
+import {Card, CardContent} from "@/components/ui/card.tsx";
+import {FieldDescription} from "@/components/ui/field.tsx";
+import {Separator} from "@/components/ui/separator.tsx";
+import {Button} from "@/components/ui/button.tsx";
+import {toast} from "sonner";
+import {useAuth} from "@/components/auth-provider.tsx";
+import {userApi} from "@/lib/api.ts";
+import {PasswordConfirmDialog} from "./password-confirm-dialog.tsx";
+import {FormField} from "@/components/form-field.tsx";
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 const profileSchema = z.object({

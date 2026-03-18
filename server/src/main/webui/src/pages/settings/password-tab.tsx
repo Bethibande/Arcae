@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { Lock, Eye, EyeOff } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card.tsx";
-import { FieldDescription } from "@/components/ui/field.tsx";
-import { Button } from "@/components/ui/button.tsx";
-import { toast } from "sonner";
-import { userApi } from "@/lib/api.ts";
-import { PasswordConfirmDialog } from "./password-confirm-dialog.tsx";
-import { FormField } from "@/components/form-field.tsx";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {useState} from "react";
+import {Eye, EyeOff, Lock} from "lucide-react";
+import {Card, CardContent} from "@/components/ui/card.tsx";
+import {FieldDescription} from "@/components/ui/field.tsx";
+import {Button} from "@/components/ui/button.tsx";
+import {toast} from "sonner";
+import {userApi} from "@/lib/api.ts";
+import {PasswordConfirmDialog} from "./password-confirm-dialog.tsx";
+import {FormField} from "@/components/form-field.tsx";
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 const passwordSchema = z.object({

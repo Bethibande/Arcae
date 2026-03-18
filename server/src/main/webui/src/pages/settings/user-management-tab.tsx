@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { User, Plus, Trash2, MoreHorizontal, Shield, Mail, Edit } from "lucide-react";
-import { Button } from "@/components/ui/button.tsx";
-import { Field, FieldLabel, FieldError } from "@/components/ui/field.tsx";
+import {useCallback, useEffect, useMemo, useState} from "react";
+import {Edit, Mail, MoreHorizontal, Plus, Shield, Trash2, User} from "lucide-react";
+import {Button} from "@/components/ui/button.tsx";
+import {Field, FieldError, FieldLabel} from "@/components/ui/field.tsx";
 import {
     Dialog,
     DialogContent,
@@ -16,24 +16,18 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select.tsx";
-import { toast } from "sonner";
-import { userApi } from "@/lib/api.ts";
-import { showError } from "@/lib/errors.ts";
-import { UserRole, type UserDTOWithoutPassword } from "@/generated";
-import { DataTable, type ColumnDef } from "@/components/ui/data-table.tsx";
-import { useForm, Controller } from "react-hook-form";
-import { FormField } from "@/components/form-field.tsx";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select.tsx";
+import {toast} from "sonner";
+import {userApi} from "@/lib/api.ts";
+import {showError} from "@/lib/errors.ts";
+import {type UserDTOWithoutPassword, UserRole} from "@/generated";
+import {type ColumnDef, DataTable} from "@/components/ui/data-table.tsx";
+import {Controller, useForm} from "react-hook-form";
+import {FormField} from "@/components/form-field.tsx";
+import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Badge } from "@/components/ui/badge.tsx";
-import { useAuth } from "@/components/auth-provider.tsx";
+import {Badge} from "@/components/ui/badge.tsx";
+import {useAuth} from "@/components/auth-provider.tsx";
 
 const createUserSchema = z.object({
     name: z.string().min(1, "Username is required."),

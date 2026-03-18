@@ -1,22 +1,9 @@
 import * as React from "react";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table.tsx";
-import { Button } from "@/components/ui/button.tsx";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select.tsx";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils.ts";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table.tsx";
+import {Button} from "@/components/ui/button.tsx";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select.tsx";
+import {ChevronLeft, ChevronRight} from "lucide-react";
+import {cn} from "@/lib/utils.ts";
 
 export interface ColumnDef<T> {
     header: string;

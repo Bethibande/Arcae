@@ -1,6 +1,6 @@
-import { LoginForm } from "@/components/login-form"
-import { useAuth } from "@/components/auth-provider"
-import { Navigate } from "react-router"
+import {LoginForm} from "@/components/login-form"
+import {useAuth} from "@/components/auth-provider"
+import {Navigate} from "react-router"
 
 export default function LoginPage() {
   const { user, loading } = useAuth()

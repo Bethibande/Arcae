@@ -1,19 +1,19 @@
 import {
-  Configuration,
-  AuthenticationEndpointApi,
-  AccessTokenEndpointApi,
-  ArtifactEndpointApi,
-  JobEndpointApi,
-  MavenRepositoryEndpointApi,
-  MailEndpointApi,
-  OCIRepositoryEndpointApi,
-  RepositoryEndpointApi,
-  RepositoryPermissionEndpointApi,
-  SetupEndpointApi,
-  SystemEndpointApi,
-  UserEndpointApi,
+    AccessTokenEndpointApi,
+    ArtifactEndpointApi,
+    AuthenticationEndpointApi,
+    Configuration,
+    JobEndpointApi,
+    MailEndpointApi,
+    MavenRepositoryEndpointApi,
+    OCIRepositoryEndpointApi,
+    RepositoryEndpointApi,
+    RepositoryPermissionEndpointApi,
+    SetupEndpointApi,
+    SystemEndpointApi,
+    UserEndpointApi,
 } from "@/generated"
-import { RefreshMiddleware } from "@/lib/middleware"
+import {RefreshMiddleware} from "@/lib/middleware"
 
 const configuration = new Configuration({
   basePath: "",

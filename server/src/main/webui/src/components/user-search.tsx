@@ -1,6 +1,6 @@
-import {useState, useEffect} from "react";
+import {useEffect, useState} from "react";
 import {Input} from "@/components/ui/input.tsx";
-import {Search, Loader2, X} from "lucide-react";
+import {Loader2, Search, X} from "lucide-react";
 import {cn} from "@/lib/utils.ts";
 import {userApi} from "@/lib/api.ts";
 import {type UserDTOWithoutPassword} from "@/generated";

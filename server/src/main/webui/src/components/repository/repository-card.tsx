@@ -1,12 +1,7 @@
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {Clock, Coffee, ExternalLink, MoreHorizontal, Pencil, Trash2, Box} from "lucide-react";
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,} from "@/components/ui/dropdown-menu";
+import {Box, Clock, Coffee, ExternalLink, MoreHorizontal, Pencil, Trash2} from "lucide-react";
 import {cn, formatLastUpdate} from "@/lib/utils";
 import {PackageManager, type RepositoryOverviewDTO, UserRole} from "@/generated";
 import {useNavigate} from "react-router";
@@ -15,7 +10,8 @@ import {useAuth} from "@/components/auth-provider";
 import {
     Dialog,
     DialogContent,
-    DialogDescription, DialogFooter,
+    DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle
 } from "@/components/ui/dialog";

@@ -1,10 +1,10 @@
-import {useEffect, useMemo, useState, useCallback} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {JobStatus, JobType, type ScheduledJobDTO} from "@/generated";
 import {jobApi, systemApi} from "@/lib/api.ts";
-import {DataTable, type ColumnDef} from "@/components/ui/data-table.tsx";
+import {type ColumnDef, DataTable} from "@/components/ui/data-table.tsx";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
-import {Play, RefreshCcw, Settings, Search} from "lucide-react";
+import {Play, RefreshCcw, Search, Settings} from "lucide-react";
 import {toast} from "sonner";
 import {showError} from "@/lib/errors.ts";
 import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";

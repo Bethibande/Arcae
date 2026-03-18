@@ -1,23 +1,16 @@
 import {useNavigate, useParams, useSearchParams} from "react-router";
 import {useEffect, useState} from "react";
 import {
-    type ArtifactDTO, ArtifactSortOrder,
+    type ArtifactDTO,
+    ArtifactSortOrder,
     type ArtifactVersionDTO,
+    PackageManager,
     type PagedResponseArtifactVersionDTO,
     type RepositoryOverviewDTO
 } from "@/generated";
 import {artifactApi, repositoryApi} from "@/lib/api";
 import {showError} from "@/lib/errors";
-import {
-    ArrowLeft,
-    ChevronRight,
-    ExternalLink,
-    Globe,
-    Info,
-    Package,
-    Trash2,
-    User
-} from "lucide-react";
+import {ArrowLeft, ChevronRight, ExternalLink, Globe, Info, Package, Trash2, User} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
@@ -34,7 +27,6 @@ import {
 import {VersionHistory} from "@/components/artifact/version-history";
 import {UsageDetails} from "@/components/artifact/usage-details";
 import {OCIManifestsCard} from "@/components/artifact/oci-manifests-card";
-import {PackageManager} from "@/generated";
 
 export default function ArtifactPage() {
     const {id} = useParams();

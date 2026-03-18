@@ -4,7 +4,7 @@ import {SystemReferenceType} from "@/generated";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
-import {ExternalLink, FileText, Plus, Save, Trash2, ArrowUp, ArrowDown} from "lucide-react";
+import {ArrowDown, ArrowUp, ExternalLink, FileText, Plus, Save, Trash2} from "lucide-react";
 import {toast} from "sonner";
 import {Textarea} from "@/components/ui/textarea.tsx";
 import {showError} from "@/lib/errors.ts";

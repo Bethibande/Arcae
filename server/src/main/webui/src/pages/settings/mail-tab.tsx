@@ -1,4 +1,4 @@
-import {Mail, Sparkles, Send} from "lucide-react";
+import {Mail, Send, Sparkles} from "lucide-react";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {toast} from "sonner";

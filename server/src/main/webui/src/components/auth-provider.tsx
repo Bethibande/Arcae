@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
-import { type UserDTOWithoutPassword, type Credentials, ResponseError } from "@/generated"
-import { refresh as refreshSession } from "@/lib/middleware"
-import { authApi as api } from "@/lib/api"
+import React, {createContext, useCallback, useContext, useEffect, useState} from "react"
+import {type Credentials, ResponseError, type UserDTOWithoutPassword} from "@/generated"
+import {refresh as refreshSession} from "@/lib/middleware"
+import {authApi as api} from "@/lib/api"
 
 interface AuthContextType {
   user: UserDTOWithoutPassword | null

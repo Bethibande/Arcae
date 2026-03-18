@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
-import { KeyRound, Plus, Trash2, Copy, MoreHorizontal, CalendarIcon } from "lucide-react";
-import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import { Field, FieldLabel, FieldError } from "@/components/ui/field.tsx";
+import {useEffect, useMemo, useState} from "react";
+import {CalendarIcon, Copy, KeyRound, MoreHorizontal, Plus, Trash2} from "lucide-react";
+import {Button} from "@/components/ui/button.tsx";
+import {Input} from "@/components/ui/input.tsx";
+import {Field, FieldError, FieldLabel} from "@/components/ui/field.tsx";
 import {
     Dialog,
     DialogContent,
@@ -17,31 +17,21 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select.tsx";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover.tsx";
-import { Calendar } from "@/components/ui/calendar.tsx";
-import { toast } from "sonner";
-import { accessTokenApi } from "@/lib/api.ts";
-import { showError } from "@/lib/errors.ts";
-import { useAuth } from "@/components/auth-provider.tsx";
-import type { AccessTokenDTOWithoutToken, AccessTokenDTO } from "@/generated";
-import { DataTable, type ColumnDef } from "@/components/ui/data-table.tsx";
-import { useForm, Controller } from "react-hook-form";
-import { FormField } from "@/components/form-field.tsx";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select.tsx";
+import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover.tsx";
+import {Calendar} from "@/components/ui/calendar.tsx";
+import {toast} from "sonner";
+import {accessTokenApi} from "@/lib/api.ts";
+import {showError} from "@/lib/errors.ts";
+import {useAuth} from "@/components/auth-provider.tsx";
+import type {AccessTokenDTO, AccessTokenDTOWithoutToken} from "@/generated";
+import {type ColumnDef, DataTable} from "@/components/ui/data-table.tsx";
+import {Controller, useForm} from "react-hook-form";
+import {FormField} from "@/components/form-field.tsx";
+import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, addDays, isBefore, endOfDay } from "date-fns";
-import { cn } from "@/lib/utils.ts";
+import {addDays, endOfDay, format, isBefore} from "date-fns";
+import {cn} from "@/lib/utils.ts";
 
 const tokenSchema = z.object({
     name: z.string().min(1, "Please enter a token name."),

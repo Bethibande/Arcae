@@ -1,10 +1,17 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input.tsx";
-import { Button } from "@/components/ui/button.tsx";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog.tsx";
-import { Eye, EyeOff } from "lucide-react";
-import { cn } from "@/lib/utils.ts";
-import { getErrorMessage } from "@/lib/errors.ts";
+import {useState} from "react";
+import {Input} from "@/components/ui/input.tsx";
+import {Button} from "@/components/ui/button.tsx";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
+} from "@/components/ui/dialog.tsx";
+import {Eye, EyeOff} from "lucide-react";
+import {cn} from "@/lib/utils.ts";
+import {getErrorMessage} from "@/lib/errors.ts";
 
 interface PasswordConfirmDialogProps {
     open: boolean;

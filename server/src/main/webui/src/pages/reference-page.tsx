@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {useParams, useNavigate} from "react-router";
+import {useNavigate, useParams} from "react-router";
 import {systemApi} from "@/lib/api.ts";
 import {type SystemReference, SystemReferenceType} from "@/generated";
 import {ChevronLeft} from "lucide-react";

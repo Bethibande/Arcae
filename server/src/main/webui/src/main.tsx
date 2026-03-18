@@ -1,6 +1,6 @@
 import {StrictMode} from "react"
 import {createRoot} from "react-dom/client"
-import {BrowserRouter, Route, Routes} from "react-router"
+import {BrowserRouter, Navigate, Route, Routes, useParams} from "react-router"
 
 import "./index.css"
 import {ThemeProvider} from "@/components/theme-provider.tsx"
@@ -15,16 +15,15 @@ import ArtifactPage from "@/pages/artifact/page.tsx"
 import {TooltipProvider} from "@/components/ui/tooltip.tsx";
 import RepositorySettingsPage from "@/pages/repository/settings/page.tsx";
 import UserSettingsLayout from "@/pages/settings/page.tsx";
-import { ProfileTab } from "@/pages/settings/profile-tab.tsx";
-import { PasswordTab } from "@/pages/settings/password-tab.tsx";
-import { TokensTab } from "@/pages/settings/tokens-tab.tsx";
-import { UserManagementTab } from "@/pages/settings/user-management-tab.tsx";
-import { SystemJobsTab } from "@/pages/settings/system-jobs-tab.tsx";
-import { MailTab } from "@/pages/settings/mail-tab.tsx";
-import { ReferencesTab } from "@/pages/settings/references-tab.tsx";
+import {ProfileTab} from "@/pages/settings/profile-tab.tsx";
+import {PasswordTab} from "@/pages/settings/password-tab.tsx";
+import {TokensTab} from "@/pages/settings/tokens-tab.tsx";
+import {UserManagementTab} from "@/pages/settings/user-management-tab.tsx";
+import {SystemJobsTab} from "@/pages/settings/system-jobs-tab.tsx";
+import {MailTab} from "@/pages/settings/mail-tab.tsx";
+import {ReferencesTab} from "@/pages/settings/references-tab.tsx";
 import ReferencePage from "@/pages/reference-page.tsx";
 import {Toaster} from "@/components/ui/sonner.tsx";
-import { Navigate, useParams } from "react-router";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function SettingsTabWrapper() {

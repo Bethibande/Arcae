@@ -1,16 +1,11 @@
 "use client"
 
 import * as React from "react"
-import {
-  DayPicker,
-  getDefaultClassNames,
-  type DayButton,
-  type Locale,
-} from "react-day-picker"
+import {type DayButton, DayPicker, getDefaultClassNames, type Locale,} from "react-day-picker"
 
-import { cn } from "@/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
+import {cn} from "@/lib/utils"
+import {Button, buttonVariants} from "@/components/ui/button"
+import {ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon} from "lucide-react"
 
 function Calendar({
   className,

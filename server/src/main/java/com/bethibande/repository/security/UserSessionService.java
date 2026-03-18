@@ -1,8 +1,11 @@
 package com.bethibande.repository.security;
 
+import com.bethibande.repository.cache.DistributedCacheRegistry;
 import com.bethibande.repository.jpa.security.RefreshToken;
 import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.User;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.quarkus.cache.CacheInvalidate;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,16 +24,29 @@ public class UserSessionService {
     public static final Duration SESSION_LIFETIME = Duration.ofHours(1);
     public static final Duration REFRESH_TOKEN_LIFETIME = Duration.ofDays(7);
 
-    @Transactional
-    @CacheResult(cacheName = USER_SESSION_CACHE)
-    public UserSession getSessionByToken(final String token) {
-        return UserSession.find("token = ?1", token).firstResult();
+    private final Cache<String, UserSession> userSessionCache = Caffeine.newBuilder()
+            .expireAfterWrite(SESSION_LIFETIME)
+            .maximumSize(1_000)
+            .build();
+
+    private final DistributedCacheRegistry cacheRegistry;
+
+    public UserSessionService(final DistributedCacheRegistry cacheRegistry) {
+        this.cacheRegistry = cacheRegistry;
+
+        cacheRegistry.register(USER_SESSION_CACHE, this.userSessionCache);
     }
 
     @Transactional
-    @CacheInvalidate(cacheName = USER_SESSION_CACHE)
+    public UserSession getSessionByToken(final String token) {
+        return this.userSessionCache.get(token, _ -> UserSession.find("token = ?1", token).firstResult());
+    }
+
+    @Transactional
     public void invalidateSession(final String token) {
         UserSession.delete("token = ?1", token);
+
+        this.cacheRegistry.invalidateAll(USER_SESSION_CACHE, token);
     }
 
     public boolean isValid(final UserSession session) {
@@ -48,7 +64,6 @@ public class UserSessionService {
 
         return session;
     }
-
 
     @Transactional
     public RefreshToken createRefreshTokenForUser(final User user) {

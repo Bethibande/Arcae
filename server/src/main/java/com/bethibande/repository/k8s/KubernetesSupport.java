@@ -16,6 +16,10 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.readiness.Readiness;
 import io.quarkus.runtime.Startup;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.client.WebClient;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -25,17 +29,12 @@ import org.slf4j.LoggerFactory;
 
 import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
+import java.util.function.BiFunction;
 
 @Startup
 @ApplicationScoped
@@ -52,6 +51,9 @@ public class KubernetesSupport {
     @Inject
     protected KubernetesClient client;
 
+    @Inject
+    protected Vertx vertx;
+
     private String namespace;
 
     @ConfigProperty(name = "repository.scheduler.discovery-service")
@@ -66,7 +68,7 @@ public class KubernetesSupport {
     @ConfigProperty(name = "repository.distributed")
     protected boolean distributedAllowed;
 
-    protected final HttpClient httpClient = HttpClient.newHttpClient();
+    protected WebClient webClient;
 
     protected boolean kubernetesSupport = true;
     protected boolean serviceDiscovery = false;
@@ -127,11 +129,13 @@ public class KubernetesSupport {
 
         this.canInspectServices = hasPermission("get", "services", "");
 
+        this.webClient = WebClient.create(this.vertx);
+
         initDiscovery();
     }
 
     protected void initDiscovery() {
-        if (!this.canListPods() || !this.canInspectServices() ||  !this.distributedAllowed) return;
+        if (!this.canListPods() || !this.canInspectServices() || !this.distributedAllowed) return;
 
         final Service service = this.client.services()
                 .inNamespace(getNamespace())
@@ -310,24 +314,21 @@ public class KubernetesSupport {
     }
 
     /**
-     * Broadcasts an HTTP request to the management port of all replicas
-     * @param path The request path i. e. /api/v1...
+     * Broadcasts an HTTP request to the management port of all replicas.
+     * The function will supply the base URL for each endpoint and the webclient that should be used to send the request.
      */
-    public List<CompletableFuture<HttpResponse<Void>>> broadcastHttp(final String path, final Consumer<HttpRequest.Builder> requestBuilder) {
+    public List<Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> broadcastHttp(final BiFunction<String, WebClient, Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> fn) {
         if (!this.serviceDiscovery) return Collections.emptyList();
 
-        final List<CompletableFuture<HttpResponse<Void>>> futures = new ArrayList<>();
+        final List<Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> futures = new ArrayList<>();
         final List<InetAddress> addresses = getAllPodClusterIPs();
         for (int i = 0; i < addresses.size(); i++) {
             final InetAddress address = addresses.get(i);
             final String hostname = addressToHostname(address);
 
-            final URI uri = URI.create("http://%s:%d%s".formatted(hostname, this.managementPort, path));
-            final HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(uri);
+            final String baseUrl = "http://%s:%d".formatted(hostname, this.managementPort);
 
-            requestBuilder.accept(builder);
-            futures.add(this.httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.discarding()));
+            futures.add(fn.apply(baseUrl, this.webClient));
         }
 
         return futures;

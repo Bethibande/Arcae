@@ -14,7 +14,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import java.net.http.HttpRequest;
 import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -158,8 +157,7 @@ public class MailerService {
 
         if (this.kubernetesSupport.isServiceDiscoveryEnabled()) {
             this.kubernetesSupport.broadcastHttp(
-                    "/api/v1/mail/config/update",
-                    builder -> builder.method("PUT", HttpRequest.BodyPublishers.noBody())
+                    (baseURL, webClient) -> webClient.put(baseURL + "/api/v1/mail/config/update").send()
             );
         }
     }

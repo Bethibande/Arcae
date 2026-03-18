@@ -31,7 +31,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 @ApplicationScoped
 @Path("/api/v1/auth")
@@ -70,7 +70,7 @@ public class AuthenticationEndpoint {
     @PermitAll
     @Path("/reset-request")
     @RateLimited(bucket = "password-reset", identityResolver = IpResolver.class)
-    public CompletableFuture<Response> resetPassword(final @QueryParam("email") String email) {
+    public CompletionStage<Response> resetPassword(final @QueryParam("email") String email) {
         return this.builtinJobScheduler.runOnce(
                         this.passwordResetTask,
                         new PasswordResetTask.Config(email)
@@ -95,8 +95,10 @@ public class AuthenticationEndpoint {
     @RateLimited(bucket = "password-reset", identityResolver = IpResolver.class)
     public Response resetPassword(final PasswordResetCredentials credentials) {
         final PasswordResetToken token = PasswordResetToken.find("token = ?1", credentials.token).firstResult();
-        if (token == null || token.isExpired(Instant.now())) return Response.status(Response.Status.BAD_REQUEST).build();
-        if (!token.user.email.equalsIgnoreCase(credentials.email)) return Response.status(Response.Status.BAD_REQUEST).build();
+        if (token == null || token.isExpired(Instant.now()))
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        if (!token.user.email.equalsIgnoreCase(credentials.email))
+            return Response.status(Response.Status.BAD_REQUEST).build();
 
         final User user = token.user;
         user.password = BcryptUtil.bcryptHash(credentials.newPassword);
@@ -153,8 +155,11 @@ public class AuthenticationEndpoint {
         final Instant now = Instant.now();
 
         if (token == null || token.isExpired(now)) throw new BadRequestException("Invalid refresh token");
-
         token.delete();
+
+        final UserSession session = identity.getAttribute(SecurityAttributes.SESSION);
+        if (session != null) userSessionService.invalidateSession(session.token); // Invalidate current session
+
         return doLogin(token.user);
     }
 

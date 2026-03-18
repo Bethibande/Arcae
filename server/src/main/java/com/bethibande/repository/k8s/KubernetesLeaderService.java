@@ -7,6 +7,10 @@ import io.fabric8.kubernetes.client.extended.leaderelection.LeaderElectionConfig
 import io.fabric8.kubernetes.client.extended.leaderelection.resourcelock.LeaseLock;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.virtual.threads.VirtualThreads;
+import io.vertx.core.Future;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
@@ -16,16 +20,14 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 @ApplicationScoped
@@ -152,19 +154,13 @@ public class KubernetesLeaderService {
         post(callback -> callback.onNewLeader(leader));
     }
 
-    public <T> CompletableFuture<HttpResponse<T>> sendHTTPRequestToLeader(final String path,
-                                                                          final HttpResponse.BodyHandler<T> bodyHandler,
-                                                                          final Consumer<HttpRequest.Builder> customizer) {
+    public Future<HttpResponse<Buffer>> sendHTTPRequestToLeader(final BiFunction<String, WebClient, Future<HttpResponse<Buffer>>> fn) {
         final InetAddress address = this.kubernetesSupport.podNameToClusterIP(this.leader);
         final String host = this.kubernetesSupport.addressToHostname(address);
 
-        final URI uri = URI.create("http://%s:%d%s".formatted(host, this.managementPort, path));
-        final HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(uri);
+        final String baseUrl = "http://%s:%d".formatted(host, this.managementPort);
 
-        customizer.accept(builder);
-
-        return this.kubernetesSupport.httpClient.sendAsync(builder.build(), bodyHandler);
+        return fn.apply(baseUrl, this.kubernetesSupport.webClient);
     }
 
 }

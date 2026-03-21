@@ -18,6 +18,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,6 +39,19 @@ public class SystemEndpoint {
 
     @Inject
     protected ObjectMapper objectMapper;
+
+    public record AppStatus(
+            Instant startupTime
+    ) {
+    }
+
+    @GET
+    @Path("/status")
+    public @NotNull AppStatus getAppStatus() {
+        return new AppStatus(
+                this.jobScheduler.getStartupTime()
+        );
+    }
 
     public record KubernetesCapabilities(
             @NotNull boolean enabled,

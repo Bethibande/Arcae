@@ -6,6 +6,7 @@ import com.bethibande.repository.jobs.runner.RemoteJobRunner;
 import com.bethibande.repository.k8s.KubernetesLeaderService;
 import com.bethibande.repository.k8s.KubernetesSupport;
 import com.bethibande.repository.web.api.JobEndpoint;
+import com.bethibande.repository.web.api.SystemEndpoint;
 import com.cronutils.model.Cron;
 import com.cronutils.model.definition.CronDefinition;
 import com.cronutils.model.definition.CronDefinitionBuilder;
@@ -14,6 +15,9 @@ import com.cronutils.parser.CronParser;
 import io.fabric8.kubernetes.client.extended.leaderelection.LeaderCallbacks;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
+import io.vertx.core.Future;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.client.HttpResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.LockModeType;
@@ -21,13 +25,11 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -91,6 +93,10 @@ public class JobScheduler {
         }
     }
 
+    public Instant getStartupTime() {
+        return Instant.ofEpochMilli(this.startupTime);
+    }
+
     public boolean isDistributed() {
         return this.distributed;
     }
@@ -140,36 +146,96 @@ public class JobScheduler {
     private void scheduleNow(final ScheduledJob job) {
         if (job.runner != null) return;
 
-        final JobRunner runner;
-        if (this.distributed) {
-            final String hostname = this.remoteWorkerScheduler.getHostname();
-            runner = new RemoteJobRunner(this.jobEndpoint, hostname);
-            job.runner = hostname;
-        } else {
-            runner = this.localJobRunner;
-            job.runner = String.valueOf(this.startupTime);
-        }
+        final JobRunner runner = QuarkusTransaction.requiringNew().call(() -> {
+            job.assignedAt = Instant.now();
+            if (this.distributed) {
+                final String hostname = this.remoteWorkerScheduler.getHostname();
+                job.runner = hostname;
+                return new RemoteJobRunner(this.jobEndpoint, hostname);
+            } else {
+                job.runner = String.valueOf(this.startupTime);
+                return this.localJobRunner;
+            }
+        });
 
         runner.run(job);
     }
 
     private void checkRunnerStatus(final List<ScheduledJob> runningJobs) {
-        final Set<String> availableRunners = this.distributed
-                ? new HashSet<>(this.kubernetesSupport.getAllReplicaPodNames())
-                : Set.of(String.valueOf(this.startupTime));
+        if (!this.distributed) {
+            checkRunnerStatusLocal(runningJobs);
+        } else {
+            checkRunnerStatusRemote(runningJobs);
+        }
+    }
 
-        final Map<String, List<ScheduledJob>> runningJobsByRunners = runningJobs.stream()
-                .collect(Collectors.groupingBy(job -> job.runner));
+    private void checkRunnerStatusRemote(final List<ScheduledJob> runningJobs) {
+        final List<String> availableRunners = this.kubernetesSupport.getAllReplicaPodNames();
+        final Map<String, Instant> runnerStartTimes = new HashMap<>();
 
-        runningJobsByRunners.forEach((runner, jobs) -> {
-            if (!availableRunners.contains(runner)) {
-                QuarkusTransaction.requiringNew().run(() -> jobs.forEach(this::failJob));
+        final List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < availableRunners.size(); i++) {
+            final String runner = availableRunners.get(i);
+            final InetAddress address = this.kubernetesSupport.podNameToClusterIP(runner);
+
+            final Future<?> future = this.kubernetesSupport.sendRequest(
+                    address,
+                    (baseUrl, webClient) -> webClient.getAbs(baseUrl + "/api/v1/system/status").send()
+            ).onSuccess(response -> {
+                if (response.statusCode() == 200) {
+                    final SystemEndpoint.AppStatus status = response.bodyAsJson(SystemEndpoint.AppStatus.class);
+                    runnerStartTimes.put(runner, status.startupTime());
+                } else {
+                    LOGGER.warn("Failed to fetch status of runner {}: {}", runner, response.statusCode());
+                }
+            }).onFailure(ex -> LOGGER.warn("Failed to fetch status of runner {}", runner, ex));
+
+            futures.add(future);
+        }
+
+        Future.all(futures).onComplete(_ -> {
+            collectDeadJob(runningJobs, runnerStartTimes);
+        });
+    }
+
+    private void collectDeadJob(final List<ScheduledJob> jobs, final Map<String, Instant> runnerStartTimes) {
+        final List<ScheduledJob> deadJobs = new ArrayList<>();
+        for (int i = 0; i < jobs.size(); i++) {
+            final ScheduledJob job = jobs.get(i);
+            final Instant runnerStartTime = runnerStartTimes.get(job.runner);
+            if (runnerStartTime == null || job.assignedAt.isBefore(runnerStartTime)) {
+                deadJobs.add(job);
+            }
+        }
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            for (int i = 0; i < deadJobs.size(); i++) {
+                failJob(deadJobs.get(i));
+            }
+        });
+    }
+
+    private void checkRunnerStatusLocal(final List<ScheduledJob> runningJobs) {
+        final Instant startedAt = this.getStartupTime();
+        final List<ScheduledJob> failedJobs = new ArrayList<>();
+
+        for (int i = 0; i < runningJobs.size(); i++) {
+            final ScheduledJob job = runningJobs.get(i);
+            if (job.assignedAt.isBefore(startedAt)) {
+                failedJobs.add(job);
+            }
+        }
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            for (int i = 0; i < failedJobs.size(); i++) {
+                final ScheduledJob job = failedJobs.get(i);
+                failJob(job);
             }
         });
     }
 
     public void failJob(final ScheduledJob job) {
-        ScheduledJob.update("runner = NULL where id = ?1", job.id);
+        ScheduledJob.update("runner = NULL AND assignedAt = NULL where id = ?1", job.id);
     }
 
     public void completeJob(final ScheduledJob job, final Instant now) {
@@ -179,6 +245,7 @@ public class JobScheduler {
         }
 
         job.runner = null;
+        job.assignedAt = null;
         job.lastSuccessfulRun = now;
 
         final Cron cron = this.cronParser.parse(job.cronSchedule);

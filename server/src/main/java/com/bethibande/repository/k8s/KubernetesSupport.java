@@ -324,14 +324,18 @@ public class KubernetesSupport {
         final List<InetAddress> addresses = getAllPodClusterIPs();
         for (int i = 0; i < addresses.size(); i++) {
             final InetAddress address = addresses.get(i);
-            final String hostname = addressToHostname(address);
-
-            final String baseUrl = "http://%s:%d".formatted(hostname, this.managementPort);
-
-            futures.add(fn.apply(baseUrl, this.webClient));
+            futures.add(this.sendRequest(address, fn));
         }
 
         return futures;
+    }
+
+    public Future<io.vertx.ext.web.client.HttpResponse<Buffer>> sendRequest(final InetAddress address,
+                                                                            final BiFunction<String, WebClient, Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> fn) {
+        final String hostname = addressToHostname(address);
+        final String baseUrl = "http://%s:%d".formatted(hostname, this.managementPort);
+
+        return fn.apply(baseUrl, this.webClient);
     }
 
 }

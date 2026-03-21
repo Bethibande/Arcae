@@ -97,4 +97,12 @@
         </createIndex>
     </changeSet>
 
+    <changeSet id="1774108872407-1"
+               author="bethibande">
+        <addColumn tableName="ScheduledJob">
+            <column name="assignedAt"
+                    type="timestamptz"/>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

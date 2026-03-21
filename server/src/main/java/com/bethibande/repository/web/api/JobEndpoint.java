@@ -134,7 +134,7 @@ public class JobEndpoint {
     @PUT
     @Transactional
     @RolesAllowed("ADMIN")
-    public ScheduledJobDTO updateJob(final ScheduledJobDTO dto) throws IOException, InterruptedException {
+    public ScheduledJobDTO updateJob(final UpdateScheduledJobDTO dto) throws IOException, InterruptedException {
         if (scheduler.isDistributed() && !kubernetesLeaderService.isLeader()) {
             return propagate("/api/v1/job", "PUT", ScheduledJobDTO.class, dto);
         }
@@ -146,6 +146,7 @@ public class JobEndpoint {
         job.settings = dto.settings();
         job.deleteAfterRun = dto.deleteAfterRun();
         job.cronSchedule = dto.cronSchedule();
+        job.nextRunAt = dto.nextRunAt();
         job.persist();
 
         scheduler.schedule(job, Instant.now());

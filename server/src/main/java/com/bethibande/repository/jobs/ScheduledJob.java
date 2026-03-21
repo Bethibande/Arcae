@@ -15,7 +15,8 @@ import java.time.Instant;
 
 @Entity
 @EntityDTO
-@EntityDTO(excludeProperties = {"id", "nextRunAt", "runner", "status", "executionStartedAt", "lastSuccessfulRun"}, name = "ScheduledJobDTOWithoutId")
+@EntityDTO(excludeProperties = {"runner", "status", "assignedAt", "executionStartedAt", "lastSuccessfulRun"}, name = "UpdateScheduledJobDTO")
+@EntityDTO(excludeProperties = {"id", "nextRunAt", "runner", "status", "assignedAt", "executionStartedAt", "lastSuccessfulRun"}, name = "ScheduledJobDTOWithoutId")
 @RegisterForReflection(targets = {JobType.class, ScheduledJobDTO.class, ScheduledJobDTOWithoutId.class})
 public class ScheduledJob extends PanacheEntity {
 
@@ -38,6 +39,9 @@ public class ScheduledJob extends PanacheEntity {
 
     @Column(columnDefinition = "varchar(256)")
     public String runner;
+
+    @Column(columnDefinition = "timestamptz")
+    public Instant assignedAt;
 
     @Column(columnDefinition = "timestamptz")
     public Instant executionStartedAt;

@@ -40,7 +40,7 @@ public class AuthenticationEndpoint {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationEndpoint.class);
 
     private static final String DUMMY_BCRYPT_HASH = BcryptUtil.bcryptHash(PasswordUtil.generateSecureRandomString(17));
-    private static final String REFRESH_TOKEN_COOKIE_NAME = "RefreshToken";
+    public static final String REFRESH_TOKEN_COOKIE_NAME = "RefreshToken";
 
     @Inject
     protected UserSessionService userSessionService;

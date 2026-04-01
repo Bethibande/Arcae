@@ -105,4 +105,101 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="1774798309683-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="OpenIDConnectProvider_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1774798309683-2"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="OpenIDConnection_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1774798309683-3"
+               author="bethibande">
+        <createTable tableName="OpenIDConnectProvider">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_openidconnectprovider"/>
+            </column>
+            <column name="name"
+                    type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clientId"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clientSecret"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discoveryUrl"
+                    type="varchar(512)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1774798309683-4"
+               author="bethibande">
+        <createTable tableName="OpenIDConnection">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_openidconnection"/>
+            </column>
+            <column name="user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="provider_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1774798309683-5"
+               author="bethibande">
+        <addUniqueConstraint columnNames="provider_id, subject"
+                             constraintName="uc_751dca966ff9f22fabfddd066"
+                             tableName="OpenIDConnection"/>
+    </changeSet>
+    <changeSet id="1774798309683-6"
+               author="bethibande">
+        <addUniqueConstraint columnNames="user_id, provider_id"
+                             constraintName="uc_9c961502b92de6f420230e9a0"
+                             tableName="OpenIDConnection"/>
+    </changeSet>
+    <changeSet id="1774798309683-7"
+               author="bethibande">
+        <addUniqueConstraint columnNames="name"
+                             constraintName="uc_openidconnectprovider_name"
+                             tableName="OpenIDConnectProvider"/>
+    </changeSet>
+    <changeSet id="1774798309683-8"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="provider_id"
+                                 baseTableName="OpenIDConnection"
+                                 constraintName="FK_OPENIDCONNECTION_ON_PROVIDER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="OpenIDConnectProvider"/>
+    </changeSet>
+    <changeSet id="1774798309683-9"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="user_id"
+                                 baseTableName="OpenIDConnection"
+                                 constraintName="FK_OPENIDCONNECTION_ON_USER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+
 </databaseChangeLog>

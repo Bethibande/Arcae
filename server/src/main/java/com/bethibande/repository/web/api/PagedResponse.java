@@ -1,12 +1,13 @@
 package com.bethibande.repository.web.api;
 
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.function.Function;
 
 public record PagedResponse<T>(
-        List<T> data,
+        @NotNull List<T> data,
         int page,
         int pages,
         int total

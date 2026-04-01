@@ -149,7 +149,7 @@ public class AuthenticationEndpoint {
     @PermitAll
     @Transactional
     @Path("/refresh")
-    @RateLimited(bucket = "auth", identityResolver = IpResolver.class)
+    @RateLimited(bucket = "auth-refresh", identityResolver = IpResolver.class)
     public Response refresh(final @CookieParam(REFRESH_TOKEN_COOKIE_NAME) String refreshToken) {
         final RefreshToken token = RefreshToken.find("token = ?1", refreshToken).firstResult();
         final Instant now = Instant.now();

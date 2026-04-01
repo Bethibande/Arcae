@@ -1,12 +1,18 @@
 import React, {createContext, useCallback, useContext, useEffect, useState} from "react"
-import {type Credentials, ResponseError, type UserDTOWithoutPassword} from "@/generated"
+import {
+  type ApiV1OidcLoginCompleteProviderPostRequest,
+  type Credentials,
+  ResponseError,
+  type UserDTOWithoutPassword
+} from "@/generated"
 import {refresh as refreshSession} from "@/lib/middleware"
-import {authApi as api} from "@/lib/api"
+import {authApi as api, oidcApi} from "@/lib/api"
 
 interface AuthContextType {
   user: UserDTOWithoutPassword | null
   loading: boolean
   login: (credentials: Credentials) => Promise<void>
+  loginOidc: (credentials: ApiV1OidcLoginCompleteProviderPostRequest) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -50,6 +56,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const loginOidc = async (credentials: ApiV1OidcLoginCompleteProviderPostRequest) => {
+    try {
+      await oidcApi.apiV1OidcLoginCompleteProviderPost(credentials)
+      await refresh()
+    } catch (error) {
+      throw error
+    }
+  }
+
   const logout = async () => {
     try {
       await api.apiV1AuthLogoutPost()
@@ -63,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, login, loginOidc, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   )

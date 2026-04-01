@@ -1,10 +1,10 @@
 import {Link, Outlet, useNavigate, useParams} from "react-router";
 import {cn} from "@/lib/utils.ts";
-import {ChevronRight, ExternalLink, KeyRound, Lock, Mail, Settings, Shield, User,} from "lucide-react";
+import {ChevronRight, ExternalLink, Globe, KeyRound, Lock, Mail, Settings, Shield, User,} from "lucide-react";
 import {useAuth} from "@/components/auth-provider.tsx";
 import {UserRole} from "@/generated";
 
-type Tab = "profile" | "password" | "tokens" | "users" | "jobs" | "mail" | "references";
+type Tab = "profile" | "password" | "tokens" | "users" | "jobs" | "mail" | "references" | "oidc";
 
 export default function UserSettingsLayout() {
     const navigate = useNavigate();
@@ -21,6 +21,7 @@ export default function UserSettingsLayout() {
 
     const adminTabs: { id: Tab; label: string; description: string; icon: React.ElementType }[] = [
         { id: "users", label: "User Management", description: "Manage system users and roles", icon: Shield },
+        { id: "oidc", label: "OIDC Providers", description: "Manage external auth providers", icon: Globe },
         { id: "mail", label: "Mail Settings", description: "Configure SMTP settings", icon: Mail },
         { id: "references", label: "Header References", description: "Manage links and text in header", icon: ExternalLink },
         { id: "jobs", label: "System Jobs", description: "Monitor background tasks", icon: Settings },

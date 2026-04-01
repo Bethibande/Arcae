@@ -12,6 +12,7 @@ import {
     SetupEndpointApi,
     SystemEndpointApi,
     UserEndpointApi,
+    OpenIDConnectEndpointApi,
 } from "@/generated"
 import {RefreshMiddleware} from "@/lib/middleware"
 
@@ -32,3 +33,4 @@ export const repositoryPermissionApi = new RepositoryPermissionEndpointApi(confi
 export const setupApi = new SetupEndpointApi(configuration)
 export const systemApi = new SystemEndpointApi(configuration)
 export const userApi = new UserEndpointApi(configuration)
+export const oidcApi = new OpenIDConnectEndpointApi(configuration)

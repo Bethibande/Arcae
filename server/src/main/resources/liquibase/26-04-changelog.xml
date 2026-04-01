@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.33.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+    <changeSet id="1775028501244-2"
+               author="bethibande">
+        <addColumn tableName="OpenIDConnectProvider">
+            <column name="authorizationEndpoint"
+                    type="varchar(512)"/>
+            <column name="tokenEndpoint"
+                    type="varchar(512)"/>
+            <column name="userInfoEndpoint"
+                    type="varchar(512)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1775028501244-3"
+               author="bethibande">
+        <addNotNullConstraint columnName="authorizationEndpoint"
+                              tableName="OpenIDConnectProvider"/>
+    </changeSet>
+    <changeSet id="1775028501244-5"
+               author="bethibande">
+        <addNotNullConstraint columnName="tokenEndpoint"
+                              tableName="OpenIDConnectProvider"/>
+    </changeSet>
+    <changeSet id="1775028501244-7"
+               author="bethibande">
+        <addNotNullConstraint columnName="userInfoEndpoint"
+                              tableName="OpenIDConnectProvider"/>
+    </changeSet>
+    <changeSet id="1775028501244-1"
+               author="bethibande">
+        <dropNotNullConstraint columnDataType="varchar(512)"
+                               columnName="discoveryUrl"
+                               tableName="OpenIDConnectProvider"/>
+    </changeSet>
+
+</databaseChangeLog>

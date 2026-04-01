@@ -16,6 +16,7 @@
 - **Maven** repository support
 - **Docker/OCI** repository support
 - **Kubernetes gateway API** - Automatic HTTPRoute configuration support for OCI repositories
+- **Open ID Connect** - Link external accounts for easy sign ins
 - Cleanup policies
 - Mirroring of remote repositories
 - User permissions for repository access

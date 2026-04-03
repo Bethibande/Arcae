@@ -23,6 +23,7 @@ import {SystemJobsTab} from "@/pages/settings/system-jobs-tab.tsx";
 import {MailTab} from "@/pages/settings/mail-tab.tsx";
 import {ReferencesTab} from "@/pages/settings/references-tab.tsx";
 import {OidcProvidersTab} from "@/pages/settings/oidc-providers-tab.tsx";
+import SetupPage from "@/pages/setup/page.tsx";
 import ReferencePage from "@/pages/reference-page.tsx";
 import {Toaster} from "@/components/ui/sonner.tsx";
 
@@ -67,6 +68,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/login/reset" element={<PasswordResetPage />} />
                 <Route path="/login/oidc/complete/:provider" element={<OidcCompletePage />} />
+                <Route path="/setup" element={<SetupPage />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/repository/new" element={<RepositorySettingsPage />} />
                   <Route path="/repository/:id/settings" element={<RepositorySettingsPage />} />

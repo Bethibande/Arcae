@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 @RegisterForReflection
 @Table(name = "Users")
 @EntityDTO(excludeProperties = "id")
+@EntityDTO(excludeProperties = {"id", "roles"})
 @EntityDTO(excludeProperties = "password")
 @EntityDTO(excludeProperties = "roles")
 public class User extends PanacheEntity implements Principal {

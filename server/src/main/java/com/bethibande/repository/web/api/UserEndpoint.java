@@ -1,5 +1,9 @@
 package com.bethibande.repository.web.api;
 
+import com.bethibande.repository.jpa.security.AccessToken;
+import com.bethibande.repository.jpa.security.OpenIDConnection;
+import com.bethibande.repository.jpa.security.RefreshToken;
+import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.*;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.elytron.security.common.BcryptUtil;
@@ -136,8 +140,12 @@ public class UserEndpoint {
     @DELETE
     @Transactional
     public void delete(final @QueryParam("id") long id) {
-        final User user = User.findById(id);
         if (authenticatedUser.getSelf().id == id) throw new NotAuthorizedException("Cannot delete self");
+
+        UserSession.delete("user.id = ?1", id);
+        RefreshToken.delete("user.id = ?1", id);
+        OpenIDConnection.delete("user.id = ?1", id);
+        AccessToken.delete("owner.id = ?1", id);
 
         User.deleteById(id);
     }

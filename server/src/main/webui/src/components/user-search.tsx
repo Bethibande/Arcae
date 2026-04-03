@@ -55,7 +55,7 @@ export function UserSearch({onSelect, placeholder = "Search for a user...", clas
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
                         <Input
-                            type="search"
+                            type="text"
                             placeholder={placeholder}
                             className="pl-10 pr-10"
                             value={query}

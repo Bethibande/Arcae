@@ -21,6 +21,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import {Input} from "@/components/ui/input.tsx";
+import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";
 
 const mailSchema = z.object({
     enabled: z.boolean(),
@@ -257,15 +258,21 @@ export function MailTab() {
                                         placeholder="noreply@example.com"
                                         className="flex-1"
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        title="Auto Discover"
-                                        onClick={handleAutoDiscover}
-                                    >
-                                        <Sparkles className="size-4"/>
-                                    </Button>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={handleAutoDiscover}
+                                            >
+                                                <Sparkles className="size-4"/>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Automatically discover mail server settings. Works only if supported by the server.</p>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </div>
                                 <FormField
                                     control={control}
@@ -316,7 +323,7 @@ export function MailTab() {
                                                 <SelectContent>
                                                     <SelectItem value={MailEncryption.None}>None</SelectItem>
                                                     <SelectItem value={MailEncryption.Ssl}>SSL</SelectItem>
-                                                    <SelectItem value={MailEncryption.StartTls}>START_TLS</SelectItem>
+                                                    <SelectItem value={MailEncryption.StartTls}>Start TLS</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </Field>

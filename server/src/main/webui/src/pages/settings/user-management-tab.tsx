@@ -120,11 +120,8 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: CreateUserDialogPro
                                         <SelectValue placeholder="Select a role" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {Object.values(UserRole).filter(r => r !== UserRole.System).map((role) => (
-                                            <SelectItem key={role} value={role}>
-                                                {role}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value={UserRole.Default}>User</SelectItem>
+                                        <SelectItem value={UserRole.Admin}>Admin</SelectItem>
                                     </SelectContent>
                                 </Select>
                             )}
@@ -226,11 +223,8 @@ function EditUserDialog({ open, onOpenChange, user, onUpdated }: EditUserDialogP
                                         <SelectValue placeholder="Select a role" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {Object.values(UserRole).filter(r => r !== UserRole.System).map((role) => (
-                                            <SelectItem key={role} value={role}>
-                                                {role}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value={UserRole.Default}>User</SelectItem>
+                                        <SelectItem value={UserRole.Admin}>Admin</SelectItem>
                                     </SelectContent>
                                 </Select>
                             )}
@@ -342,7 +336,8 @@ export function UserManagementTab() {
                 const role = user.roles?.[0] ?? UserRole.Default;
                 return (
                     <Badge variant={role === UserRole.Admin ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
-                        {role}
+                        {role === UserRole.Default && "User"}
+                        {role === UserRole.Admin && "Admin"}
                     </Badge>
                 );
             },

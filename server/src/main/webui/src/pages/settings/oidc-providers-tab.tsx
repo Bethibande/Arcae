@@ -302,14 +302,6 @@ export function OidcProvidersTab() {
             accessorKey: "clientId",
         },
         {
-            header: "Discovery URL",
-            cell: (provider) => (
-                <span className="text-xs text-muted-foreground truncate max-w-xs block">
-                    {provider.discoveryUrl}
-                </span>
-            ),
-        },
-        {
             header: "",
             className: "w-0",
             cell: (provider) => (

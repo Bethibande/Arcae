@@ -5,35 +5,37 @@ import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
 import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.identity.request.TokenAuthenticationRequest;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.util.Objects;
+
 @ApplicationScoped
-public class TokenIdentityProvider implements IdentityProvider<TokenAuthenticationRequest> {
+public class SessionIdentityProvider implements IdentityProvider<SessionAuthenticationRequest> {
 
     private final UserSessionService userSessionService;
 
     @Inject
-    public TokenIdentityProvider(final UserSessionService userSessionService) {
+    public SessionIdentityProvider(final UserSessionService userSessionService) {
         this.userSessionService = userSessionService;
     }
 
     @Override
-    public Class<TokenAuthenticationRequest> getRequestType() {
-        return TokenAuthenticationRequest.class;
+    public Class<SessionAuthenticationRequest> getRequestType() {
+        return SessionAuthenticationRequest.class;
     }
 
     @Override
-    public Uni<SecurityIdentity> authenticate(final TokenAuthenticationRequest request,
+    public Uni<SecurityIdentity> authenticate(final SessionAuthenticationRequest request,
                                               final AuthenticationRequestContext context) {
         return context.runBlocking(() -> {
-            final String token = request.getToken().getToken();
+            final String token = request.getToken();
 
-            final UserSession session = userSessionService.getSessionByToken(token);
-            if (!userSessionService.isValid(session)) throw new AuthenticationFailedException("Invalid session");
+            final UserSession session = this.userSessionService.getSessionByToken(token);
+            if (!this.userSessionService.isValid(session)) throw new AuthenticationFailedException("Invalid session");
+            if (!Objects.equals(session.address, request.getRemoteAddress().hostAddress())) throw new AuthenticationFailedException("Invalid session");
 
             return QuarkusSecurityIdentity.builder()
                     .setPrincipal(session.user)

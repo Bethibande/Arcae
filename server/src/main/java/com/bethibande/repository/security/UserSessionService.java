@@ -42,6 +42,10 @@ public class UserSessionService {
         return this.userSessionCache.get(token, _ -> UserSession.find("token = ?1", token).firstResult());
     }
 
+    public void updateSession(final UserSession session) {
+        this.cacheRegistry.invalidateAll(USER_SESSION_CACHE, session.token);
+    }
+
     @Transactional
     public void invalidateSession(final String token) {
         UserSession.delete("token = ?1", token);
@@ -55,10 +59,11 @@ public class UserSessionService {
     }
 
     @Transactional
-    public UserSession createSessionForUser(final User user) {
+    public UserSession createSessionForUser(final User user, final String remoteAddress) {
         final UserSession session = new UserSession();
         session.user = user;
         session.created = Instant.now();
+        session.address = remoteAddress;
         session.token = PasswordUtil.generateSecureRandomString(256);
         session.persist();
 

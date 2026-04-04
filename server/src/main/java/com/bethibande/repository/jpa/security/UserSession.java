@@ -19,6 +19,9 @@ public class UserSession extends PanacheEntity {
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     public User user;
 
+    @Column(nullable = false, columnDefinition = "varchar(512)")
+    public String address;
+
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant created;
 

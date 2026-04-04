@@ -10,6 +10,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.security.Authenticated;
 import io.quarkus.vertx.VertxContextSupport;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -17,6 +18,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -195,7 +197,8 @@ public class OpenIDConnectEndpoint {
     public Uni<Response> completeLogin(final @PathParam("provider") String provider,
                                        final @CookieParam(OIDC_STATE_COOKIE_NAME) String state,
                                        final @QueryParam("code") String code,
-                                       final @QueryParam("state") String stateFromQuery) {
+                                       final @QueryParam("state") String stateFromQuery,
+                                       final @Context HttpServerRequest request) {
         if (!Objects.equals(state, stateFromQuery)) throw new BadRequestException("Invalid state");
 
         return withProvider(provider)
@@ -208,7 +211,7 @@ public class OpenIDConnectEndpoint {
                                 final OpenIDConnection connection = OpenIDConnection.find("provider = ?1 AND subject = ?2", entity, subj).firstResult();
                                 if (connection == null) return Response.status(Response.Status.NOT_FOUND).build();
 
-                                return authenticationEndpoint.doLogin(connection.user);
+                                return authenticationEndpoint.doLogin(connection.user, request.remoteAddress().hostAddress());
                             })));
                 });
     }

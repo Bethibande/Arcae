@@ -39,4 +39,22 @@
                                tableName="OpenIDConnectProvider"/>
     </changeSet>
 
+    <changeSet id="1775289642505-1"
+               author="bethibande">
+        <addColumn tableName="UserSession">
+            <column name="address"
+                    type="varchar(512)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1775290794930-1" author="bethibande">
+        <sql>
+            UPDATE usersession SET address = ''
+        </sql>
+    </changeSet>
+    <changeSet id="1775289642505-2"
+               author="bethibande">
+        <addNotNullConstraint columnName="address"
+                              tableName="UserSession"/>
+    </changeSet>
+
 </databaseChangeLog>

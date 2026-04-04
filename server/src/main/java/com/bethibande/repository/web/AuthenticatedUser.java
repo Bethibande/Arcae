@@ -1,6 +1,7 @@
 package com.bethibande.repository.web;
 
 import com.bethibande.repository.jpa.security.AccessToken;
+import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.security.SecurityAttributes;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -21,6 +22,11 @@ public class AuthenticatedUser {
         if (principal instanceof User user) return user;
 
         return null;
+    }
+
+    public UserSession getSession() {
+        if (identity.isAnonymous()) return null;
+        return identity.getAttribute(SecurityAttributes.SESSION);
     }
 
     public AccessToken getAccessToken() {

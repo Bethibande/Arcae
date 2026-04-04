@@ -5,6 +5,7 @@ import com.bethibande.repository.jpa.security.OpenIDConnection;
 import com.bethibande.repository.jpa.security.RefreshToken;
 import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.*;
+import com.bethibande.repository.security.UserSessionService;
 import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
@@ -16,7 +17,6 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.Response;
 import org.apache.http.HttpStatus;
 import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
 import org.hibernate.search.engine.search.predicate.dsl.PredicateFinalStep;
@@ -32,11 +32,13 @@ import java.util.List;
 public class UserEndpoint {
 
     @Inject
-    public SearchSession searchSession;
+    protected SearchSession searchSession;
+
     @Inject
-    AuthenticatedUser authenticatedUser;
+    protected AuthenticatedUser authenticatedUser;
+
     @Inject
-    AuthenticationEndpoint authenticationEndpoint;
+    protected UserSessionService userSessionService;
 
     @POST
     @Transactional
@@ -83,7 +85,7 @@ public class UserEndpoint {
     public PagedResponse<UserDTOWithoutPassword> search(final @QueryParam("q") String query,
                                                         final @QueryParam("p") @Min(0) int page,
                                                         final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
-        final SearchResult<User> result = searchSession.search(User.class)
+        final SearchResult<User> result = this.searchSession.search(User.class)
                 .where(q -> {
                     final List<PredicateFinalStep> predicates = new ArrayList<>();
                     predicates.add(q.match()
@@ -140,7 +142,7 @@ public class UserEndpoint {
     @DELETE
     @Transactional
     public void delete(final @QueryParam("id") long id) {
-        if (authenticatedUser.getSelf().id == id) throw new NotAuthorizedException("Cannot delete self");
+        if (this.authenticatedUser.getSelf().id == id) throw new NotAuthorizedException("Cannot delete self");
 
         UserSession.delete("user.id = ?1", id);
         RefreshToken.delete("user.id = ?1", id);
@@ -154,13 +156,13 @@ public class UserEndpoint {
     @Transactional
     @Authenticated
     @Path("/self")
-    public Response updateSelf(final UserDTOWithoutRoles dto) {
+    public void updateSelf(final UserDTOWithoutRoles dto) {
         if (User.count("name = ?1", dto.name()) > 1)
             throw new WebApplicationException("Duplicate username", HttpStatus.SC_CONFLICT);
         if (User.count("email = ?1", dto.email()) > 1)
             throw new WebApplicationException("Duplicate email", HttpStatus.SC_CONFLICT);
 
-        final User self = authenticatedUser.getSelf();
+        final User self = this.authenticatedUser.getSelf();
         if (!BcryptUtil.matches(dto.password(), self.password)) throw new ForbiddenException("Invalid password");
 
         final User user = User.findById(self.id); // Load the user to ensure it is attached to our transaction
@@ -169,7 +171,7 @@ public class UserEndpoint {
 
         user.persist();
 
-        return authenticationEndpoint.doLogin(self);
+        this.userSessionService.updateSession(this.authenticatedUser.getSession());
     }
 
     public record PasswordResetForm(
@@ -183,7 +185,7 @@ public class UserEndpoint {
     @Authenticated
     @Path("/self/password")
     public void resetPassword(final PasswordResetForm form) {
-        final User self = authenticatedUser.getSelf();
+        final User self = this.authenticatedUser.getSelf();
         if (BcryptUtil.matches(form.current, self.password)) {
             self.password = BcryptUtil.bcryptHash(form.newPassword);
         } else {

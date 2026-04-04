@@ -4,16 +4,15 @@ import com.bethibande.repository.security.system.SystemAuthenticationRequest;
 import com.bethibande.repository.web.management.ManagementServer;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
-import io.quarkus.security.credential.TokenCredential;
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.AuthenticationRequest;
-import io.quarkus.security.identity.request.TokenAuthenticationRequest;
 import io.quarkus.security.identity.request.UsernamePasswordAuthenticationRequest;
 import io.quarkus.vertx.http.runtime.security.ChallengeData;
 import io.quarkus.vertx.http.runtime.security.HttpAuthenticationMechanism;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.http.Cookie;
+import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.http.HttpHeaders;
@@ -30,9 +29,9 @@ public class UserAuthenticationMechanism implements HttpAuthenticationMechanism 
     @ConfigProperty(name = ManagementServer.MANAGEMENT_PORT_PROPERTY)
     protected int managementPort;
 
-    protected AuthenticationRequest cookieAuth(final Cookie cookie) {
+    protected AuthenticationRequest cookieAuth(final Cookie cookie, final SocketAddress address) {
         final String text = cookie.getValue();
-        return new TokenAuthenticationRequest(new TokenCredential(text, "user"));
+        return new SessionAuthenticationRequest(text, address);
     }
 
     protected AuthenticationRequest basicAuth(final String value) {
@@ -55,7 +54,7 @@ public class UserAuthenticationMechanism implements HttpAuthenticationMechanism 
 
         final Cookie cookie = context.request().getCookie(COOKIE_NAME);
         if (cookie != null) {
-            request = cookieAuth(cookie);
+            request = cookieAuth(cookie, context.request().remoteAddress());
         }
 
         final String authorization = context.request().getHeader(HttpHeaders.AUTHORIZATION);

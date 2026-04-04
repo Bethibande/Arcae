@@ -15,11 +15,13 @@ import io.quarkiverse.bucket4j.runtime.RateLimited;
 import io.quarkiverse.bucket4j.runtime.resolver.IpResolver;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.security.identity.SecurityIdentity;
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -112,7 +114,7 @@ public class AuthenticationEndpoint {
     @PermitAll
     @Path("/login")
     @RateLimited(bucket = "auth", identityResolver = IpResolver.class)
-    public Response login(final Credentials credentials) {
+    public Response login(final Credentials credentials, final @Context HttpServerRequest request) {
         final User user = User.find("name = ?1", credentials.username).firstResult();
 
         String hashToCompare;
@@ -139,7 +141,7 @@ public class AuthenticationEndpoint {
                 && passwordMatches
                 && !hashToCompare.isBlank()
                 && !user.roles.contains(UserRole.SYSTEM)) {
-            return doLogin(user);
+            return doLogin(user, request.remoteAddress().hostAddress());
         } else {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
@@ -150,7 +152,7 @@ public class AuthenticationEndpoint {
     @Transactional
     @Path("/refresh")
     @RateLimited(bucket = "auth-refresh", identityResolver = IpResolver.class)
-    public Response refresh(final @CookieParam(REFRESH_TOKEN_COOKIE_NAME) String refreshToken) {
+    public Response refresh(final @CookieParam(REFRESH_TOKEN_COOKIE_NAME) String refreshToken, final @Context HttpServerRequest request) {
         final RefreshToken token = RefreshToken.find("token = ?1", refreshToken).firstResult();
         final Instant now = Instant.now();
 
@@ -160,11 +162,11 @@ public class AuthenticationEndpoint {
         final UserSession session = identity.getAttribute(SecurityAttributes.SESSION);
         if (session != null) userSessionService.invalidateSession(session.token); // Invalidate current session
 
-        return doLogin(token.user);
+        return doLogin(token.user, request.remoteAddress().hostAddress());
     }
 
-    public Response doLogin(final User user) {
-        final UserSession session = userSessionService.createSessionForUser(user);
+    public Response doLogin(final User user, final String remoteAddress) {
+        final UserSession session = userSessionService.createSessionForUser(user, remoteAddress);
         final Duration maxSessionAge = Duration.between(Instant.now(), session.expiresAfter());
 
         final RefreshToken refreshToken = userSessionService.createRefreshTokenForUser(user);

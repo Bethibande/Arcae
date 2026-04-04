@@ -6,8 +6,10 @@ import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 public class RefreshToken extends PanacheEntity {
@@ -20,6 +22,9 @@ public class RefreshToken extends PanacheEntity {
 
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant created;
+
+    @OneToMany(mappedBy = "refreshToken")
+    public List<UserSession> sessions;
 
     public Instant expiresAfter() {
         return this.created.plus(UserSessionService.REFRESH_TOKEN_LIFETIME);

@@ -60,8 +60,8 @@ public class AuthenticationEndpointTests {
                 .statusCode(200)
                 .extract();
 
-        this.sessionToken = result.cookie(UserAuthenticationMechanism.COOKIE_NAME);
-        this.refreshToken = result.cookie(AuthenticationEndpoint.REFRESH_TOKEN_COOKIE_NAME);
+        sessionToken = result.cookie(UserAuthenticationMechanism.COOKIE_NAME);
+        refreshToken = result.cookie(AuthenticationEndpoint.REFRESH_TOKEN_COOKIE_NAME);
     }
 
     @Test
@@ -87,8 +87,8 @@ public class AuthenticationEndpointTests {
                 .statusCode(200)
                 .extract();
 
-        this.sessionToken = result.cookie(UserAuthenticationMechanism.COOKIE_NAME);
-        this.refreshToken = result.cookie(AuthenticationEndpoint.REFRESH_TOKEN_COOKIE_NAME);
+        sessionToken = result.cookie(UserAuthenticationMechanism.COOKIE_NAME);
+        refreshToken = result.cookie(AuthenticationEndpoint.REFRESH_TOKEN_COOKIE_NAME);
     }
 
     @Test

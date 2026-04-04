@@ -131,7 +131,7 @@ public class AuthenticationEndpoint {
     @Authenticated
     @Transactional
     @Path("/sessions")
-    public @NotNull List< @NotNull ActiveUserSession> getActiveSessions() {
+    public @NotNull List<@NotNull ActiveUserSession> getActiveSessions() {
         final User self = this.authenticatedUser.getSelf();
         final UserSession current = this.authenticatedUser.getSession();
 
@@ -155,7 +155,8 @@ public class AuthenticationEndpoint {
         final User self = this.authenticatedUser.getSelf();
 
         final UserSession session = UserSession.findById(id);
-        if (session == null || !Objects.equals(session.user.id, self.id)) throw new NotFoundException("Unknown session");
+        if (session == null || !Objects.equals(session.user.id, self.id))
+            throw new NotFoundException("Unknown session");
 
         this.userSessionService.invalidateSession(session);
     }
@@ -207,10 +208,10 @@ public class AuthenticationEndpoint {
         final Instant now = Instant.now();
 
         if (token == null || token.isExpired(now)) throw new BadRequestException("Invalid refresh token");
-        token.delete();
 
-        final UserSession session = identity.getAttribute(SecurityAttributes.SESSION);
-        if (session != null) userSessionService.invalidateSession(session.token); // Invalidate current session
+        for (final UserSession session : token.sessions) {
+            userSessionService.invalidateSession(session);
+        }
 
         return doLogin(token.user, request.remoteAddress().hostAddress());
     }

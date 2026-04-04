@@ -22,6 +22,9 @@ public class UserSession extends PanacheEntity {
     @Column(nullable = false, columnDefinition = "varchar(512)")
     public String address;
 
+    @ManyToOne(optional = false)
+    public RefreshToken refreshToken;
+
     @Column(nullable = false, columnDefinition = "timestamptz")
     public Instant created;
 

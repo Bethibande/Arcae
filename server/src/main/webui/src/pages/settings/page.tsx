@@ -1,10 +1,22 @@
 import {Link, Outlet, useNavigate, useParams} from "react-router";
 import {cn} from "@/lib/utils.ts";
-import {ChevronRight, ExternalLink, Globe, KeyRound, Lock, Mail, Settings, Shield, User,} from "lucide-react";
+import {
+    ChevronRight,
+    ExternalLink,
+    Globe,
+    KeyRound,
+    Lock,
+    Mail,
+    Monitor,
+    Settings,
+    Shield,
+    User,
+} from "lucide-react";
 import {useAuth} from "@/components/auth-provider.tsx";
 import {UserRole} from "@/generated";
+import {Separator} from "@/components/ui/separator.tsx";
 
-type Tab = "profile" | "password" | "tokens" | "users" | "jobs" | "mail" | "references" | "oidc";
+type Tab = "profile" | "password" | "sessions" | "tokens" | "users" | "jobs" | "mail" | "references" | "oidc";
 
 export default function UserSettingsLayout() {
     const navigate = useNavigate();
@@ -16,6 +28,7 @@ export default function UserSettingsLayout() {
     const userTabs: { id: Tab; label: string; description: string; icon: React.ElementType }[] = [
         { id: "profile", label: "Profile", description: "Manage your account details", icon: User },
         { id: "password", label: "Password", description: "Secure your account", icon: Lock },
+        { id: "sessions", label: "Sessions", description: "Manage active devices", icon: Monitor },
         { id: "tokens", label: "Access Tokens", description: "API and CLI authentication", icon: KeyRound },
     ];
 
@@ -81,6 +94,7 @@ export default function UserSettingsLayout() {
                             );
                         })}
 
+                        {isAdmin && (<Separator className={"mt-2"}/>)}
                         {isAdmin && adminTabs.map((tab) => {
                             const Icon = tab.icon;
                             return (

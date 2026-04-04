@@ -11,15 +11,19 @@ import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.security.SecurityAttributes;
 import com.bethibande.repository.security.UserAuthenticationMechanism;
 import com.bethibande.repository.security.UserSessionService;
+import com.bethibande.repository.web.AuthenticatedUser;
 import io.quarkiverse.bucket4j.runtime.RateLimited;
 import io.quarkiverse.bucket4j.runtime.resolver.IpResolver;
 import io.quarkus.elytron.security.common.BcryptUtil;
+import io.quarkus.panache.common.Sort;
+import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.NewCookie;
@@ -32,6 +36,7 @@ import org.wildfly.security.util.PasswordUtil;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
@@ -52,6 +57,9 @@ public class AuthenticationEndpoint {
 
     @Inject
     protected PasswordResetTask passwordResetTask;
+
+    @Inject
+    protected AuthenticatedUser authenticatedUser;
 
     public static class Credentials {
         public String username;
@@ -108,6 +116,48 @@ public class AuthenticationEndpoint {
         PasswordResetToken.delete("user = ?1", user);
 
         return Response.ok().build();
+    }
+
+    public record ActiveUserSession(
+            @NotNull long id,
+            @NotNull Instant created,
+            @NotNull Instant expiresAfter,
+            @NotNull String address,
+            boolean current
+    ) {
+    }
+
+    @GET
+    @Authenticated
+    @Transactional
+    @Path("/sessions")
+    public @NotNull List< @NotNull ActiveUserSession> getActiveSessions() {
+        final User self = this.authenticatedUser.getSelf();
+        final UserSession current = this.authenticatedUser.getSession();
+
+        return UserSession.<UserSession>list("user = ?1", Sort.descending("created"), self)
+                .stream()
+                .map(session -> new ActiveUserSession(
+                        session.id,
+                        session.created,
+                        session.refreshToken.expiresAfter(),
+                        session.address,
+                        Objects.equals(session.id, current.id)
+                ))
+                .toList();
+    }
+
+    @DELETE
+    @Authenticated
+    @Transactional
+    @Path("/session/{id}")
+    public void invalidateSession(final @PathParam("id") long id) {
+        final User self = this.authenticatedUser.getSelf();
+
+        final UserSession session = UserSession.findById(id);
+        if (session == null || !Objects.equals(session.user.id, self.id)) throw new NotFoundException("Unknown session");
+
+        this.userSessionService.invalidateSession(session);
     }
 
     @POST
@@ -169,7 +219,7 @@ public class AuthenticationEndpoint {
         final UserSession session = userSessionService.createSessionForUser(user, remoteAddress);
         final Duration maxSessionAge = Duration.between(Instant.now(), session.expiresAfter());
 
-        final RefreshToken refreshToken = userSessionService.createRefreshTokenForUser(user);
+        final RefreshToken refreshToken = session.refreshToken;
         final Duration maxRefreshTokenAge = Duration.between(Instant.now(), refreshToken.expiresAfter());
 
         return Response.ok(UserDTOWithoutPassword.from(user))

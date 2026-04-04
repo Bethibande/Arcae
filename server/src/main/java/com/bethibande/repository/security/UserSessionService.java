@@ -48,9 +48,16 @@ public class UserSessionService {
 
     @Transactional
     public void invalidateSession(final String token) {
-        UserSession.delete("token = ?1", token);
+        final UserSession session = this.getSessionByToken(token);
+        if (session != null) invalidateSession(session);
+    }
 
-        this.cacheRegistry.invalidateAll(USER_SESSION_CACHE, token);
+    @Transactional
+    public void invalidateSession(final UserSession session) {
+        UserSession.deleteById(session.id);
+        RefreshToken.deleteById(session.refreshToken.id);
+
+        this.cacheRegistry.invalidateAll(USER_SESSION_CACHE, session.token);
     }
 
     public boolean isValid(final UserSession session) {
@@ -65,6 +72,7 @@ public class UserSessionService {
         session.created = Instant.now();
         session.address = remoteAddress;
         session.token = PasswordUtil.generateSecureRandomString(256);
+        session.refreshToken = this.createRefreshTokenForUser(user);
         session.persist();
 
         return session;

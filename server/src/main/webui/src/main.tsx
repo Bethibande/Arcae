@@ -23,6 +23,7 @@ import {SystemJobsTab} from "@/pages/settings/system-jobs-tab.tsx";
 import {MailTab} from "@/pages/settings/mail-tab.tsx";
 import {ReferencesTab} from "@/pages/settings/references-tab.tsx";
 import {OidcProvidersTab} from "@/pages/settings/oidc-providers-tab.tsx";
+import {SessionsTab} from "@/pages/settings/sessions-tab.tsx";
 import SetupPage from "@/pages/setup/page.tsx";
 import ReferencePage from "@/pages/reference-page.tsx";
 import {Toaster} from "@/components/ui/sonner.tsx";
@@ -36,6 +37,8 @@ function SettingsTabWrapper() {
             return <ProfileTab />;
         case "password":
             return <PasswordTab />;
+        case "sessions":
+            return <SessionsTab />;
         case "tokens":
             return <TokensTab />;
         case "users":

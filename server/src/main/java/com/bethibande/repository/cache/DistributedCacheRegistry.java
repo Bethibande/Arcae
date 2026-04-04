@@ -47,7 +47,10 @@ public class DistributedCacheRegistry {
      * @param key The key you wish to invalidate
      */
     public void invalidateAll(final String cache, final String key) {
-        if (!this.kubernetesSupport.isServiceDiscoveryEnabled()) return;
+        if (!this.kubernetesSupport.isServiceDiscoveryEnabled()) {
+            this.invalidateLocal(cache, key);
+            return;
+        }
 
         final List<Future<HttpResponse<Buffer>>> futures = this.kubernetesSupport.broadcastHttp(
                 (baseUrl, webClient) -> webClient.delete(baseUrl + "/api/v1/cache/" + cache + "/" + key).send()

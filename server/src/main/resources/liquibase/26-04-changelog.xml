@@ -57,4 +57,31 @@
                               tableName="UserSession"/>
     </changeSet>
 
+    <changeSet id="1775291640786-1"
+               author="bethibande">
+        <addColumn tableName="UserSession">
+            <column name="refreshToken_id"
+                    type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1775291669515-1" author="bethibande">
+        <!-- Invalidate all active sessions due to database validation constraints, the frontend will automatically renew them anyway -->
+        <sql>
+            DELETE FROM usersession
+        </sql>
+    </changeSet>
+    <changeSet id="1775291640786-2"
+               author="bethibande">
+        <addNotNullConstraint columnName="refreshToken_id"
+                              tableName="UserSession"/>
+    </changeSet>
+    <changeSet id="1775291640786-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="refreshToken_id"
+                                 baseTableName="UserSession"
+                                 constraintName="FK_USERSESSION_ON_REFRESHTOKEN"
+                                 referencedColumnNames="id"
+                                 referencedTableName="RefreshToken"/>
+    </changeSet>
+
 </databaseChangeLog>

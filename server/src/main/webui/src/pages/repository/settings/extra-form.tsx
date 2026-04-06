@@ -38,5 +38,14 @@ export const ExtraForms: Record<PackageManager, ExtraForm> = {
             { id: "replication", label: "Mirroring", icon: RefreshCcw },
             { id: "external", label: "External Access", icon: Globe },
         ]
+    },
+    [PackageManager.Helm]: {
+        component: OciSettingsForm,
+        sidebarItems: [
+            { id: "behavioral", label: "Behavioral Policies", icon: ShieldAlert },
+            { id: "storage", label: "Storage (S3)", icon: Database },
+            { id: "replication", label: "Mirroring", icon: RefreshCcw },
+            { id: "external", label: "External Access", icon: Globe },
+        ]
     }
 }

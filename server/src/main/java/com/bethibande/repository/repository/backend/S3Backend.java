@@ -2,7 +2,7 @@ package com.bethibande.repository.repository.backend;
 
 import com.bethibande.repository.repository.S3Config;
 import com.bethibande.repository.repository.StreamHandle;
-import com.bethibande.repository.web.repositories.OCIRepositoryEndpoint;
+import com.bethibande.repository.web.repositories.oci.OCIRepositoryEndpoint;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;

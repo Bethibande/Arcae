@@ -54,7 +54,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
 
     private final Lazy<S3Backend> backend;
     private final OCIMirrorSupport mirrorSupport;
-    private final OCIImageIndex index;
+    protected OCIImageIndex index;
 
     private final Executor executor;
 
@@ -148,6 +148,15 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                 artifactAndGroupId.artifactId(),
                 info.id
         ).firstResult();
+    }
+
+    public List<Artifact> getArtifacts(final AuthContext auth, final String groupId) {
+        checkViewAccess(auth);;
+        return Artifact.find(
+                "groupId = ?1 and repository.id = ?2",
+                groupId,
+                info.id
+        ).list();
     }
 
     public void deleteBlob(final AuthContext auth, final String namespace, final String digest) {

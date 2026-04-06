@@ -84,4 +84,43 @@
                                  referencedTableName="RefreshToken"/>
     </changeSet>
 
+    <changeSet id="1775468556938-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="HelmMetadata_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1775468556938-2"
+               author="bethibande">
+        <createTable tableName="HelmMetadata">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_helmmetadata"/>
+            </column>
+            <column name="version_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data"
+                    type="jsonb">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1775468556938-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="version_id"
+                                 baseTableName="HelmMetadata"
+                                 constraintName="FK_HELMMETADATA_ON_VERSION"
+                                 referencedColumnNames="id"
+                                 referencedTableName="ArtifactVersion"/>
+    </changeSet>
+    <changeSet id="1775469046095-1" author="bethibande">
+        <createIndex tableName="HelmMetadata" indexName="idx_HelmMetadata_ArtifactVersion">
+            <column name="version_id"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>

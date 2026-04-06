@@ -2,6 +2,7 @@ package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.repository.repository.ManagedRepository;
 import com.bethibande.repository.repository.RepositoryApplicationContext;
+import com.bethibande.repository.repository.helm.HelmRepository;
 import com.bethibande.repository.repository.maven.MavenRepository;
 import com.bethibande.repository.repository.oci.OCIRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -9,7 +10,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 public enum PackageManager {
 
     OCI(OCIRepository::new),
-    MAVEN(MavenRepository::new);
+    MAVEN(MavenRepository::new),
+    HELM(HelmRepository::new);
 
     private final RepositoryFactory factory;
 

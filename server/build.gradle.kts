@@ -55,6 +55,7 @@ dependencies {
 
     // Jackson & Hibernate Search ORM
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.0")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.0")
     implementation("io.quarkus:quarkus-rest-client-jackson")
     implementation("io.quarkus:quarkus-hibernate-search-orm-elasticsearch") {
         exclude(group = "commons-logging", module = "commons-logging")

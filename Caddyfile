@@ -6,3 +6,8 @@
     rewrite * /repositories/oci/docker{uri}
     reverse_proxy http://host.docker.internal:8080
 }
+
+:8081 {
+    rewrite * /repositories/helm/helm{uri}
+    reverse_proxy http://host.docker.internal:8080
+}

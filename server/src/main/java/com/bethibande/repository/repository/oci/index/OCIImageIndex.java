@@ -37,7 +37,7 @@ public class OCIImageIndex {
     // TODO: Configuration
     public static final Duration MIRROR_TTL = Duration.ofHours(1);
 
-    private final OCIRepository repository;
+    protected final OCIRepository repository;
 
     public OCIImageIndex(final OCIRepository repository) {
         this.repository = repository;

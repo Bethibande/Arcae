@@ -47,9 +47,24 @@ export function UsageDetails({ artifact, version, packageManager, repository }: 
             ];
         }
 
-        if (packageManager === PackageManager.Oci) {
+        if (packageManager === PackageManager.Oci || packageManager === PackageManager.Helm) {
             const externalHost = repository.repository.metadata!["HOST_NAME"] || window.location.host;
             const imageRef = `${externalHost}/${artifact.groupId ? `${artifact.groupId}/` : ""}${artifact.artifactId}:${version.version}`;
+
+            if (packageManager === PackageManager.Helm) {
+                return [
+                    {
+                        name: "Helm Repository",
+                        language: "shell",
+                        content: `# Add the repository\nhelm repo add ${artifact.artifactId} https://${externalHost}/repo/${artifact.groupId ? `${artifact.groupId}/` : ""}${artifact.artifactId}/\n\n# Pull the chart\nhelm pull ${artifact.artifactId}/${artifact.artifactId} --version ${version.version}`
+                    },
+                    {
+                        name: "OCI (recommended)",
+                        language: "shell",
+                        content: `helm pull oci://${externalHost}/${artifact.groupId ? `${artifact.groupId}/` : ""}${artifact.artifactId} --version ${version.version}`
+                    }
+                ];
+            }
 
             return [
                 {

@@ -5,6 +5,7 @@ services:
     image: caddy:latest
     ports:
       - "8082:8080"
+      - "8084:8081"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
   postgres:

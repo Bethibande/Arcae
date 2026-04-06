@@ -1,7 +1,7 @@
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,} from "@/components/ui/dropdown-menu";
-import {Box, Clock, Coffee, ExternalLink, MoreHorizontal, Pencil, Trash2} from "lucide-react";
+import {Anchor, Box, Clock, Coffee, ExternalLink, type LucideIcon, MoreHorizontal, Pencil, Trash2} from "lucide-react";
 import {cn, formatLastUpdate} from "@/lib/utils";
 import {PackageManager, type RepositoryOverviewDTO, UserRole} from "@/generated";
 import {useNavigate} from "react-router";
@@ -20,21 +20,25 @@ import {repositoryApi} from "@/lib/api";
 
 const packageBG: Record<PackageManager, string> = {
     [PackageManager.Maven]: "bg-red-500/10",
-    [PackageManager.Oci]: "bg-blue-500/10"
+    [PackageManager.Oci]: "bg-blue-500/10",
+    [PackageManager.Helm]: "bg-cyan-500/10"
 }
 const packageBGPrimary: Record<PackageManager, string> = {
     [PackageManager.Maven]: "bg-red-600",
-    [PackageManager.Oci]: "bg-blue-600"
+    [PackageManager.Oci]: "bg-blue-600",
+    [PackageManager.Helm]: "bg-cyan-600"
 }
 
 const packageFG: Record<PackageManager, string> = {
     [PackageManager.Maven]: "text-red-500",
-    [PackageManager.Oci]: "text-blue-500"
+    [PackageManager.Oci]: "text-blue-500",
+    [PackageManager.Helm]: "text-cyan-500"
 }
 
-const packageIcon: Record<PackageManager, any> = {
+const packageIcon: Record<PackageManager, LucideIcon> = {
     [PackageManager.Maven]: Coffee,
-    [PackageManager.Oci]: Box
+    [PackageManager.Oci]: Box,
+    [PackageManager.Helm]: Anchor
 }
 
 interface RepositoryCardProps {
@@ -63,8 +67,9 @@ export function RepositoryCard({ repository: overview, onDelete }: RepositoryCar
             await repositoryApi.apiV1RepositoryIdDelete({ id: repo.id! });
             setIsDeleteDialogOpen(false);
             onDelete?.();
-        } catch (err: any) {
-            if (err.response && err.response.status === 409) {
+        } catch (err: unknown) {
+            // @ts-expect-error - err is unknown, but we check for response status
+            if (err && typeof err === 'object' && 'response' in err && err.response?.status === 409) {
                 showErrorMessage("Repository is not empty")
             } else {
                 showError(err);

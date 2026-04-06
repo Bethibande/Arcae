@@ -6,7 +6,7 @@ import com.bethibande.repository.repository.mirror.MirrorAuthType;
 import com.bethibande.repository.repository.oci.OCIContentInfo;
 import com.bethibande.repository.repository.oci.OCIStreamHandle;
 import com.bethibande.repository.util.HttpClientUtil;
-import com.bethibande.repository.web.repositories.OCIRepositoryEndpoint;
+import com.bethibande.repository.web.repositories.oci.OCIRepositoryEndpoint;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;

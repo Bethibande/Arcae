@@ -1,4 +1,4 @@
-package com.bethibande.repository.web.repositories;
+package com.bethibande.repository.web.repositories.oci;
 
 import com.bethibande.repository.jpa.artifact.Artifact;
 import com.bethibande.repository.jpa.artifact.ArtifactVersion;
@@ -14,8 +14,6 @@ import com.bethibande.repository.repository.security.AuthContext;
 import com.bethibande.repository.security.BearerTokenIdentityProvider;
 import com.bethibande.repository.web.AuthenticatedUser;
 import com.bethibande.repository.web.exception.RangeNotSatisfiableException;
-import com.bethibande.repository.web.repositories.oci.OCIError;
-import com.bethibande.repository.web.repositories.oci.OCIErrorCodes;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +25,6 @@ import io.quarkiverse.bucket4j.runtime.resolver.IpResolver;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
 import io.quarkus.security.UnauthorizedException;
-import io.vertx.ext.web.RoutingContext;
 import jakarta.inject.Inject;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -35,14 +32,10 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHeaders;
 import org.apache.http.entity.ContentType;
-import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +45,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
-@Path("/repositories/oci/{repositoryId}/v2")
+@Path("/repositories/oci/{repositoryId}")
 public class OCIRepositoryEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OCIRepositoryEndpoint.class);
@@ -65,45 +58,28 @@ public class OCIRepositoryEndpoint {
     public static final String HEADER_OCI_SUBJECT = "OCI-Subject";
     public static final String HEADER_OCI_FILTERS_APPLIED = "OCI-Filters-Applied";
 
-    private final RepositoryManager repositoryManager;
-    private final AuthenticatedUser authenticatedUser;
+    @Inject
+    protected RepositoryManager repositoryManager;
+
+    @Inject
+    protected AuthenticatedUser authenticatedUser;
 
     @Inject
     protected ObjectMapper mapper;
 
-    @Context
-    protected UriInfo uriInfo;
+    private final PackageManager packageManager;
 
-    @Inject
-    public OCIRepositoryEndpoint(final RepositoryManager repositoryManager, final AuthenticatedUser authenticatedUser) {
-        this.repositoryManager = repositoryManager;
-        this.authenticatedUser = authenticatedUser;
+    public OCIRepositoryEndpoint() {
+        this(PackageManager.OCI);
     }
 
-    @ServerResponseFilter
-    public void authResponseInterceptor(final ContainerResponseContext context, final RoutingContext routing) {
-        if (!uriInfo.getPath().startsWith("/repositories/oci")) return;
-
-        if (context.getStatus() == 401) {
-            String baseUri = uriInfo.getBaseUri().toString();
-            if (baseUri.endsWith("/")) {
-                baseUri = baseUri.substring(0, baseUri.length() - 1);
-            }
-
-            final String realm = "%s/v2/auth".formatted(baseUri);
-            final String service = uriInfo.getBaseUri().getHost();
-
-            context.getHeaders().add("WWW-Authenticate", "Bearer realm=\"%s\",service=\"%s\"".formatted(realm, service));
-            context.setEntity(OCIError.of(OCIErrorCodes.UNAUTHORIZED, "Not authenticated", "You are not authenticated or not permitted to perform the requested action"));
-        }
-        if (context.getStatus() == 403) {
-            context.setEntity(OCIError.of(OCIErrorCodes.DENIED, "Access denied", "You are not permitted to perform the requested action"));
-        }
+    protected OCIRepositoryEndpoint(final PackageManager packageManager) {
+        this.packageManager = packageManager;
     }
 
     protected OCIRepository repositoryOrThrow(final String repositoryId) {
         return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
-            final OCIRepository repository = repositoryManager.findRepository(repositoryId, PackageManager.OCI);
+            final OCIRepository repository = repositoryManager.findRepository(repositoryId, this.packageManager);
             if (repository == null) throw new NotFoundException(
                     Response.status(Response.Status.NOT_FOUND)
                             .entity(OCIError.of(OCIErrorCodes.NAME_UNKNOWN, "Unknown repository", "The specified repository does not exist"))
@@ -114,7 +90,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Path("/auth")
+    @Path("/v2/auth")
     @Transactional
     // We need to use the repositoryId parameter here, otherwise the OpenAPI generator will complain...
     public Response authenticate(final @PathParam("repositoryId") String repositoryId) {
@@ -151,6 +127,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
+    @Path("/v2")
     @Transactional
     public Response get(final @PathParam("repositoryId") String repositoryId) {
         final OCIRepository repository = repositoryOrThrow(repositoryId);
@@ -165,7 +142,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @HEAD
-    @Path("/{namespace: .*}/blobs/{digest}")
+    @Path("/v2/{namespace: .*}/blobs/{digest}")
     public Response headBlob(final @PathParam("repositoryId") String repositoryId,
                              final @PathParam("namespace") String namespace,
                              final @PathParam("digest") String digest) {
@@ -183,7 +160,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @HEAD
-    @Path("/{namespace: .*}/manifests/{reference}")
+    @Path("/v2/{namespace: .*}/manifests/{reference}")
     public Response headManifest(final @PathParam("repositoryId") String repositoryId,
                                  final @PathParam("namespace") String namespace,
                                  final @PathParam("reference") String reference) {
@@ -223,7 +200,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Path("/{namespace: .*}/blobs/{digest}")
+    @Path("/v2/{namespace: .*}/blobs/{digest}")
     @RateLimited(bucket = "oci-blobs", identityResolver = IpResolver.class)
     public Response getBlob(final @PathParam("repositoryId") String repositoryId,
                             final @PathParam("namespace") String namespace,
@@ -250,7 +227,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Path("/{namespace: .*}/manifests/{reference}")
+    @Path("/v2/{namespace: .*}/manifests/{reference}")
     public Response getManifest(final @PathParam("repositoryId") String repositoryId,
                                 final @PathParam("namespace") String namespace,
                                 final @PathParam("reference") String reference) {
@@ -276,7 +253,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @POST
-    @Path("/{namespace: .*}/blobs/uploads")
+    @Path("/v2/{namespace: .*}/blobs/uploads")
     public Response createUpload(final @PathParam("repositoryId") String repositoryId,
                                  final @PathParam("namespace") String namespace,
                                  final @QueryParam("digest") String digest,
@@ -323,7 +300,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @PATCH
-    @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
+    @Path("/v2/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response uploadChunk(final @PathParam("repositoryId") String repositoryId,
                                 final @PathParam("namespace") String namespace,
                                 final @PathParam("sessionId") UUID sessionId,
@@ -366,7 +343,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @PUT
-    @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
+    @Path("/v2/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response completeUpload(final @PathParam("repositoryId") String repositoryId,
                                    final @PathParam("namespace") String namespace,
                                    final @PathParam("sessionId") UUID sessionId,
@@ -397,7 +374,7 @@ public class OCIRepositoryEndpoint {
     }
 
     @GET
-    @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
+    @Path("/v2/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response getUploadStatus(final @PathParam("repositoryId") String repositoryId,
                                     final @PathParam("namespace") String namespace,
                                     final @PathParam("sessionId") UUID sessionId,
@@ -424,7 +401,7 @@ public class OCIRepositoryEndpoint {
 
     @PUT
     @Transactional
-    @Path("/{namespace: .*}/manifests/{reference}")
+    @Path("/v2/{namespace: .*}/manifests/{reference}")
     public Response putManifest(final @PathParam("repositoryId") String repositoryId,
                                 final @PathParam("namespace") String namespace,
                                 final @PathParam("reference") String reference,
@@ -455,7 +432,7 @@ public class OCIRepositoryEndpoint {
 
     @GET
     @Transactional
-    @Path("/{namespace: .*}/tags/list")
+    @Path("/v2/{namespace: .*}/tags/list")
     public TagList listTags(final @PathParam("repositoryId") String repositoryId,
                             final @PathParam("namespace") String namespace,
                             final @QueryParam("n") Integer n,
@@ -509,7 +486,7 @@ public class OCIRepositoryEndpoint {
 
     @GET
     @Transactional
-    @Path("/{namespace: .*}/referrers/{digest}")
+    @Path("/v2/{namespace: .*}/referrers/{digest}")
     public Response getReferrers(final @PathParam("repositoryId") String repositoryId,
                                  final @PathParam("namespace") String namespace,
                                  final @PathParam("digest") String digest,
@@ -544,7 +521,7 @@ public class OCIRepositoryEndpoint {
 
     @DELETE
     @Transactional
-    @Path("/{namespace: .*}/manifests/{reference}")
+    @Path("/v2/{namespace: .*}/manifests/{reference}")
     public Response deleteManifest(final @PathParam("repositoryId") String repositoryId,
                                    final @PathParam("namespace") String namespace,
                                    final @PathParam("reference") String reference) {
@@ -557,7 +534,7 @@ public class OCIRepositoryEndpoint {
 
     @DELETE
     @Transactional
-    @Path("/{namespace: .*}/blobs/{digest}")
+    @Path("/v2/{namespace: .*}/blobs/{digest}")
     public Response deleteBlob(final @PathParam("repositoryId") String repositoryId,
                                final @PathParam("namespace") String namespace,
                                final @PathParam("digest") String digest) {
@@ -570,7 +547,7 @@ public class OCIRepositoryEndpoint {
 
     @DELETE
     @Transactional
-    @Path("/{namespace: .*}/blobs/uploads/{sessionId}")
+    @Path("/v2/{namespace: .*}/blobs/uploads/{sessionId}")
     public Response abortUpload(final @PathParam("repositoryId") String repositoryId,
                                 final @PathParam("namespace") String namespace,
                                 final @PathParam("sessionId") UUID sessionId,

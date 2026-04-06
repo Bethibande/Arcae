@@ -331,7 +331,7 @@ export default function ArtifactPage() {
                                 />
                             )}
 
-                            {selectedVersion && repository?.repository.packageManager === PackageManager.Oci && (
+                            {selectedVersion && repository && (repository.repository.packageManager === PackageManager.Oci || repository.repository.packageManager === PackageManager.Helm) && (
                                 <OCIManifestsCard version={selectedVersion} />
                             )}
                         </>

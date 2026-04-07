@@ -7,10 +7,7 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReview;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReviewBuilder;
-import io.fabric8.kubernetes.api.model.gatewayapi.v1.HTTPRoute;
-import io.fabric8.kubernetes.api.model.gatewayapi.v1.HTTPRouteBuilder;
-import io.fabric8.kubernetes.api.model.gatewayapi.v1.HTTPRouteRuleBuilder;
-import io.fabric8.kubernetes.api.model.gatewayapi.v1.ParentReferenceBuilder;
+import io.fabric8.kubernetes.api.model.gatewayapi.v1.*;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
@@ -201,7 +198,35 @@ public class KubernetesSupport {
                                                   final String targetService,
                                                   final int targetPort,
                                                   final String gateway,
-                                                  final String gatewayNamespace) {
+                                                  final String gatewayNamespace,
+                                                  final String... subpaths) {
+        final List<HTTPRouteRule> rules = new ArrayList<>();
+        for (int i = 0; i < subpaths.length; i++) { // This subpaths logic is a quick fix for issues with the cilium gateway implementation
+            final String subpath = subpaths[i];
+
+            rules.add(new HTTPRouteRuleBuilder()
+                    .addNewMatch()
+                    .withNewPath()
+                    .withType("PathPrefix")
+                    .withValue("/%s".formatted(subpath))
+                    .endPath()
+                    .endMatch()
+                    .addNewFilter()
+                    .withType("URLRewrite")
+                    .withNewUrlRewrite()
+                    .withNewPath()
+                    .withType("ReplacePrefixMatch")
+                    .withReplacePrefixMatch("/repositories/%s/%s/%s".formatted(packageManager.name().toLowerCase(), repository, subpath))
+                    .endPath()
+                    .endUrlRewrite()
+                    .endFilter()
+                    .addNewBackendRef()
+                    .withName(targetService)
+                    .withPort(targetPort)
+                    .endBackendRef()
+                    .build());
+        }
+
         final HTTPRoute route = new HTTPRouteBuilder()
                 .withNewMetadata()
                 .withName(toHttpRouteName(repository, packageManager))
@@ -215,27 +240,7 @@ public class KubernetesSupport {
                         .withGroup(GATEWAY_API_GROUP)
                         .withKind("Gateway")
                         .build())
-                .withRules(new HTTPRouteRuleBuilder()
-                        .addNewMatch()
-                        .withNewPath()
-                        .withType("PathPrefix")
-                        .withValue("/")
-                        .endPath()
-                        .endMatch()
-                        .addNewFilter()
-                        .withType("URLRewrite")
-                        .withNewUrlRewrite()
-                        .withNewPath()
-                        .withType("ReplacePrefixMatch")
-                        .withReplacePrefixMatch("/repositories/%s/%s/".formatted(packageManager.name().toLowerCase(), repository))
-                        .endPath()
-                        .endUrlRewrite()
-                        .endFilter()
-                        .addNewBackendRef()
-                        .withName(targetService)
-                        .withPort(targetPort)
-                        .endBackendRef()
-                        .build())
+                .withRules(rules)
                 .endSpec()
                 .build();
 

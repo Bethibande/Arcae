@@ -23,6 +23,11 @@ public class HelmRepository extends OCIRepository {
         super.index = new HelmChartIndex(this, ctx.objectMapper());
     }
 
+    @Override
+    protected String[] getRoutedSubpaths() {
+        return new String[] {"v2", "repo"};
+    }
+
     public Map<String, List<HelmIndexEntry>> getIndex(final AuthContext auth,
                                                       final String namespace,
                                                       final String urlTemplate) {

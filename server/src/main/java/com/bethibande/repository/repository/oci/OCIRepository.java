@@ -94,6 +94,10 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         StoredFile.deleteById(file.id);
     }
 
+    protected String[] getRoutedSubpaths() {
+        return new String[]{"v2"};
+    }
+
     @Override
     public void processUpdate(final UpdateType type) {
         final OCIRoutingConfig routing = this.config.routingConfig();
@@ -108,7 +112,8 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                     routing.targetService(),
                     routing.targetPort(),
                     routing.gatewayName(),
-                    routing.gatewayNamespace()
+                    routing.gatewayNamespace(),
+                    getRoutedSubpaths()
             );
         }
         if (!routing.enabled() || type == UpdateType.DELETE) {

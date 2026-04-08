@@ -85,6 +85,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to repository
+        uses: docker/login-action@v3
+        with:
+          registry: docker.bethibande.com
+          username: ${{ secrets.REPOSITORY_USERNAME }}
+          password: ${{ secrets.REPOSITORY_TOKEN }}
 
       - name: Create and Push Multi-Arch Manifest
         run: |
@@ -96,3 +102,19 @@ jobs:
           docker buildx imagetools create -t bethibande/repository:latest \
           bethibande/repository:${{ github.event.inputs.version }}-amd64 \
           bethibande/repository:${{ github.event.inputs.version }}-arm64
+      - name: Create and Push Multi-Arch Manifest to private registry
+        run: |
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-amd64 \
+            bethibande/repository:${{ github.event.inputs.version }}-amd64
+          
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-arm64 \
+            bethibande/repository:${{ github.event.inputs.version }}-arm64
+      
+          
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }} \
+            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-amd64 \
+            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-arm64
+      
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:latest \
+            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-amd64 \
+            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-arm64

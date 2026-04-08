@@ -1,6 +1,7 @@
 package com.bethibande.repository.jpa.repository;
 
 import com.bethibande.process.annotation.EntityDTO;
+import com.bethibande.process.annotation.VirtualDTOField;
 import com.bethibande.repository.jpa.repository.permissions.PermissionScope;
 import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.repository.ManagedRepository;
@@ -65,6 +66,13 @@ public class Repository extends PanacheEntityBase {
 
             this.metadata = repository.generateMetadata();
         }
+    }
+
+    @VirtualDTOField
+    public boolean isPublicAccessAllowed() {
+        return permissions == null
+                || permissions.isEmpty()
+                || canView(AuthContext.ofUser(null));
     }
 
     public boolean canView(final AuthContext auth) {

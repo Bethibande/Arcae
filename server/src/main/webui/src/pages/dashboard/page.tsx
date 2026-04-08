@@ -1,13 +1,15 @@
 import {Card} from "@/components/ui/card";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
-import {ChevronRight, Plus} from "lucide-react";
+import {ChevronRight, LayoutGrid, List, Plus} from "lucide-react";
 import {useEffect, useState} from "react";
 import {type RepositoryOverviewDTO, RepositorySortOrder, UserRole} from "@/generated";
 import {repositoryApi} from "@/lib/api";
 import {showError} from "@/lib/errors";
 import {RepositoryCard} from "@/components/repository/repository-card";
+import {RepositoryRow} from "@/components/repository/repository-row";
 import {useNavigate} from "react-router";
 import {useAuth} from "@/components/auth-provider";
+import {ToggleGroup, ToggleGroupItem} from "@/components/ui/toggle-group";
 
 export default function DashboardPage() {
     const {user} = useAuth();
@@ -19,6 +21,10 @@ export default function DashboardPage() {
         }
         return RepositorySortOrder.Alphabetical;
     })
+    const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+        const saved = localStorage.getItem("repository_view_mode");
+        return (saved === "list" || saved === "grid") ? saved : "grid";
+    });
     const navigate = useNavigate();
 
     const fetchRepositories = (order: RepositorySortOrder) => {
@@ -31,6 +37,10 @@ export default function DashboardPage() {
         fetchRepositories(sortOrder);
         localStorage.setItem("repository_sort_order", sortOrder);
     }, [sortOrder])
+
+    useEffect(() => {
+        localStorage.setItem("repository_view_mode", viewMode);
+    }, [viewMode]);
 
     const hasRole = (role: UserRole) => {
         return user?.roles?.includes(role);
@@ -67,29 +77,67 @@ export default function DashboardPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as "grid" | "list")} className="bg-muted/30 p-1 rounded-lg border">
+                            <ToggleGroupItem value="grid" size="sm" className="h-8 w-8 p-0">
+                                <LayoutGrid className="size-4"/>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="list" size="sm" className="h-8 w-8 p-0">
+                                <List className="size-4"/>
+                            </ToggleGroupItem>
+                        </ToggleGroup>
                     </div>
                 </div>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {repositories.map((repo) => (
-                    <RepositoryCard key={repo.repository.name} repository={repo} onDelete={() => fetchRepositories(sortOrder)}/>
-                ))}
+            {/* Repositories */}
+            {viewMode === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {repositories.map((repo) => (
+                        <RepositoryCard key={repo.repository.name} repository={repo} onDelete={() => fetchRepositories(sortOrder)}/>
+                    ))}
 
-                {/* Add New Repository */}
-                {hasRole(UserRole.Admin) && (
-                    <Card
-                        onClick={() => navigate("/repository/new")}
-                        className="border-dashed border-2 bg-transparent ring-0 shadow-none flex flex-col items-center justify-center min-h-[200px] gap-4 group hover:border-primary/50 transition-all cursor-pointer">
-                        <div className="p-3 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
-                            <Plus className="size-6 text-muted-foreground group-hover:text-primary"/>
+                    {/* Add New Repository (Grid) */}
+                    {hasRole(UserRole.Admin) && (
+                        <Card
+                            onClick={() => navigate("/repository/new")}
+                            className="border-dashed border-2 bg-transparent ring-0 shadow-none flex flex-col items-center justify-center min-h-[200px] gap-4 group hover:border-primary/50 transition-all cursor-pointer">
+                            <div className="p-3 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
+                                <Plus className="size-6 text-muted-foreground group-hover:text-primary"/>
+                            </div>
+                            <span
+                                className="font-medium text-muted-foreground group-hover:text-foreground">Add New Repository</span>
+                        </Card>
+                    )}
+                </div>
+            ) : (
+                <div className="flex flex-col gap-4">
+                    {/* List Header */}
+                    <div className="flex items-center px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider h-10">
+                        <div className="flex-1">Repository</div>
+                        <div className="flex items-center gap-8">
+                            <div className="w-32 text-center mr-12">Type</div>
+                            <div className="w-24 text-center">Artifacts</div>
+                            <div className="w-40 text-start">Last Updated</div>
+                            <div className="w-10"></div>
                         </div>
-                        <span
-                            className="font-medium text-muted-foreground group-hover:text-foreground">Add New Repository</span>
-                    </Card>
-                )}
-            </div>
+                    </div>
+
+                    {repositories.map((repo) => (
+                        <RepositoryRow key={repo.repository.name} repository={repo} onDelete={() => fetchRepositories(sortOrder)}/>
+                    ))}
+
+                    {/* Add New Repository (List) */}
+                    {hasRole(UserRole.Admin) && (
+                        <div
+                            onClick={() => navigate("/repository/new")}
+                            className="flex items-center justify-center p-4 border-2 border-dashed rounded-xl bg-transparent gap-3 group hover:border-primary/50 transition-all cursor-pointer">
+                            <Plus className="size-5 text-muted-foreground group-hover:text-primary"/>
+                            <span className="font-medium text-muted-foreground group-hover:text-foreground">Add New Repository</span>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

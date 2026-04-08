@@ -1,6 +1,5 @@
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,} from "@/components/ui/dropdown-menu";
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import {Anchor, Box, Clock, Coffee, ExternalLink, Lock, type LucideIcon, MoreHorizontal, Pencil, Trash2} from "lucide-react";
 import {cn, formatLastUpdate} from "@/lib/utils";
 import {PackageManager, type RepositoryOverviewDTO, UserRole} from "@/generated";
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import {showError, showErrorMessage} from "@/lib/errors";
 import {repositoryApi} from "@/lib/api";
-import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";
 
 const packageBG: Record<PackageManager, string> = {
     [PackageManager.Maven]: "bg-red-500/10",
@@ -42,17 +40,16 @@ const packageIcon: Record<PackageManager, LucideIcon> = {
     [PackageManager.Helm]: Anchor
 }
 
-interface RepositoryCardProps {
+interface RepositoryRowProps {
     repository: RepositoryOverviewDTO;
     onDelete?: () => void;
 }
 
-export function RepositoryCard({ repository: overview, onDelete }: RepositoryCardProps) {
+export function RepositoryRow({ repository: overview, onDelete }: RepositoryRowProps) {
     const {user} = useAuth();
     const navigate = useNavigate();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const isMaintenance = false;
     const repo = overview.repository;
     const Icon = packageIcon[repo.packageManager] || Coffee;
 
@@ -82,72 +79,70 @@ export function RepositoryCard({ repository: overview, onDelete }: RepositoryCar
 
     return (
         <>
-            <Card key={repo.name}
-                  onClick={() => !isMaintenance && navigate(`/repository/${repo.id}/browse`)}
-                  className={cn(
-                      "relative group hover:ring-primary/50 transition-all",
-                      isMaintenance ? "cursor-default opacity-80" : "cursor-pointer"
-                  )}>
-                <CardHeader className="flex flex-row items-start justify-between">
-                    <div className={cn("p-2 rounded-lg", packageBG[repo.packageManager] || "bg-muted")}>
+            <div
+                onClick={() => navigate(`/repository/${repo.id}/browse`)}
+                className="group flex items-center justify-between p-4 bg-card border rounded-xl hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer"
+            >
+                <div className="flex items-center gap-4 flex-1">
+                    <div className={cn("p-2.5 rounded-lg", packageBG[repo.packageManager] || "bg-muted")}>
                         <Icon className={cn("size-5", packageFG[repo.packageManager] || "text-muted-foreground")}/>
                     </div>
-                    {hasRole(UserRole.Admin) && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground p-0">
-                                    <MoreHorizontal className="size-4"/>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/browse`); }}>
-                                    <ExternalLink className="size-4 mr-2"/>
-                                    Browse
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/settings`); }}>
-                                    <Pencil className="size-4 mr-2"/>
-                                    Settings
-                                </DropdownMenuItem>
-                                <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}>
-                                    <Trash2 className="size-4 mr-2"/>
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                </CardHeader>
-                <CardContent className="space-y-4">
                     <div>
                         <div className="flex items-center gap-2">
-                            <CardTitle className="text-lg font-semibold">{repo.name}</CardTitle>
+                            <h3 className="font-semibold text-lg leading-tight">{repo.name}</h3>
                             {!repo.publicAccessAllowed && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Lock className="size-4 text-muted-foreground" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Private repository, access is restricted</p>
-                                    </TooltipContent>
-                                </Tooltip>
+                                <Lock className="size-4 text-muted-foreground" />
                             )}
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                            <span
-                                className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded text-white", packageBGPrimary[repo.packageManager] || "bg-muted")}>
-                                {repo.packageManager}
-                            </span>
-                            <span className="text-xs text-muted-foreground">• {overview.artifactsCount} {overview.artifactsCount === 1 ? 'Artifact' : 'Artifacts'}</span>
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {repo.publicAccessAllowed ? "Public Repository" : "Private Repository"}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-8 text-sm">
+                    <div className="w-32 flex justify-center mr-12">
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded text-white uppercase", packageBGPrimary[repo.packageManager] || "bg-muted")}>
+                            {repo.packageManager}
+                        </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Clock className="size-3.5"/>
-                            <span>{updatedString}</span>
-                        </div>
+                    <div className="w-24 text-center">
+                        <span className="font-medium">{overview.artifactsCount}</span>
                     </div>
-                </CardContent>
-            </Card>
+
+                    <div className="w-40 flex items-center gap-2 text-muted-foreground justify-start">
+                        <Clock className="size-4 shrink-0"/>
+                        <span>{updatedString}</span>
+                    </div>
+
+                    <div className="w-10 flex justify-center">
+                        {hasRole(UserRole.Admin) && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground">
+                                        <MoreHorizontal className="size-5"/>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/browse`); }}>
+                                        <ExternalLink className="size-4 mr-2"/>
+                                        Browse
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/repository/${repo.id}/settings`); }}>
+                                        <Pencil className="size-4 mr-2"/>
+                                        Settings
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}>
+                                        <Trash2 className="size-4 mr-2"/>
+                                        Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
+                </div>
+            </div>
 
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent onClick={(e) => e.stopPropagation()}>

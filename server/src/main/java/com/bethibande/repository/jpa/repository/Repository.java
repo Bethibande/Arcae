@@ -69,7 +69,7 @@ public class Repository extends PanacheEntityBase {
     }
 
     @VirtualDTOField
-    public boolean isPublicAccessAllowed() {
+    public Boolean isPublicAccessAllowed() {
         return permissions == null
                 || permissions.isEmpty()
                 || canView(AuthContext.ofUser(null));

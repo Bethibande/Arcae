@@ -1,18 +1,16 @@
 package com.bethibande.repository.web.api;
 
-import com.bethibande.repository.jpa.user.User;
-import com.bethibande.repository.jpa.user.UserRole;
 import com.bethibande.repository.security.UserAuthenticationMechanism;
-import io.quarkus.elytron.security.common.BcryptUtil;
-import io.quarkus.narayana.jta.QuarkusTransaction;
+import com.bethibande.repository.web.AbstractWebTests;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.*;
-
-import java.util.List;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
@@ -22,19 +20,7 @@ import static org.hamcrest.Matchers.not;
 @QuarkusTest
 @TestHTTPEndpoint(AuthenticationEndpoint.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class AuthenticationEndpointTests {
-
-    @BeforeAll
-    public static void setup() {
-        QuarkusTransaction.requiringNew().run(() -> {
-            final User user = new User();
-            user.name = "admin";
-            user.email = "";
-            user.password = BcryptUtil.bcryptHash("password");
-            user.roles = List.of(UserRole.ADMIN);
-            user.persist();
-        });
-    }
+public class AuthenticationEndpointTests extends AbstractWebTests {
 
     private static String sessionToken;
     private static String refreshToken;
@@ -43,7 +29,7 @@ public class AuthenticationEndpointTests {
     @Order(1)
     public void testLogin() {
         final ExtractableResponse<Response> result = given()
-                .body("{\"username\": \"admin\", \"password\": \"password\"}")
+                .body("{\"username\": \"admin\", \"password\": \"12345678\"}")
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/login")

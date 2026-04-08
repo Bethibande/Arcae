@@ -76,6 +76,7 @@ dependencies {
     // Tests
     testImplementation("io.quarkus:quarkus-junit")
     testImplementation("io.rest-assured:rest-assured")
+    testImplementation("org.testcontainers:testcontainers:2.0.4")
 }
 
 java {

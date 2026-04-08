@@ -87,15 +87,6 @@ public class RepositoryEndpoint {
         return RepositoryDTO.from(repository);
     }
 
-    @GET
-    @Transactional
-    public List<RepositoryDTO> list() {
-        return Repository.<Repository>listAll()
-                .stream()
-                .map(RepositoryDTO::from)
-                .toList();
-    }
-
     public record RepositoryOverviewDTO(
             @NotNull PublicRepositoryDTO repository,
             long artifactsCount,

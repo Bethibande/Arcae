@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 @EntityDTO(excludeProperties = "id")
 @EntityDTO(excludeProperties = {"id", "roles"})
 @EntityDTO(excludeProperties = "password")
-@EntityDTO(excludeProperties = "roles")
 public class User extends PanacheEntity implements Principal {
 
     @FullTextField

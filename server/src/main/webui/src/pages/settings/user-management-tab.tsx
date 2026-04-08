@@ -304,7 +304,7 @@ export function UserManagementTab() {
     const handleDelete = useCallback(async () => {
         if (!userToDelete) return;
         try {
-            await userApi.apiV1UserDelete({ id: userToDelete.id! });
+            await userApi.apiV1UserIdDelete({ id: userToDelete.id! });
             toast.success("User deleted.");
             setDeleteOpen(false);
             loadUsers();

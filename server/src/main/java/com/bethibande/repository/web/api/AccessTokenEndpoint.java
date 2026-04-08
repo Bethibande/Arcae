@@ -31,7 +31,6 @@ public class AccessTokenEndpoint {
     @Transactional
     public AccessTokenDTO create(final AccessTokenDTOWithoutId dto) {
         final User self = authenticatedUser.getSelf();
-        if (self == null) throw new ForbiddenException("User must be authenticated to create access tokens");
 
         final AccessToken token = new AccessToken();
         token.name = dto.name();
@@ -47,6 +46,8 @@ public class AccessTokenEndpoint {
     @Transactional
     public AccessTokenDTOWithoutToken update(final AccessTokenDTOWithoutToken dto) {
         final AccessToken token = AccessToken.findById(dto.id());
+        if (token == null) throw new NotFoundException("Unknown token");
+
         token.name = dto.name();
         token.expiresAfter = dto.expiresAfter();
 

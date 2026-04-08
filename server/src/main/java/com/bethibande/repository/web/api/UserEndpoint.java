@@ -140,8 +140,9 @@ public class UserEndpoint {
     }
 
     @DELETE
+    @Path("/{id}")
     @Transactional
-    public void delete(final @QueryParam("id") long id) {
+    public void delete(final @PathParam("id") long id) {
         if (this.authenticatedUser.getSelf().id == id) throw new NotAuthorizedException("Cannot delete self");
 
         UserSession.delete("user.id = ?1", id);
@@ -156,7 +157,7 @@ public class UserEndpoint {
     @Transactional
     @Authenticated
     @Path("/self")
-    public void updateSelf(final UserDTOWithoutRoles dto) {
+    public void updateSelf(final UserDTOWithoutIdAndRoles dto) {
         if (User.count("name = ?1", dto.name()) > 1)
             throw new WebApplicationException("Duplicate username", HttpStatus.SC_CONFLICT);
         if (User.count("email = ?1", dto.email()) > 1)

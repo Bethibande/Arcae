@@ -83,7 +83,6 @@ public class UserSessionService {
         final RefreshToken token = new RefreshToken();
         token.user = user;
         token.created = Instant.now();
-        token.token = PasswordUtil.generateSecureRandomString(256);
         token.token = PasswordUtil.generateSecureRandomString(512);
         token.persist();
 

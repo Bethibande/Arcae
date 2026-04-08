@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Map;
 
 @Entity
-@EntityDTO(excludeProperties = "permissions", name = "RepositoryDTO")
-@EntityDTO(excludeProperties = {"id", "permissions"}, name = "RepositoryDTOWithoutId")
+@EntityDTO(excludeProperties = {"permissions", "publicAccessAllowed"}, name = "RepositoryDTO")
+@EntityDTO(excludeProperties = {"id", "permissions", "publicAccessAllowed"}, name = "RepositoryDTOWithoutId")
 @EntityDTO(excludeProperties = {"settings", "permissions", "cleanupPolicies"}, name = "PublicRepositoryDTO")
 public class Repository extends PanacheEntityBase {
 

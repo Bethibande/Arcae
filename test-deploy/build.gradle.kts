@@ -40,12 +40,12 @@ publishing {
                 name = project.name
                 description = project.description
 
-                url = "https://github.com/Bethibande/repository"
+                url = "https://github.com/Bethibande/Arcae"
 
                 licenses {
                     license {
-                        name = "GPL-3.0"
-                        url = "https://raw.githubusercontent.com/Bethibande/repository/refs/heads/master/LICENSE"
+                        name = "FSL Apache 2"
+                        url = "https://raw.githubusercontent.com/Bethibande/arcae/refs/heads/master/LICENSE"
                     }
                 }
 
@@ -58,9 +58,9 @@ publishing {
                 }
 
                 scm {
-                    connection = "scm:git:git://github.com/Bethibande/repository.git"
-                    developerConnection = "scm:git:ssh://github.com/Bethibande/repository.git"
-                    url = "https://github.com/Bethibande/repository"
+                    connection = "scm:git:git://github.com/Bethibande/arcae.git"
+                    developerConnection = "scm:git:ssh://github.com/Bethibande/arcae.git"
+                    url = "https://github.com/Bethibande/arcae"
                 }
             }
         }
@@ -69,12 +69,12 @@ publishing {
     repositories {
         maven {
             name = "Maven-Snapshots"
-            url = uri("http://localhost:8080/repositories/maven/snapshots")
+            url = uri("http://localhost:8080/repositories/maven/maven")
             isAllowInsecureProtocol = true
 
             credentials {
                 username = "admin"
-                password = "7WYBCabVEyyWgzJG3c19zSelLsr3jEz4ZQ5R1N2y11uTrV0KhX7kIl5zbcX86p7xHroad2ClpIaniqyzrrk1JGi8QIHUybWFVYFj8iLdv8LoZxKmWQtY4gGnXfz94c3N"
+                password = "pEfYqZqtlKkmK7PXWlqQ5FYP7AD1SVVS0HnsDHgd9dGunIokjADFJL098lYrJ96yvZYN0s66eXjmuSFnRINvTsrVUR8vR1MOD5TIGcOofjg8HApxAe6MZYwhMGWYP5Io"
             }
         }
     }

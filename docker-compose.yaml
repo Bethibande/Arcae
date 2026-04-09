@@ -43,6 +43,7 @@ services:
       DATABASE_PASSWORD: 12345
       SEARCH_HOSTS: elastic:9200
       EXTERNAL_HOST: http://localhost:8080
+      JAVA_OPTIONS: "-Xmx120m"
 volumes:
   postgres: {}
   elastic: {}

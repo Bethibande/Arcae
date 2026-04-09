@@ -3,8 +3,8 @@ services:
   postgres:
     image: postgres:16.3-alpine
     environment:
-      POSTGRES_DB: repository
-      POSTGRES_USER: repository
+      POSTGRES_DB: arcae
+      POSTGRES_USER: arcae
       POSTGRES_PASSWORD: 12345
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
@@ -25,7 +25,7 @@ services:
     image: quay.io/minio/minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: "repository"
+      MINIO_ROOT_USER: "arcae"
       MINIO_ROOT_PASSWORD: "12345678"
     ports:
       - "9000:9000"
@@ -33,17 +33,17 @@ services:
     volumes:
       - minio:/data
   repository:
-    image: bethibande/repository:latest
+    image: bethibande/arcae:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: jdbc:postgresql://postgres:5432/repository
-      DATABASE_USERNAME: repository
+      DATABASE_URL: jdbc:postgresql://postgres:5432/arcae
+      DATABASE_USERNAME: arcae
       DATABASE_PASSWORD: 12345
       SEARCH_HOSTS: elastic:9200
       EXTERNAL_HOST: http://localhost:8080
-      JAVA_OPTIONS: "-Xmx120m"
+      JAVA_OPTIONS: "-Xmx100m"
 volumes:
   postgres: {}
   elastic: {}

@@ -26,7 +26,7 @@ export function Header() {
                         className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                         <Box className="size-5"/>
                     </div>
-                    <span className="text-lg font-bold tracking-tight text-foreground">Repository</span>
+                    <span className="text-lg font-bold tracking-tight text-foreground">Arcae</span>
                 </Link>
 
                 <nav className="hidden md:flex items-center gap-6">

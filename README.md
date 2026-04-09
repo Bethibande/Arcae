@@ -1,10 +1,10 @@
-<h1 align="center">Repository</h1>
-<p align="center">This is the source-code for my self-hosted maven/docker repository</p>
+<h1 align="center">Arcae</h1>
+<p align="center">A self-hosted software repository.</p>
 
 <img src="screenshots/dashboard-pretty.png" style="border-radius: 1rem;" align="center" alt="dashboard">
 
 > [!WARNING]
-> This project is in very early development, please use it with caution. Bugs should be expected.
+> This project is in early development, please use it with caution. Bugs should be expected.
 > Performance is also still a work-in-progress.
 
 ### Quick links

@@ -73,7 +73,7 @@ jobs:
             "-Dquarkus.container-image.build=true" \
             "-Dquarkus.container-image.push=true" \
             "-Dquarkus.container-image.group=bethibande" \
-            "-Dquarkus.container-image.name=repository" \
+            "-Dquarkus.container-image.name=arcae" \
             "-Dquarkus.container-image.tag=${{ github.event.inputs.version }}-${{ matrix.arch }}"
 
   create-manifest:
@@ -94,27 +94,27 @@ jobs:
 
       - name: Create and Push Multi-Arch Manifest
         run: |
-          docker buildx imagetools create -t bethibande/repository:${{ github.event.inputs.version }} \
-            bethibande/repository:${{ github.event.inputs.version }}-amd64 \
-            bethibande/repository:${{ github.event.inputs.version }}-arm64
+          docker buildx imagetools create -t bethibande/arcae:${{ github.event.inputs.version }} \
+            bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
+            bethibande/arcae:${{ github.event.inputs.version }}-arm64
       
           # Create the latest tag
-          docker buildx imagetools create -t bethibande/repository:latest \
-          bethibande/repository:${{ github.event.inputs.version }}-amd64 \
-          bethibande/repository:${{ github.event.inputs.version }}-arm64
+          docker buildx imagetools create -t bethibande/arcae:latest \
+          bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
+          bethibande/arcae:${{ github.event.inputs.version }}-arm64
       - name: Create and Push Multi-Arch Manifest to private registry
         run: |
-          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-amd64 \
-            bethibande/repository:${{ github.event.inputs.version }}-amd64
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
+            bethibande/arcae:${{ github.event.inputs.version }}-amd64
           
-          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-arm64 \
-            bethibande/repository:${{ github.event.inputs.version }}-arm64
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-arm64 \
+            bethibande/arcae:${{ github.event.inputs.version }}-arm64
       
           
-          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }} \
-            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-amd64 \
-            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-arm64
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }} \
+            docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
+            docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-arm64
       
-          docker buildx imagetools create -t docker.bethibande.com/bethibande/repository:latest \
-            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-amd64 \
-            docker.bethibande.com/bethibande/repository:${{ github.event.inputs.version }}-arm64
+          docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:latest \
+            docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
+            docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-arm64

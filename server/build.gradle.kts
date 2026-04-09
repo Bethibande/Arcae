@@ -9,7 +9,7 @@ plugins {
     id("org.openapi.generator") version "7.17.0"
 }
 
-group = "de.bethibande.repository"
+group = "de.bethibande.arcae"
 version = "1.0-SNAPSHOT"
 
 repositories {

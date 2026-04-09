@@ -248,21 +248,6 @@ public class OpenIDConnectEndpoint {
                 });
     }
 
-    public record OpenIdConnectLoginItem(
-            @NotNull String label
-    ) {
-    }
-
-    @GET
-    @Transactional
-    @Path("/login")
-    public @NotNull List<@NotNull OpenIdConnectLoginItem> getOpenIdConnectLoginItems() {
-        return OpenIDConnectProvider.<OpenIDConnectProvider>listAll()
-                .stream()
-                .map(provider -> new OpenIdConnectLoginItem(provider.name))
-                .toList();
-    }
-
     @GET
     @Transactional
     @Authenticated

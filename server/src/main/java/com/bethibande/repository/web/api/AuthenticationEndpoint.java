@@ -2,12 +2,14 @@ package com.bethibande.repository.web.api;
 
 import com.bethibande.repository.jobs.BuiltinJobScheduler;
 import com.bethibande.repository.jobs.impl.PasswordResetTask;
+import com.bethibande.repository.jpa.security.OpenIDConnectProvider;
 import com.bethibande.repository.jpa.security.RefreshToken;
 import com.bethibande.repository.jpa.security.UserSession;
 import com.bethibande.repository.jpa.user.PasswordResetToken;
 import com.bethibande.repository.jpa.user.User;
 import com.bethibande.repository.jpa.user.UserDTOWithoutPassword;
 import com.bethibande.repository.jpa.user.UserRole;
+import com.bethibande.repository.mail.MailerService;
 import com.bethibande.repository.security.SecurityAttributes;
 import com.bethibande.repository.security.UserAuthenticationMechanism;
 import com.bethibande.repository.security.UserSessionService;
@@ -61,6 +63,9 @@ public class AuthenticationEndpoint {
     @Inject
     protected AuthenticatedUser authenticatedUser;
 
+    @Inject
+    protected MailerService mailer;
+
     public static class Credentials {
         public String username;
         public String password;
@@ -76,11 +81,31 @@ public class AuthenticationEndpoint {
         return Objects.equals(profile, "dev");
     }
 
+    public record LoginOptions(
+            boolean canResetPassword,
+            @NotNull List<@NotNull String> openIdConnectProviders
+    ) {
+    }
+
+    @GET
+    @Path("/options")
+    public @NotNull LoginOptions getLoginOptions() {
+        return new LoginOptions(
+                this.mailer.mailerEnabled(),
+                OpenIDConnectProvider.<OpenIDConnectProvider>listAll()
+                        .stream()
+                        .map(provider -> provider.name)
+                        .toList()
+        );
+    }
+
     @POST
     @PermitAll
     @Path("/reset-request")
     @RateLimited(bucket = "password-reset", identityResolver = IpResolver.class)
     public CompletionStage<Response> resetPassword(final @QueryParam("email") String email) {
+        if (!this.mailer.mailerEnabled()) throw new IllegalStateException("Mailer is not enabled");
+
         return this.builtinJobScheduler.runOnce(
                         this.passwordResetTask,
                         new PasswordResetTask.Config(email)

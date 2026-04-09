@@ -6,13 +6,13 @@ import {Separator} from "@/components/ui/separator.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {toast} from "sonner";
 import {useAuth} from "@/components/auth-provider.tsx";
-import {oidcApi, userApi} from "@/lib/api.ts";
+import {authApi, oidcApi, userApi} from "@/lib/api.ts";
 import {PasswordConfirmDialog} from "./password-confirm-dialog.tsx";
 import {FormField} from "@/components/form-field.tsx";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {type OpenIDConnectionDTO, type OpenIdConnectLoginItem} from "@/generated";
+import {type OpenIDConnectionDTO} from "@/generated";
 import {showError} from "@/lib/errors.ts";
 import {
     AlertDialog,
@@ -36,14 +36,14 @@ export function ProfileTab() {
     const {user, refresh} = useAuth();
     const [loading, setLoading] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [oidcItems, setOidcItems] = useState<OpenIdConnectLoginItem[]>([]);
+    const [oidcItems, setOidcItems] = useState<string[]>([]);
     const [connections, setConnections] = useState<OpenIDConnectionDTO[]>([]);
     const [unlinkId, setUnlinkId] = useState<number | null>(null);
 
     const fetchOidcData = async () => {
         try {
             const [items, links] = await Promise.all([
-                oidcApi.apiV1OidcLoginGet(),
+                authApi.apiV1AuthOptionsGet().then(result => result.openIdConnectProviders),
                 oidcApi.apiV1OidcLinksGet(),
             ]);
             setOidcItems(items);
@@ -175,11 +175,11 @@ export function ProfileTab() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {oidcItems.map((item) => {
-                            const connection = connections.find(c => c.provider?.name === item.label);
+                            const connection = connections.find(c => c.provider?.name === item);
                             return (
-                                <div key={item.label} className="flex items-center justify-between py-2">
+                                <div key={item} className="flex items-center justify-between py-2">
                                     <div className="flex flex-col">
-                                        <span className="font-medium capitalize">{item.label}</span>
+                                        <span className="font-medium capitalize">{item}</span>
                                         <span className="text-xs text-muted-foreground">
                                             {connection ? "Connected" : "Not connected"}
                                         </span>
@@ -197,7 +197,7 @@ export function ProfileTab() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => handleLink(item.label)}
+                                            onClick={() => handleLink(item)}
                                         >
                                             <Link2 className="size-4 mr-2"/> Link
                                         </Button>

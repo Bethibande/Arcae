@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "arcae.fullname" . }}
+  labels:
+    {{- include "arcae.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.service.managementPort }}
+      targetPort: management
+      protocol: TCP
+      name: management
+  selector:
+    {{- include "arcae.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arcae-pod-discovery
+  labels:
+    {{- include "arcae.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "arcae.selectorLabels" . | nindent 4 }}

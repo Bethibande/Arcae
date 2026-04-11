@@ -1,0 +1,45 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "arcae.fullname" . }}
+  labels:
+    {{- include "arcae.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "arcae.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic on app port
+    {{- if .Values.networkPolicy.allowExternal }}
+    - from: []
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- else }}
+    - from:
+        - podSelector:
+            matchLabels:
+                {{- include "arcae.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- end }}
+
+    # Only allow management port from other pods of the deployment
+    - from:
+        - podSelector:
+            matchLabels:
+                {{- include "arcae.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.managementPort }}
+  egress:
+    # Allow all egress by default for simplicity, 
+    # as we need to talk to Postgres, Elastic, and K8s API.
+    # In a more restricted environment, these would be explicitly defined.
+    - { }
+{{- end }}

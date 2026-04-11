@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "arcae.fullname" . }}
+  labels:
+    {{- include "arcae.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "arcae.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "arcae.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "arcae.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: management
+              containerPort: {{ .Values.service.managementPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: management
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: management
+          env:
+            - name: DATABASE_URL
+              value: {{ .Values.externalConfig.database.url | quote }}
+            - name: DATABASE_USERNAME
+              value: {{ .Values.externalConfig.database.username | quote }}
+            - name: DATABASE_PASSWORD
+              value: {{ .Values.externalConfig.database.password | quote }}
+            - name: SEARCH_HOSTS
+              value: {{ .Values.externalConfig.search.hosts | quote }}
+            - name: EXTERNAL_HOST
+              value: {{ .Values.externalConfig.host | quote }}
+            - name: JAVA_OPTIONS
+              {{- if .Values.jvm.javaOptions }}
+              value: {{ .Values.jvm.javaOptions | quote }}
+              {{- else }}
+              value: {{ printf "-Xmx%s" .Values.jvm.memoryLimit | quote }}
+              {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -53,7 +53,8 @@ Most of this memory (over 1 GB) is used by Elasticsearch, in the future Elastics
   Must support multipart upload, multipart copy operations and ranged get operations.
 
 ## Installation
-To get started, download the example [docker-compose.yaml](docker-compose.yaml) and run
+### Docker
+To get started using docker, download the example [docker-compose.yaml](docker-compose.yaml) and run
 ```shell
 docker compose up -d
 ```
@@ -64,6 +65,16 @@ docker compose up -d
 Wait for the repository to be ready (it may crash and restart a few times until elasticsearch and postgresql are online).
 And then navigate to ``http://localhost:8080/setup`` to create your admin user.
 
+### Kubernetes / Helm
+To get started using Kubernetes, pull the chart. Please note that this chart does not contain any PostgreSQL, Elasticsearch or S3 deployments.
+You can find the values.yaml file [here](/chart/arcae/values.yaml).
+```shell
+# Add the repository
+helm repo add arcae https://helm.bethibande.com/repo/bethibande/arcae/
+
+# Pull the chart
+helm pull arcae/arcae --version 0.1.0
+```
 
 ## Screenshots
 | Dashboard                                             | Artifact browser                                                    |

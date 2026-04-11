@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * A utility class for building and querying the index for OCI artifacts and files.
@@ -72,7 +73,7 @@ public class OCIImageIndex {
     protected ArtifactVersion updateOrCreateArtifactAndVersion(final Instant now,
                                                                final String namespace,
                                                                final String reference,
-                                                               final Set<StoredFile> referencedFiles) {
+                                                               final List<StoredFile> referencedFiles) {
         final ArtifactAndGroupId artifactAndGroupId = this.repository.extractArtifactAndGroupId(namespace);
         final String groupId = artifactAndGroupId.groupId();
         final String artifactId = artifactAndGroupId.artifactId();
@@ -82,16 +83,21 @@ public class OCIImageIndex {
 
         if (version.files != null) {
             final List<StoredFile> oldFiles = new ArrayList<>(version.files);
+            final Set<String> referencedFileKeys = referencedFiles.stream()
+                    .map(f -> f.key)
+                    .collect(Collectors.toSet());
+
             version.files.clear();
 
             for (int i = 0; i < oldFiles.size(); i++) {
                 final StoredFile file = oldFiles.get(i);
 
-                if (referencedFiles.contains(file)) continue;
+                if (referencedFileKeys.contains(file.key)) continue;
                 this.repository.tryDeleteFile(file);
             }
         }
-        version.files = new ArrayList<>(referencedFiles);
+
+        version.files = referencedFiles;
 
         return version;
     }
@@ -174,7 +180,7 @@ public class OCIImageIndex {
             final ArtifactDetails details = OCIDetailsHelper.parseDetails(contents);
             final OCIManifestDetails manifestDetails = (OCIManifestDetails) details.additionalData();
 
-            final Set<StoredFile> referencedFiles = new HashSet<>();
+            final List<StoredFile> referencedFiles = new ArrayList<>();
             referencedFiles.add(manifestFile);
             referencedFiles.addAll(collectReferencedFiles(namespace, manifestDetails, isMirrorRequest));
 

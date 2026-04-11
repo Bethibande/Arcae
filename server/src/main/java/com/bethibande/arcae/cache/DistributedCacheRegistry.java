@@ -53,7 +53,7 @@ public class DistributedCacheRegistry {
         }
 
         final List<Future<HttpResponse<Buffer>>> futures = this.kubernetesSupport.broadcastHttp(
-                (baseUrl, webClient) -> webClient.delete(baseUrl + "/api/v1/cache/" + cache + "/" + key).send()
+                (baseUrl, webClient) -> webClient.deleteAbs(baseUrl + "/api/v1/cache/" + cache + "/" + key).send()
         );
 
         for (int i = 0; i < futures.size(); i++) {

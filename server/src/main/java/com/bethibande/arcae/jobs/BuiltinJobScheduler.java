@@ -70,7 +70,7 @@ public class BuiltinJobScheduler {
         );
 
         return this.kubernetesLeaderService.sendHTTPRequestToLeader(
-                (baseUrl, webClient) -> webClient.post(baseUrl + "/api/v1/job/schedule?now=%s".formatted(immediate))
+                (baseUrl, webClient) -> webClient.postAbs(baseUrl + "/api/v1/job/schedule?now=%s".formatted(immediate))
                         .putHeader("Content-Type", "application/json")
                         .sendJson(body)
         ).<Void>map(response -> {

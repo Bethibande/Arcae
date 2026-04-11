@@ -157,7 +157,7 @@ public class MailerService {
 
         if (this.kubernetesSupport.isServiceDiscoveryEnabled()) {
             this.kubernetesSupport.broadcastHttp(
-                    (baseURL, webClient) -> webClient.put(baseURL + "/api/v1/mail/config/update").send()
+                    (baseURL, webClient) -> webClient.putAbs(baseURL + "/api/v1/mail/config/update").send()
             );
         }
     }

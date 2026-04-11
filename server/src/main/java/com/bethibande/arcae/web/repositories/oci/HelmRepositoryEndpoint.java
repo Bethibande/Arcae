@@ -2,7 +2,6 @@ package com.bethibande.arcae.web.repositories.oci;
 
 import com.bethibande.arcae.jpa.repository.PackageManager;
 import com.bethibande.arcae.jpa.user.User;
-import com.bethibande.arcae.repository.ArtifactAndGroupId;
 import com.bethibande.arcae.repository.StreamHandle;
 import com.bethibande.arcae.repository.helm.HelmIndex;
 import com.bethibande.arcae.repository.helm.HelmIndexEntry;
@@ -70,7 +69,6 @@ public class HelmRepositoryEndpoint extends OCIRepositoryEndpoint {
         final HelmRepository repository = repositoryOrThrow(repositoryId);
         final User user = authenticatedUser.getSelf();
 
-        final ArtifactAndGroupId artifactAndGroupId = repository.extractArtifactAndGroupId(namespace);
         final String qualifiedDigestString = "sha256:%s".formatted(digest);
         final StreamHandle handle = repository.getBlob(AuthContext.ofUser(user), namespace, qualifiedDigestString);
         if (handle == null) throw new NotFoundException("Unknown chart");

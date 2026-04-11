@@ -24,9 +24,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -71,7 +69,10 @@ public class OCIImageIndex {
         this.putFile(key, digest, "application/octet-stream", contentLength);
     }
 
-    protected ArtifactVersion updateOrCreateArtifactAndVersion(final Instant now, final String namespace, final String reference) {
+    protected ArtifactVersion updateOrCreateArtifactAndVersion(final Instant now,
+                                                               final String namespace,
+                                                               final String reference,
+                                                               final Set<StoredFile> referencedFiles) {
         final ArtifactAndGroupId artifactAndGroupId = this.repository.extractArtifactAndGroupId(namespace);
         final String groupId = artifactAndGroupId.groupId();
         final String artifactId = artifactAndGroupId.artifactId();
@@ -85,11 +86,12 @@ public class OCIImageIndex {
 
             for (int i = 0; i < oldFiles.size(); i++) {
                 final StoredFile file = oldFiles.get(i);
+
+                if (referencedFiles.contains(file)) continue;
                 this.repository.tryDeleteFile(file);
             }
-        } else {
-            version.files = new ArrayList<>();
         }
+        version.files = new ArrayList<>(referencedFiles);
 
         return version;
     }
@@ -169,15 +171,21 @@ public class OCIImageIndex {
         );
 
         if (!OCIDigestHelper.isDigest(reference)) {
-            final ArtifactVersion version = updateOrCreateArtifactAndVersion(Instant.now(), namespace, reference);
-            version.files.add(manifestFile);
-            version.manifest = manifestFile;
-
             final ArtifactDetails details = OCIDetailsHelper.parseDetails(contents);
-            version.details = details;
-
             final OCIManifestDetails manifestDetails = (OCIManifestDetails) details.additionalData();
-            version.files.addAll(collectReferencedFiles(namespace, manifestDetails, isMirrorRequest));
+
+            final Set<StoredFile> referencedFiles = new HashSet<>();
+            referencedFiles.add(manifestFile);
+            referencedFiles.addAll(collectReferencedFiles(namespace, manifestDetails, isMirrorRequest));
+
+            final ArtifactVersion version = updateOrCreateArtifactAndVersion(
+                    Instant.now(),
+                    namespace,
+                    reference,
+                    referencedFiles
+            );
+            version.manifest = manifestFile;
+            version.details = details;
 
             return new OCIManifestIndexResult(manifestFile, version, subject);
         }

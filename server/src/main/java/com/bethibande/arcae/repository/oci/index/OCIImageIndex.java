@@ -88,6 +88,8 @@ public class OCIImageIndex {
                     .collect(Collectors.toSet());
 
             version.files.clear();
+            version.manifest = null; // Manifest will be re-applied outside this method
+            version.persistAndFlush(); // Ensures the file references update, can't delete files otherwise
 
             for (int i = 0; i < oldFiles.size(); i++) {
                 final StoredFile file = oldFiles.get(i);

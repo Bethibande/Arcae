@@ -68,10 +68,11 @@ dependencies {
     implementation("io.quarkiverse.bucket4j:quarkus-bucket4j:1.0.7") // Rate limiting
 
     // Web
-    implementation("io.quarkiverse.quinoa:quarkus-quinoa:2.6.2")
+    implementation("io.quarkiverse.quinoa:quarkus-quinoa:2.8.1")
     implementation("io.quarkus:quarkus-smallrye-openapi")
     implementation("io.quarkus:quarkus-rest")
     implementation("io.quarkus:quarkus-rest-jackson")
+    implementation("org.jsoup:jsoup:1.22.1") // Used to load OIDC provider icons
 
     // Tests
     testImplementation("io.quarkus:quarkus-junit")

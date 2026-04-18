@@ -176,3 +176,9 @@ button {
     scrollbar-color: oklch(0.707 0.022 261.325 / 0.3) transparent;
   }
 }
+
+.oidc-logo {
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  @apply bg-current;
+}

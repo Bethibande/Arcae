@@ -123,4 +123,55 @@
         </createIndex>
     </changeSet>
 
+    <changeSet id="1776516577230-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="OpenIDConnectLogo_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1776516577230-2"
+               author="bethibande">
+        <createTable tableName="OpenIDConnectLogo">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_openidconnectlogo"/>
+            </column>
+            <column name="provider_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="createdAt"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data"
+                    type="bytea">
+                <constraints nullable="false"/>
+            </column>
+            <column name="contentType"
+                    type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776516577230-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="provider_id"
+                                 baseTableName="OpenIDConnectLogo"
+                                 constraintName="FK_OPENIDCONNECTLOGO_ON_PROVIDER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="OpenIDConnectProvider"/>
+    </changeSet>
+
+    <changeSet id="1776519857233-1" author="bethibande">
+        <insert tableName="scheduledjob">
+            <column name="id" valueComputed="nextval('ScheduledJob_seq')"/>
+            <column name="type">CLEAN_UP_DATABASE</column>
+            <column name="cronSchedule">0 1 * * *</column> <!-- Every day at 01:00 UTC -->
+            <column name="nextRunAt">now()</column>
+            <column name="deleteAfterRun">false</column>
+        </insert>
+    </changeSet>
 </databaseChangeLog>

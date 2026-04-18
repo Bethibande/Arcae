@@ -124,6 +124,8 @@ export function LoginForm({
                           onClick={() => handleOidcLogin(item!)}
                           disabled={loading || oidcLoading}
                       >
+                        <div style={{maskImage: "url(/api/v1/oidc/icon/" + item + ")"}} className={"size-4 oidc-logo"}>
+                        </div>
                         {item}
                       </Button>
                   ))}

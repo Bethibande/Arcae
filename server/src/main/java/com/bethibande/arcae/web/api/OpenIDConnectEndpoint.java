@@ -1,7 +1,5 @@
 package com.bethibande.arcae.web.api;
 
-import com.bethibande.arcae.jpa.security.OpenIDConnectProvider;
-import com.bethibande.arcae.jpa.security.OpenIDConnection;
 import com.bethibande.arcae.jpa.security.*;
 import com.bethibande.arcae.jpa.user.User;
 import com.bethibande.arcae.security.oidc.OpenIDConnectOptions;
@@ -11,6 +9,7 @@ import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.security.Authenticated;
 import io.quarkus.vertx.VertxContextSupport;
+import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
@@ -20,6 +19,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.CacheControl;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
@@ -52,6 +52,9 @@ public class OpenIDConnectEndpoint {
 
     @Inject
     protected AuthenticatedUser authenticatedUser;
+
+    @Inject
+    protected OpenIDConnectLogoHelper openIDConnectLogoHelper;
 
     @POST
     @Transactional
@@ -112,6 +115,7 @@ public class OpenIDConnectEndpoint {
     @Path("/providers/{id}")
     public void deleteProvider(final @PathParam("id") long id) {
         OpenIDConnection.delete("provider.id = ?1", id);
+        OpenIDConnectLogo.delete("provider.id = ?1", id);
         OpenIDConnectProvider.deleteById(id);
     }
 
@@ -154,6 +158,26 @@ public class OpenIDConnectEndpoint {
                 "/login/oidc/complete/" + provider,
                 "/api/v1/oidc/link/complete/" + provider
         );
+    }
+
+    @GET
+    @Blocking
+    @Path("/icon/{provider}")
+    public Uni<Response> getIcon(final @PathParam("provider") String provider) {
+        return this.openIDConnectLogoHelper.getOrFetchLogo(provider)
+                .map(logo -> {
+                    if (Objects.equals(logo.contentType, OpenIDConnectLogoHelper.CONTENT_TYPE_NOT_FOUND)) {
+                        return Response.status(Response.Status.NOT_FOUND).build();
+                    }
+
+                    final CacheControl cc = new CacheControl();
+                    cc.setMaxAge((int) OpenIDConnectLogo.MAX_LIFETIME.toSeconds());
+
+                    return Response.ok(logo.data)
+                            .type(logo.contentType)
+                            .cacheControl(cc)
+                            .build();
+                });
     }
 
     private Response prepareAuthorization(final String provider,

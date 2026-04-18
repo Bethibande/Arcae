@@ -46,6 +46,10 @@ const JOB_TRANSLATIONS: Record<JobType, { title: string; description: string }> 
     [JobType.ResetPassword]: {
         title: "Reset Password Request",
         description: "Sends password reset emails to users",
+    },
+    [JobType.CleanUpDatabase]: {
+        title: "Cleanup Database",
+        description: "Removes expired data from the database",
     }
 };
 

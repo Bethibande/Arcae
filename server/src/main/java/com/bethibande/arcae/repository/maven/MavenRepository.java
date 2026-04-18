@@ -10,6 +10,7 @@ import com.bethibande.arcae.repository.StreamHandle;
 import com.bethibande.arcae.repository.backend.S3Backend;
 import com.bethibande.arcae.repository.security.AuthContext;
 import com.bethibande.arcae.util.CopyingInputStream;
+import com.bethibande.arcae.web.exception.ConflictWebException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.TransactionSemantics;
@@ -32,6 +33,7 @@ public class MavenRepository implements ManagedRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(MavenRepository.class);
 
     public static final String POM_FILE_EXTENSION = ".pom";
+    public static final String MAVEN_METADATA_XML = "maven-metadata.xml";
     public static final long MAX_POM_FILE_SIZE = 5_000_000L;
 
     private final Repository info;
@@ -145,8 +147,12 @@ public class MavenRepository implements ManagedRepository {
         final String namespacedPath = "%s/%s".formatted(info.name, path);
         final S3Backend backend = this.backend.getValue();
 
-        if (!config.allowRedeployments() && backend.head(namespacedPath)) {
-            throw new BadRequestException("File already exists");
+        if (!config.allowRedeployments()
+                // Maybe add a bypass for the system user here instead of hardcoding file-names
+                // This is required for the server to be able to update the metadata if a version is deleted
+                && !path.endsWith(MAVEN_METADATA_XML)
+                && backend.head(namespacedPath)) {
+            throw new ConflictWebException("File already exists");
         }
 
         if (fileIndexer.indexFile(path, handle)) {

@@ -7,44 +7,60 @@ import com.bethibande.arcae.repository.cleanup.CleanupPolicies;
 import com.bethibande.arcae.repository.cleanup.MaxAgeCleanupPolicy;
 import com.bethibande.arcae.repository.cleanup.MaxVersionCountPolicy;
 import com.bethibande.arcae.web.AbstractWebTests;
-import io.quarkus.arc.Arc;
-import io.quarkus.arc.InstanceHandle;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.codec.digest.DigestUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public class AbstractRepositoryTests extends AbstractWebTests {
 
-    public static void createRepository(final String name,
-                                        final PackageManager packageManager,
-                                        final Object settings,
-                                        final List<PermissionScope> permissions) {
-        try (final InstanceHandle<ObjectMapper> instance = Arc.container().instance(ObjectMapper.class)) {
-            final ObjectMapper mapper = instance.get();
+    public static InputStream streamOf(final String content) {
+        final byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        return new ByteArrayInputStream(bytes);
+    }
 
-            QuarkusTransaction.requiringNew().run(() -> {
-                final Repository repository = new Repository();
-                repository.name = name;
-                repository.packageManager = packageManager;
-                repository.settings = mapper.convertValue(settings, String.class);
-                repository.cleanupPolicies = new CleanupPolicies(
-                        new MaxAgeCleanupPolicy(
-                                false,
-                                0,
-                                ChronoUnit.DAYS
-                        ),
-                        new MaxVersionCountPolicy(
-                                false,
-                                10
-                        )
-                );
-                repository.permissions = permissions;
+    public static String digest(final String content) {
+        return digest(content.getBytes(StandardCharsets.UTF_8));
+    }
 
-                repository.persist();
-            });
-        }
+    public static String digest(final byte[] data) {
+        return DigestUtils.sha256Hex(data);
+    }
+
+    public Repository createRepository(final String name,
+                                 final PackageManager packageManager,
+                                 final Object settings,
+                                 final List<PermissionScope> permissions) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            final Repository repository = new Repository();
+            repository.name = name;
+            repository.packageManager = packageManager;
+            try {
+                repository.settings = super.objectMapper.writeValueAsString(settings);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+            repository.cleanupPolicies = new CleanupPolicies(
+                    new MaxAgeCleanupPolicy(
+                            false,
+                            0,
+                            ChronoUnit.DAYS
+                    ),
+                    new MaxVersionCountPolicy(
+                            false,
+                            10
+                    )
+            );
+            repository.permissions = permissions;
+
+            repository.persist();
+            return repository;
+        });
 
     }
 

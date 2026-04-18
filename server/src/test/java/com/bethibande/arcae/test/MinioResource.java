@@ -4,6 +4,7 @@ import com.bethibande.arcae.repository.S3Config;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -49,6 +50,12 @@ public class MinioResource implements QuarkusTestResourceLifecycleManager {
         final String endpoint = String.format("http://%s:%d", host, port);
 
         try {
+            String setupCmd = String.format(
+                    "mc alias set local http://localhost:9000 %s %s && mc mb local/%s",
+                    VALUE_ACCESS_KEY, VALUE_SECRET_KEY, VALUE_BUCKET
+            );
+
+            minio.execInContainer("sh", "-c", setupCmd);
             minio.execInContainer("mc", "mb", "minio/" + VALUE_BUCKET);
         } catch (final IOException | InterruptedException ex) {
             throw new RuntimeException("Failed to create bucket", ex);

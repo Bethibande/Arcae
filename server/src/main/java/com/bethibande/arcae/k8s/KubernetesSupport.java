@@ -56,9 +56,6 @@ public class KubernetesSupport {
     @ConfigProperty(name = "arcae.scheduler.discovery-service")
     protected String discoveryService;
 
-    @ConfigProperty(name = "arcae.scheduler.cluster-zone")
-    protected String clusterDomain;
-
     @ConfigProperty(name = "arcae.management.port")
     protected int managementPort;
 
@@ -151,10 +148,6 @@ public class KubernetesSupport {
 
     public String getNamespace() {
         return this.namespace;
-    }
-
-    public String getClusterDomain() {
-        return this.clusterDomain;
     }
 
     public boolean isEnabled() {

@@ -3,10 +3,6 @@
 
 <img src="screenshots/dashboard-pretty.png" style="border-radius: 1rem;" align="center" alt="dashboard">
 
-> [!WARNING]
-> This project is in early development, please use it with caution. Bugs should be expected.
-> Performance is also still a work-in-progress.
-
 ### Quick links
 - [Features](#features)
 - [Requirements](#requirements)

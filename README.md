@@ -53,6 +53,9 @@ Most of this memory (over 1 GB) is used by Elasticsearch, in the future Elastics
   Must support multipart upload, multipart copy operations and ranged get operations.
 
 ## Installation
+The following sections explain how to get started with installing the repository.
+**Configuration** reference can be found [here](https://github.com/Bethibande/Arcae/wiki/Configuration).
+
 ### Docker
 To get started using docker, download the example [docker-compose.yaml](docker-compose.yaml) and run
 ```shell

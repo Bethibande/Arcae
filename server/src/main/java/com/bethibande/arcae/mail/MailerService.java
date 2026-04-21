@@ -1,6 +1,7 @@
 package com.bethibande.arcae.mail;
 
 import com.bethibande.arcae.jpa.system.SystemProperty;
+import com.bethibande.arcae.k8s.KubernetesServiceDiscovery;
 import com.bethibande.arcae.k8s.KubernetesSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -13,6 +14,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +25,8 @@ import java.util.concurrent.CompletionStage;
 @ApplicationScoped
 public class MailerService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MailerService.class);
+
     public static final String SMTP_PROPERTY_NAME = "mail.smtp";
 
     @Inject
@@ -29,6 +34,9 @@ public class MailerService {
 
     @Inject
     protected Vertx vertx;
+
+    @Inject
+    protected KubernetesServiceDiscovery kubernetesServiceDiscovery;
 
     @Inject
     protected KubernetesSupport kubernetesSupport;
@@ -155,10 +163,16 @@ public class MailerService {
         this.config = config;
         this.mailClient = config.enabled() ? createMailClient(config) : null;
 
-        if (this.kubernetesSupport.isServiceDiscoveryEnabled()) {
-            this.kubernetesSupport.broadcastHttp(
-                    (baseURL, webClient) -> webClient.putAbs(baseURL + "/api/v1/mail/config/update").send()
-            );
+        if (this.kubernetesServiceDiscovery.isEnabled()) {
+            this.kubernetesServiceDiscovery.getApiPool()
+                    .map(pool -> pool.broadcastHttp(
+                            (baseURL, webClient) -> webClient.putAbs(baseURL + "/api/v1/mail/config/update").send()
+                    ))
+                    .ifPresent(futures -> {
+                        for (int i = 0; i < futures.size(); i++) {
+                            futures.get(i).onFailure(ex -> LOGGER.error("Failed to invalidate mailer config on one node", ex));
+                        }
+                    });
         }
     }
 

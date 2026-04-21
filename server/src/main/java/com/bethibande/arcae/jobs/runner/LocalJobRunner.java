@@ -1,14 +1,13 @@
 package com.bethibande.arcae.jobs.runner;
 
-import com.bethibande.arcae.jobs.JobScheduler;
 import com.bethibande.arcae.jobs.JobType;
 import com.bethibande.arcae.jobs.ScheduledJob;
 import com.bethibande.arcae.jobs.impl.JobTask;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.bethibande.arcae.jobs.scheduler.JobScheduler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.arc.All;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.narayana.jta.TransactionSemantics;
+import io.quarkus.runtime.Startup;
 import io.quarkus.virtual.threads.VirtualThreads;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,10 +23,13 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.ReentrantLock;
 
+@Startup
 @ApplicationScoped
 public class LocalJobRunner implements JobRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LocalJobRunner.class);
+
+    public static final int DEFAULT_QUEUE_SIZE = 100;
 
     @Inject
     protected JobScheduler scheduler;
@@ -43,11 +45,23 @@ public class LocalJobRunner implements JobRunner {
     @VirtualThreads
     protected Executor executor;
 
-    protected volatile ScheduledJob running;
+    private final Instant startedAt = Instant.now();
 
-    protected final Deque<ScheduledJob> queue = new ArrayDeque<>();
+    protected volatile Long running;
+
+    protected final Deque<Long> queue = new ArrayDeque<>();
 
     protected final ReentrantLock lock = new ReentrantLock();
+
+    @Override
+    public String getName() {
+        return "local";
+    }
+
+    @Override
+    public Instant getStartedAt() {
+        return this.startedAt;
+    }
 
     public JobTask<?> getTask(final JobType type) {
         for (int i = 0; i < this.tasks.size(); i++) {
@@ -57,83 +71,88 @@ public class LocalJobRunner implements JobRunner {
         return null;
     }
 
-    protected void onAfterRun() {
+    public boolean isIdle() {
+        return this.running == null;
+    }
+
+    @Override
+    public void run(final long jobId) throws RunnerQueueCapacityReached {
+        this.lock.lock();
+        try {
+            if (isIdle()) {
+                run0(jobId);
+                return;
+            }
+
+            if(this.queue.size() >= DEFAULT_QUEUE_SIZE) {
+                throw new RunnerQueueCapacityReached("Out of queue capacity");
+            }
+
+            this.queue.add(jobId);
+        } catch(final Throwable th) {
+            this.afterRun();
+            LOGGER.error("Failed to run job, id: {}", jobId, th);
+        } finally {
+            this.lock.unlock();
+        }
+    }
+
+    protected void afterRun() {
         this.lock.lock();
         try {
             this.running = null;
 
-            final ScheduledJob next = this.queue.poll();
-            if (next != null) {
-                run(next);
+            if (!this.queue.isEmpty()) {
+                final Long jobId = this.queue.poll();
+                if (jobId != null) run0(jobId);
             }
         } finally {
             this.lock.unlock();
         }
     }
 
-    @Override
-    public void run(final ScheduledJob job) {
+    @SuppressWarnings("unchecked")
+    protected <T> void run0(final long jobId) {
         this.lock.lock();
         try {
-            if (this.running != null) {
-                this.queue.add(job);
-                return;
-            }
-
-            this.running = job;
-
-            this.executor.execute(() -> {
-                try {
-                    run0(job);
-                } catch (final JsonProcessingException ex) {
-                    LOGGER.error("Failed to parse job settings for {}: {}", job.id, ex.getMessage(), ex);
-                } finally {
-                    onAfterRun();
-                }
-            });
+            if (!isIdle()) throw new IllegalStateException("Already running a job");
+            this.running = jobId;
         } finally {
-            lock.unlock();
+            this.lock.unlock();
         }
-    }
 
-    private enum JobExecutionStatus {
+        this.executor.execute(() -> {
+            try {
+                final ScheduledJob job = QuarkusTransaction.requiringNew().call(() -> {
+                    final ScheduledJob entity = ScheduledJob.findById(jobId, LockModeType.PESSIMISTIC_WRITE);
+                    ScheduledJob.update("executionStartedAt = ?1 where id = ?2", Instant.now(), jobId);
 
-        SUCCEEDED,
-        FAILED
+                    return entity;
+                });
 
-    }
+                if (job == null) {
+                    LOGGER.warn("Scheduled job no longer exists; id {}", jobId);
+                    return;
+                }
 
+                final JobTask<T> task = (JobTask<T>) this.getTask(job.type);
+                if (task == null) throw new IllegalArgumentException("Unknown job type: " + job.type);
 
-    @SuppressWarnings("unchecked")
-    private <T> void run0(final ScheduledJob job) throws JsonProcessingException {
-        final JobTask<T> task = (JobTask<T>) this.getTask(job.type);
-        final T config = job.settings != null
-                ? this.objectMapper.readValue(job.settings, task.getConfigType())
-                : null;
+                final T config = job.settings != null
+                        ? this.objectMapper.readValue(job.settings, task.getConfigType())
+                        : null;
+                task.run(config);
 
-        QuarkusTransaction.requiringNew().run(() -> {
-            final ScheduledJob entity = ScheduledJob.findById(job.id, LockModeType.PESSIMISTIC_WRITE);
-            entity.executionStartedAt = Instant.now();
-        });
-
-        try {
-            task.run(config);
-            updateJobStatus(job, JobExecutionStatus.SUCCEEDED);
-        } catch (final Throwable th) {
-            LOGGER.error("Error while running job: {}-{}", job.id, job.type, th);
-            updateJobStatus(job, JobExecutionStatus.FAILED);
-        }
-    }
-
-    protected void updateJobStatus(final ScheduledJob job, JobExecutionStatus result) {
-        QuarkusTransaction.runner(TransactionSemantics.REQUIRE_NEW).run(() -> {
-            final ScheduledJob entity = ScheduledJob.findById(job.id, LockModeType.PESSIMISTIC_WRITE);
-            if (result == JobExecutionStatus.SUCCEEDED) {
-                this.scheduler.completeJob(entity, Instant.now());
-            } else {
-                this.scheduler.failJob(entity);
+                QuarkusTransaction.requiringNew().run(() -> {
+                    final ScheduledJob currentEntity = ScheduledJob.findById(job.id, LockModeType.PESSIMISTIC_WRITE);
+                    this.scheduler.complete(currentEntity);
+                });
+            } catch (final Throwable th) {
+                LOGGER.error("Job execution failed; id {}", jobId, th);
+                QuarkusTransaction.requiringNew().run(() -> this.scheduler.fail(jobId));
+            } finally {
+                afterRun();
             }
         });
     }
-
 }

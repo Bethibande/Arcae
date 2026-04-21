@@ -3,6 +3,7 @@ package com.bethibande.arcae.k8s;
 import com.bethibande.arcae.util.Registration;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.extended.leaderelection.LeaderCallbacks;
+import io.fabric8.kubernetes.client.extended.leaderelection.LeaderElectionConfig;
 import io.fabric8.kubernetes.client.extended.leaderelection.LeaderElectionConfigBuilder;
 import io.fabric8.kubernetes.client.extended.leaderelection.resourcelock.LeaseLock;
 import io.quarkus.runtime.StartupEvent;
@@ -51,6 +52,9 @@ public class KubernetesLeaderService {
 
     @Inject
     protected KubernetesSupport kubernetesSupport;
+
+    @Inject
+    protected WebClient webClient;
 
     protected volatile String leader;
 
@@ -116,7 +120,10 @@ public class KubernetesLeaderService {
 
     protected void updateBackoffTimer() {
         final long now = System.currentTimeMillis();
-        if (this.lastFailure + TimeUnit.MINUTES.toMillis(30) < now) this.electionTimeoutSeconds = 5;
+        // If the last failure was more than 30 minutes ago, reset the backoff
+        if (this.lastFailure + TimeUnit.MINUTES.toMillis(30) < now) {
+            this.electionTimeoutSeconds = 5;
+        }
         this.lastFailure = now;
     }
 
@@ -159,7 +166,7 @@ public class KubernetesLeaderService {
 
         final String baseUrl = "http://%s:%d".formatted(host, this.managementPort);
 
-        return fn.apply(baseUrl, this.kubernetesSupport.webClient);
+        return fn.apply(baseUrl, this.webClient);
     }
 
 }

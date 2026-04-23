@@ -1,13 +1,16 @@
 package com.bethibande.arcae.web.api;
 
-import com.bethibande.arcae.jobs.JobScheduler;
+import com.bethibande.arcae.jobs.scheduler.DistributedJobScheduler;
+import com.bethibande.arcae.jobs.scheduler.JobScheduler;
 import com.bethibande.arcae.jpa.system.SystemProperty;
 import com.bethibande.arcae.jpa.system.SystemReference;
 import com.bethibande.arcae.jpa.system.SystemReferenceType;
 import com.bethibande.arcae.k8s.KubernetesLeaderService;
+import com.bethibande.arcae.k8s.KubernetesServiceDiscovery;
 import com.bethibande.arcae.k8s.KubernetesSupport;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -32,6 +35,9 @@ public class SystemEndpoint {
     protected KubernetesSupport kubernetesSupport;
 
     @Inject
+    protected KubernetesServiceDiscovery kubernetesServiceDiscovery;
+
+    @Inject
     protected KubernetesLeaderService kubernetesLeaderService;
 
     @Inject
@@ -40,6 +46,7 @@ public class SystemEndpoint {
     @Inject
     protected ObjectMapper objectMapper;
 
+    @RegisterForReflection
     public record AppStatus(
             Instant startupTime
     ) {
@@ -69,8 +76,8 @@ public class SystemEndpoint {
                 kubernetesSupport.isEnabled(),
                 kubernetesSupport.hasHttpRouteSupport(),
                 kubernetesSupport.hasLeaderElectionSupport(),
-                jobScheduler.isDistributed(),
-                kubernetesSupport.isServiceDiscoveryEnabled()
+                jobScheduler instanceof DistributedJobScheduler,
+                kubernetesServiceDiscovery.isEnabled()
         );
     }
 

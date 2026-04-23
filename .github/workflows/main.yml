@@ -7,6 +7,11 @@ on:
         description: 'Image version (e.g., 1.0.0)'
         required: true
         default: 'latest'
+      latest:
+        description: 'Mark the image as the latest release'
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   build:
@@ -94,27 +99,36 @@ jobs:
 
       - name: Create and Push Multi-Arch Manifest
         run: |
+          # Create the versioned tag (Always runs)
           docker buildx imagetools create -t bethibande/arcae:${{ github.event.inputs.version }} \
             bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
             bethibande/arcae:${{ github.event.inputs.version }}-arm64
       
-          # Create the latest tag
-          docker buildx imagetools create -t bethibande/arcae:latest \
-          bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
-          bethibande/arcae:${{ github.event.inputs.version }}-arm64
+          # Create the latest tag (Conditional)
+          if [ "${{ github.event.inputs.latest }}" = "true" ]; then
+            echo "Pushing 'latest' tag to Docker Hub..."
+            docker buildx imagetools create -t bethibande/arcae:latest \
+              bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
+              bethibande/arcae:${{ github.event.inputs.version }}-arm64
+          fi
+      
       - name: Create and Push Multi-Arch Manifest to private registry
         run: |
+          # Create platform-specific tags in private registry
           docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
             bethibande/arcae:${{ github.event.inputs.version }}-amd64
-
           docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-arm64 \
             bethibande/arcae:${{ github.event.inputs.version }}-arm64
-
-
+      
+          # Create the versioned manifest
           docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }} \
             docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
             docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-arm64
-
-          docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:latest \
-            docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
-            docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-arm64
+      
+          # Create the latest manifest (Conditional)
+          if [ "${{ github.event.inputs.latest }}" = "true" ]; then
+            echo "Pushing 'latest' tag to private registry..."
+            docker buildx imagetools create -t docker.bethibande.com/bethibande/arcae:latest \
+              docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-amd64 \
+              docker.bethibande.com/bethibande/arcae:${{ github.event.inputs.version }}-arm64
+          fi

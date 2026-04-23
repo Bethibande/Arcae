@@ -4,7 +4,6 @@ import com.bethibande.arcae.jpa.repository.PackageManager;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReview;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReviewBuilder;
 import io.fabric8.kubernetes.api.model.gatewayapi.v1.*;
@@ -16,6 +15,7 @@ import io.quarkus.runtime.Startup;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,9 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 
@@ -53,25 +51,15 @@ public class KubernetesSupport {
 
     private String namespace;
 
-    @ConfigProperty(name = "arcae.scheduler.discovery-service")
-    protected String discoveryService;
-
     @ConfigProperty(name = "arcae.management.port")
     protected int managementPort;
-
-    @ConfigProperty(name = "arcae.distributed")
-    protected boolean distributedAllowed;
 
     protected WebClient webClient;
 
     protected boolean kubernetesSupport = true;
-    protected boolean serviceDiscovery = false;
     protected boolean canManageHttpRoutes = false;
     protected boolean canElectLeader = false;
     protected boolean canListPods = false;
-    protected boolean canInspectServices = false;
-
-    private Map<String, String> labels;
 
     private final Cache<String, InetAddress> podIPCache = Caffeine.newBuilder()
             .expireAfterAccess(10, TimeUnit.MINUTES)
@@ -95,7 +83,11 @@ public class KubernetesSupport {
 
     @PostConstruct
     protected void init() {
-        if (this.client == null) return;
+        if (this.client == null) {
+            this.kubernetesSupport = false;
+            LOGGER.warn("Failed to inject kubernetes client");
+            return;
+        }
         if (!canAccessApi()) {
             this.kubernetesSupport = false;
             LOGGER.info("Disabled kubernetes support");
@@ -119,31 +111,14 @@ public class KubernetesSupport {
                 && hasPermission("patch", LEASE_NAME, COORDINATION_API_GROUP);
 
         this.canListPods = hasPermission("list", "pods", "")
-                && hasPermission("get", "pods", "");
-
-        this.canInspectServices = hasPermission("get", "services", "");
+                && hasPermission("get", "pods", "")
+                && hasPermission("watch", "pods", "");
 
         this.webClient = WebClient.create(this.vertx);
-
-        initDiscovery();
     }
 
-    protected void initDiscovery() {
-        if (!this.canListPods() || !this.canInspectServices() || !this.distributedAllowed) return;
-
-        final Service service = this.client.services()
-                .inNamespace(getNamespace())
-                .withName(this.discoveryService)
-                .get();
-
-        if (service == null) {
-            LOGGER.error("Discovery service {} not found", discoveryService);
-            LOGGER.warn("You can specify your own DNS-only service by setting the property \"repository.scheduler.discovery-service\"");
-            return;
-        }
-
-        this.labels = service.getSpec().getSelector();
-        this.serviceDiscovery = true;
+    public KubernetesClient getClient() {
+        return this.client;
     }
 
     public String getNamespace() {
@@ -164,14 +139,6 @@ public class KubernetesSupport {
 
     public boolean canListPods() {
         return this.canListPods;
-    }
-
-    public boolean canInspectServices() {
-        return this.canInspectServices;
-    }
-
-    public boolean isServiceDiscoveryEnabled() {
-        return this.serviceDiscovery;
     }
 
     protected String toHttpRouteName(final String repository, final PackageManager packageManager) {
@@ -272,64 +239,18 @@ public class KubernetesSupport {
         });
     }
 
-    public List<String> getAllReplicaPodNames() {
-        try {
-            return this.client.pods()
-                    .inNamespace(this.getNamespace())
-                    .withLabels(this.labels)
-                    .list()
-                    .getItems()
-                    .stream()
-                    .filter(Readiness::isPodReady)
-                    .map(pod -> pod.getMetadata().getName())
-                    .toList();
-        } catch (final Exception ex) {
-            throw new RuntimeException("Failed to resolve discovery service addresses", ex);
-        }
-    }
-
-    public List<InetAddress> getAllPodClusterIPs() {
-        try {
-            return this.client.pods()
-                    .inNamespace(this.getNamespace())
-                    .withLabels(this.labels)
-                    .list()
-                    .getItems()
-                    .stream()
-                    .filter(Readiness::isPodReady)
-                    .map(pod -> pod.getStatus().getPodIP())
-                    .map(InetAddress::ofLiteral)
-                    .toList();
-        } catch (final Exception ex) {
-            throw new RuntimeException("Failed to resolve discovery service addresses", ex);
-        }
-    }
-
     public String addressToHostname(final InetAddress address) {
         return address instanceof Inet6Address
                 ? "[%s]".formatted(address.getHostAddress())
                 : address.getHostAddress();
     }
 
-    /**
-     * Broadcasts an HTTP request to the management port of all replicas.
-     * The function will supply the base URL for each endpoint and the webclient that should be used to send the request.
-     */
-    public List<Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> broadcastHttp(final BiFunction<String, WebClient, Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> fn) {
-        if (!this.serviceDiscovery) return Collections.emptyList();
-
-        final List<Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> futures = new ArrayList<>();
-        final List<InetAddress> addresses = getAllPodClusterIPs();
-        for (int i = 0; i < addresses.size(); i++) {
-            final InetAddress address = addresses.get(i);
-            futures.add(this.sendRequest(address, fn));
-        }
-
-        return futures;
+    public InetAddress podToAddress(final Pod pod) {
+        return InetAddress.ofLiteral(pod.getStatus().getPodIP());
     }
 
-    public Future<io.vertx.ext.web.client.HttpResponse<Buffer>> sendRequest(final InetAddress address,
-                                                                            final BiFunction<String, WebClient, Future<io.vertx.ext.web.client.HttpResponse<Buffer>>> fn) {
+    public Future<HttpResponse<Buffer>> sendRequest(final InetAddress address,
+                                                    final BiFunction<String, WebClient, Future<HttpResponse<Buffer>>> fn) {
         final String hostname = addressToHostname(address);
         final String baseUrl = "http://%s:%d".formatted(hostname, this.managementPort);
 

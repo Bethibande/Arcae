@@ -50,6 +50,11 @@ app.kubernetes.io/name: {{ include "arcae.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/* Create a label selector string, these are the selectors currently used for service discovery, they should be the same as "arcae.selectorLabels" */}}
+{{- define "arcae.selectorString" -}}
+app.kubernetes.io/name={{ include "arcae.name" . }},app.kubernetes.io/instance={{ .Release.Name }}
+{{- end }}
+
 {{/*
 Create the name of the service account to use
 */}}

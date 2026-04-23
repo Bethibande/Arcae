@@ -1,10 +1,13 @@
 package com.bethibande.arcae.jobs;
 
 import com.bethibande.arcae.jobs.impl.JobTask;
+import com.bethibande.arcae.jobs.scheduler.DistributedJobScheduler;
+import com.bethibande.arcae.jobs.scheduler.JobScheduler;
 import com.bethibande.arcae.k8s.KubernetesLeaderService;
 import com.bethibande.arcae.k8s.KubernetesSupport;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.arc.ClientProxy;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.virtual.threads.VirtualThreads;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -50,7 +53,7 @@ public class BuiltinJobScheduler {
             throw new RuntimeException("Failed to serialize job config", ex);
         }
 
-        if (this.kubernetesSupport.isEnabled() && this.kubernetesSupport.isServiceDiscoveryEnabled()) {
+        if (this.kubernetesSupport.isEnabled() && ClientProxy.unwrap(this.scheduler) instanceof DistributedJobScheduler) {
             return scheduleRemote(configJson, task, cron, immediate, deleteAfterRun);
         } else {
             return scheduleLocal(configJson, task, cron, immediate, deleteAfterRun);
@@ -97,7 +100,7 @@ public class BuiltinJobScheduler {
         return CompletableFuture.runAsync(() -> {
             QuarkusTransaction.requiringNew().run(job::persist);
 
-            scheduler.schedule(job, Instant.now());
+            scheduler.schedule(job);
         }, this.executor);
     }
 

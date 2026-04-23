@@ -59,6 +59,10 @@ spec:
               value: {{ .Values.externalConfig.search.hosts | quote }}
             - name: EXTERNAL_HOST
               value: {{ .Values.externalConfig.host | quote }}
+            - name: ARCAE_DISCOVERY_SELECTOR_API
+              value: {{ include "arcae.selectorString" . }}
+            - name: ARCAE_DISCOVERY_SELECTOR_JOBS
+              value: {{ include "arcae.selectorString" . }}
             - name: JAVA_OPTIONS
               {{- if .Values.jvm.javaOptions }}
               value: {{ .Values.jvm.javaOptions | quote }}

@@ -2,9 +2,9 @@ package com.bethibande.arcae.k8s;
 
 import com.bethibande.arcae.util.Registration;
 import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.client.Watch;
-import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.WatcherException;
+import io.fabric8.kubernetes.client.Watcher.Action;
+import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
+import io.fabric8.kubernetes.client.informers.SharedIndexInformer;
 import io.fabric8.kubernetes.client.readiness.Readiness;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
@@ -17,49 +17,33 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-public class ServiceDiscoveryPool implements Watcher<Pod> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ServiceDiscoveryPool.class);
-
-    public record PoolEntry(
-            String podName,
-            InetAddress address,
-            boolean ready
-    ) {
-    }
+public class ServiceDiscoveryPool implements ResourceEventHandler<Pod> {
 
     private final String podSelector;
 
-    private final AtomicBoolean shutdownSignal;
-
     private final KubernetesSupport kubernetesSupport;
 
-    private final List<PoolEntry> pods = new ArrayList<>();
+    private final List<BiConsumer<Action, Pod>> listeners = new ArrayList<>();
 
-    private final List<BiConsumer<Watcher.Action, PoolEntry>> listeners = new ArrayList<>();
-
-    private volatile Watch watch;
+    private volatile SharedIndexInformer<Pod> informer;
 
     public ServiceDiscoveryPool(final String podSelector,
-                                final AtomicBoolean shutdownSignal,
                                 final KubernetesSupport kubernetesSupport) {
         this.podSelector = podSelector;
-        this.shutdownSignal = shutdownSignal;
         this.kubernetesSupport = kubernetesSupport;
     }
 
-    public List<PoolEntry> getAll() {
-        return Collections.unmodifiableList(this.pods);
+    public List<Pod> getAll() {
+        return Collections.unmodifiableList(this.informer.getStore().list());
     }
 
-    public Registration subscribe(final BiConsumer<Watcher.Action, PoolEntry> listener) {
+    public Registration subscribe(final BiConsumer<Action, Pod> listener) {
         final Registration registration = Registration.addAndReturn(listener, this.listeners);
 
-        new ArrayList<>(this.pods).forEach(pod -> listener.accept(Watcher.Action.ADDED, pod));
+        getAll().forEach(pod -> listener.accept(Action.ADDED, pod));
 
         return registration;
     }
@@ -72,8 +56,8 @@ public class ServiceDiscoveryPool implements Watcher<Pod> {
         final List<Future<HttpResponse<Buffer>>> futures = new ArrayList<>();
         final List<InetAddress> addresses = getAll()
                 .stream()
-                .filter(PoolEntry::ready)
-                .map(PoolEntry::address)
+                .filter(Readiness::isPodReady)
+                .map(pod -> InetAddress.ofLiteral(pod.getStatus().getPodIP()))
                 .toList();
 
         for (int i = 0; i < addresses.size(); i++) {
@@ -84,36 +68,35 @@ public class ServiceDiscoveryPool implements Watcher<Pod> {
         return futures;
     }
 
-    @Override
-    public void eventReceived(final Action action, final Pod resource) {
-        final String podIp = resource.getStatus().getPodIP();
-        final PoolEntry entry = new PoolEntry(
-                resource.getMetadata().getName(),
-                podIp != null ? InetAddress.ofLiteral(podIp) : null,
-                Readiness.isPodReady(resource)
-        );
+    protected void sendEvent(final Action action, final Pod pod) {
+        this.listeners.forEach(listener -> listener.accept(action, pod));
+    }
 
-        pods.removeIf(e -> e.podName.equals(entry.podName));
-        if (action == Action.ADDED || action == Action.MODIFIED) pods.add(entry);
+    @Override
+    public void onAdd(final Pod obj) {
+        sendEvent(Action.ADDED, obj);
+    }
+
+    @Override
+    public void onUpdate(final Pod oldObj, final Pod newObj) {
+        sendEvent(Action.MODIFIED, newObj);
+    }
+
+    @Override
+    public void onDelete(final Pod obj, final boolean deletedFinalStateUnknown) {
+        sendEvent(Action.DELETED, obj);
     }
 
     public void start() {
-        this.watch = this.kubernetesSupport.getClient()
+        this.informer = this.kubernetesSupport.getClient()
                 .pods()
                 .inNamespace(this.kubernetesSupport.getNamespace())
                 .withLabelSelector(this.podSelector)
-                .watch(this);
-    }
-
-    @Override
-    public void onClose(final WatcherException cause) {
-        if (shutdownSignal.get()) return;
-
-        LOGGER.error("Watcher closed unexpectedly, restarting...", cause);
-        this.start();
+                .inform(this, 0);
+        this.informer.start();
     }
 
     public void close() {
-        if (this.watch != null) this.watch.close();
+        if (this.informer != null) this.informer.close();
     }
 }

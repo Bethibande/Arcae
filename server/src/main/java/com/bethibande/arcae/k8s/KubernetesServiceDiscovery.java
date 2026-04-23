@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Startup
 @ApplicationScoped
@@ -34,8 +33,6 @@ public class KubernetesServiceDiscovery {
     @ConfigProperty(name = "arcae.discovery.selector.api")
     protected String apiSelectorLabels;
 
-    private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
-
     @PostConstruct
     protected void init() {
         if (isEnabled()) {
@@ -50,8 +47,6 @@ public class KubernetesServiceDiscovery {
     }
 
     void onStop(@Observes final ShutdownEvent ev) {
-        this.shuttingDown.set(true);
-
         this.pools.values().forEach(ServiceDiscoveryPool::close);
     }
 
@@ -69,7 +64,6 @@ public class KubernetesServiceDiscovery {
 
         final ServiceDiscoveryPool pool = new ServiceDiscoveryPool(
                 podSelector,
-                this.shuttingDown,
                 this.kubernetesSupport
         );
 

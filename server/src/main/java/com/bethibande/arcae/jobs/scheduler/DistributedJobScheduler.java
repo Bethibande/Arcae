@@ -7,10 +7,13 @@ import com.bethibande.arcae.k8s.KubernetesServiceDiscovery;
 import com.bethibande.arcae.k8s.KubernetesSupport;
 import com.bethibande.arcae.k8s.ServiceDiscoveryPool;
 import com.bethibande.arcae.web.api.SystemEndpoint;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.Watcher;
+import io.fabric8.kubernetes.client.readiness.Readiness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -50,37 +53,37 @@ public class DistributedJobScheduler extends AbstractJobScheduler {
                 .subscribe(this::onPodChange);
     }
 
-    protected void onPodChange(final Watcher.Action action, final ServiceDiscoveryPool.PoolEntry pod) {
+    protected void onPodChange(final Watcher.Action action, final Pod pod) {
         final JobRunner existingRunner = this.workers.stream()
-                .filter(worker -> Objects.equals(worker.getName(), pod.podName()))
+                .filter(worker -> Objects.equals(worker.getName(), pod.getMetadata().getName()))
                 .findAny()
                 .orElse(null);
 
-        if (pod.ready() && existingRunner == null) {
+        if (Readiness.isPodReady(pod) && existingRunner == null) {
             this.kubernetesSupport.sendRequest(
-                    pod.address(),
+                    InetAddress.ofLiteral(pod.getStatus().getPodIP()),
                     (url, client) -> client.getAbs(url + "/api/v1/system/status").send()
             ).onSuccess(resp -> {
                 final SystemEndpoint.AppStatus status = resp.bodyAsJson(SystemEndpoint.AppStatus.class);
 
                 if (status == null) {
-                    LOGGER.error("Failed to fetch status of runner {}: {}", pod.podName(), resp.statusCode());
+                    LOGGER.error("Failed to fetch status of runner {}: {}", pod.getMetadata().getName(), resp.statusCode());
                     return;
                 }
 
                 this.lock.lock();
                 try {
                     this.workers.add(new RemoteJobRunner(
-                            pod.podName(),
-                            pod.address(),
+                            pod.getMetadata().getName(),
+                            InetAddress.ofLiteral(pod.getStatus().getPodIP()),
                             status.startupTime(),
                             this.kubernetesSupport
                     ));
                 } finally {
                     this.lock.unlock();
                 }
-            }).onFailure(ex -> LOGGER.error("Failed to fetch status of runner {}", pod.podName(), ex));
-        } else if(!pod.ready() && existingRunner != null) {
+            }).onFailure(ex -> LOGGER.error("Failed to fetch status of runner {}", pod.getMetadata().getName(), ex));
+        } else if(!Readiness.isPodReady(pod) && existingRunner != null) {
             this.workers.remove(existingRunner);
         }
     }

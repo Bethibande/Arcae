@@ -174,4 +174,19 @@
             <column name="deleteAfterRun">false</column>
         </insert>
     </changeSet>
+
+    <changeSet id="1777046570491-1" author="bethibande">
+        <sql>
+            DELETE FROM helmmetadata hm USING (
+                SELECT version_id, MAX(id) AS keep_id
+                FROM helmmetadata
+                GROUP BY version_id
+            ) KEEP
+            WHERE hm.version_id = keep.version_id
+              AND hm.id &lt;&gt; keep.keep_id;
+        </sql>
+    </changeSet>
+    <changeSet id="1777046542794-1" author="bethibande">
+        <addUniqueConstraint tableName="HelmMetadata" columnNames="version_id"/>
+    </changeSet>
 </databaseChangeLog>

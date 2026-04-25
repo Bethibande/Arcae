@@ -41,6 +41,7 @@ export function ProfileTab() {
     const [connections, setConnections] = useState<OpenIDConnectionDTO[]>([]);
     const [unlinkId, setUnlinkId] = useState<number | null>(null);
     const [email2fa, setEmail2fa] = useState(false);
+    const [mailerEnabled, setMailerEnabled] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -49,13 +50,14 @@ export function ProfileTab() {
         }
     }, [user]);
 
-    const fetchOidcData = async () => {
+    const fetchOptions = async () => {
         try {
-            const [items, links] = await Promise.all([
-                authApi.apiV1AuthOptionsGet().then(result => result.openIdConnectProviders),
+            const [options, links] = await Promise.all([
+                authApi.apiV1AuthOptionsGet(),
                 oidcApi.apiV1OidcLinksGet(),
             ]);
-            setOidcItems(items);
+            setOidcItems(options.openIdConnectProviders);
+            setMailerEnabled(options.canResetPassword ?? false);
             setConnections(links);
         } catch (e) {
             showError(e);
@@ -63,7 +65,7 @@ export function ProfileTab() {
     };
 
     useEffect(() => {
-        fetchOidcData();
+        fetchOptions();
     }, []);
 
     const handleLink = async (provider: string) => {
@@ -80,7 +82,7 @@ export function ProfileTab() {
         try {
             await oidcApi.apiV1OidcLinkIdDelete({id: unlinkId});
             toast.success("Account unlinked successfully.");
-            fetchOidcData();
+            fetchOptions();
         } catch (e) {
             showError(e);
         } finally {
@@ -190,31 +192,33 @@ export function ProfileTab() {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <ShieldCheck className="size-4"/> Two-Factor Authentication
-                    </CardTitle>
-                    <CardDescription>
-                        Require more than just a password to log in.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col space-y-0.5">
-                            <span className="font-medium text-sm">Email 2FA</span>
-                            <span className="text-xs text-muted-foreground">
-                                Receive a one-time password via email when logging in.
-                            </span>
+            {mailerEnabled && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <ShieldCheck className="size-4"/> Two-Factor Authentication
+                        </CardTitle>
+                        <CardDescription>
+                            Add an extra layer of security to your account.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col space-y-0.5">
+                                <span className="font-medium text-sm">Email 2FA</span>
+                                <span className="text-xs text-muted-foreground">
+                                    Receive a one-time password via email when logging in.
+                                </span>
+                            </div>
+                            <Switch
+                                checked={email2fa}
+                                onCheckedChange={handleToggleEmail2fa}
+                                disabled={loading}
+                            />
                         </div>
-                        <Switch
-                            checked={email2fa}
-                            onCheckedChange={handleToggleEmail2fa}
-                            disabled={loading}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
             {oidcItems.length > 0 && (
                 <Card>

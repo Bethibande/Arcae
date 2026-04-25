@@ -271,7 +271,7 @@ public class AuthenticationEndpoint {
                 && !user.roles.contains(UserRole.SYSTEM)) {
             final String remoteAddress = request.remoteAddress().hostAddress();
 
-            if (!user.twoFAMethods.isEmpty()) {
+            if (!user.twoFAMethods.isEmpty() && this.mailer.mailerEnabled()) {
                 return doSend2FARequiredResponse(user, remoteAddress);
             }
             return doLogin(user, remoteAddress);

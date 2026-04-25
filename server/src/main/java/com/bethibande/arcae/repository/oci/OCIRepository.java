@@ -6,6 +6,7 @@ import com.bethibande.arcae.jpa.files.FileUploadSession;
 import com.bethibande.arcae.jpa.files.OCISubject;
 import com.bethibande.arcae.jpa.files.StoredFile;
 import com.bethibande.arcae.jpa.repository.Repository;
+import com.bethibande.arcae.jpa.repository.RepositoryManager;
 import com.bethibande.arcae.k8s.KubernetesSupport;
 import com.bethibande.arcae.repository.*;
 import com.bethibande.arcae.repository.*;
@@ -64,21 +65,23 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                 info,
                 ctx.objectMapper().readValue(info.settings, OCIRepositoryConfig.class),
                 ctx.kubernetesSupport(),
-                ctx.executor()
+                ctx.executor(),
+                ctx.repositoryManager()
         );
     }
 
     public OCIRepository(final Repository info,
                          final OCIRepositoryConfig config,
                          final KubernetesSupport kubernetesSupport,
-                         final Executor executor) {
+                         final Executor executor,
+                         final RepositoryManager repositoryManager) {
         this.info = info;
         this.config = config;
         this.kubernetesSupport = kubernetesSupport;
         this.executor = executor;
 
         this.backend = new Lazy<>(() -> new S3Backend(config.s3Config()));
-        this.mirrorSupport = new OCIMirrorSupport(config, info);
+        this.mirrorSupport = new OCIMirrorSupport(config, info, repositoryManager);
         this.index = new OCIImageIndex(this);
     }
 
@@ -248,7 +251,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     private boolean mirrorManifest(final AuthContext auth,
                                    final String namespace,
                                    final String reference) {
-        final OCIStreamHandle remote = this.mirrorSupport.getManifestFromMirror(namespace, reference);
+        final OCIStreamHandle remote = this.mirrorSupport.getManifestFromMirror(auth, namespace, reference);
         if (remote != null) {
             final OCIPutManifestResult result = putManifest(
                     AuthContext.ofSystem(auth),
@@ -288,7 +291,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                 && this.mirrorSupport.canMirror(auth)
                 && shouldUpdate(namespace, reference)) {
             if (!this.mirrorSupport.isStoreArtifacts()) {
-                return this.mirrorSupport.getManifestFromMirror(namespace, reference);
+                return this.mirrorSupport.getManifestFromMirror(auth, namespace, reference);
             }
 
             mirrorManifest(auth, namespace, reference);
@@ -309,7 +312,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
                 && this.mirrorSupport.canMirror(auth)
                 && shouldUpdate(namespace, reference)) {
             if (!this.mirrorSupport.isStoreArtifacts()) {
-                return this.mirrorSupport.headManifestFromMirror(namespace, reference);
+                return this.mirrorSupport.headManifestFromMirror(auth, namespace, reference);
             }
 
             if (!mirrorManifest(auth, namespace, reference)) return null;
@@ -351,7 +354,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         if (info != null) return new OCIContentInfo(digest, info.contentLength(), info.contentType());
 
         if (this.mirrorSupport.isMirroringEnabled() && this.mirrorSupport.canMirror(auth)) {
-            return this.mirrorSupport.headBlobFromMirror(namespace, digest);
+            return this.mirrorSupport.headBlobFromMirror(auth, namespace, digest);
         }
 
         return null;
@@ -363,21 +366,18 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         if (handle != null) return handle;
 
         if (this.mirrorSupport.isMirroringEnabled() && this.mirrorSupport.canMirror(auth)) {
-            final OCIStreamHandle result = this.mirrorSupport.getBlobFromMirror(namespace, digest);
+            final StreamHandle result = this.mirrorSupport.getBlobFromMirror(auth, namespace, digest);
             if (result != null && this.mirrorSupport.isStoreArtifacts()) {
-                final StreamHandle resultHandle = result.streamHandle();
-                final InputStream pipe = pipeAndStoreData(namespace, digest, resultHandle);
+                final InputStream pipe = pipeAndStoreData(namespace, digest, result);
 
                 return new StreamHandle(
                         pipe,
-                        resultHandle.contentType(),
-                        resultHandle.contentLength()
+                        result.contentType(),
+                        result.contentLength()
                 );
             }
 
-            return result != null
-                    ? result.streamHandle()
-                    : null;
+            return result;
         }
 
         return null;
@@ -405,17 +405,18 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         }
     }
 
-    private StreamHandle mirrorBlobRange(final String namespace, final String digest, final long offset, final long length) {
-        final OCIStreamHandle result = this.mirrorSupport.getBlobRangeFromMirror(
+    private StreamHandle mirrorBlobRange(final AuthContext auth,
+                                         final String namespace,
+                                         final String digest,
+                                         final long offset,
+                                         final long length) {
+        return this.mirrorSupport.getBlobRangeFromMirror(
+                auth,
                 namespace,
                 digest,
                 offset,
                 offset + length - 1
         );
-
-        return result != null
-                ? result.streamHandle()
-                : null;
     }
 
     public StreamHandle getBlob(final AuthContext auth,
@@ -429,7 +430,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         final StreamHandle handle = this.backend.getValue().get(key, offset, length);
 
         if (handle == null && this.mirrorSupport.isMirroringEnabled()) {
-            return mirrorBlobRange(namespace, digest, offset, length); // Can't store this here as it is just a part of the blob
+            return mirrorBlobRange(auth, namespace, digest, offset, length); // Can't store this here as it is just a part of the blob
         }
 
         return handle;

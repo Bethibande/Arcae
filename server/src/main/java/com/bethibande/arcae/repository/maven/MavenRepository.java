@@ -4,6 +4,7 @@ import com.bethibande.arcae.jpa.artifact.Artifact;
 import com.bethibande.arcae.jpa.artifact.ArtifactVersion;
 import com.bethibande.arcae.jpa.files.StoredFile;
 import com.bethibande.arcae.jpa.repository.Repository;
+import com.bethibande.arcae.jpa.repository.RepositoryManager;
 import com.bethibande.arcae.repository.ManagedRepository;
 import com.bethibande.arcae.repository.RepositoryApplicationContext;
 import com.bethibande.arcae.repository.StreamHandle;
@@ -45,17 +46,23 @@ public class MavenRepository implements ManagedRepository {
     private final Executor executor;
 
     public MavenRepository(final Repository info, final RepositoryApplicationContext ctx) throws JsonProcessingException {
-        this(info, ctx.objectMapper().readValue(info.settings, MavenRepositoryConfig.class), ctx.executor());
+        this(
+                info,
+                ctx.objectMapper().readValue(info.settings, MavenRepositoryConfig.class),
+                ctx.executor(),
+                ctx.repositoryManager()
+        );
     }
 
     public MavenRepository(final Repository info,
                            final MavenRepositoryConfig config,
-                           final Executor executor) {
+                           final Executor executor,
+                           final RepositoryManager repositoryManager) {
         this.info = info;
         this.config = config;
         this.backend = new Lazy<>(() -> new S3Backend(config.s3Config()));
         this.fileIndexer = new MavenFileIndexer(info, this);
-        this.mirrorSupport = new MavenMirrorSupport(this, config.mirrorConfig());
+        this.mirrorSupport = new MavenMirrorSupport(this, config.mirrorConfig(), repositoryManager);
         this.executor = executor;
     }
 

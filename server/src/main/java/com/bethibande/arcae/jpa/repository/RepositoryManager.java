@@ -39,9 +39,17 @@ public class RepositoryManager {
             })
             .build();
 
+    protected final Cache<Long, Repository> repositoryIdCache = Caffeine.newBuilder() // TODO: Global cache invalidation and longer expiry time for these caches
+            .expireAfterWrite(Duration.ofSeconds(10))
+            .build();
+
     @PostConstruct
     protected void init() {
-        ctx = new RepositoryApplicationContext(this.mapper, this.kubernetesSupport, this.executor);
+        ctx = new RepositoryApplicationContext(this.mapper, this.kubernetesSupport, this.executor, this);
+    }
+
+    public Repository findRepositoryById(final long id) {
+        return this.repositoryIdCache.get(id, _ -> Repository.findById(id));
     }
 
     @SuppressWarnings("unchecked")

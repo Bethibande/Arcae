@@ -23,6 +23,10 @@ import java.util.Map;
  */
 public interface ManagedRepository {
 
+    /**
+     * Used to generate metadata that should be publicly accessible for all users.
+     * For example, the custom hostname used of a repository to display the pull command including the hostname.
+     */
     Map<String, Object> generateMetadata();
 
     Repository getInfo();

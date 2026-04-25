@@ -12,7 +12,9 @@ import {Separator} from "@/components/ui/separator.tsx";
 import {Globe, ShieldAlert} from "lucide-react";
 import {FormField} from "@/components/form-field.tsx";
 
-export function OciSettingsForm({value, save}: ExtraFormProps) {
+import {PackageManager} from "@/generated";
+
+export function OciSettingsForm({repository, value, save}: ExtraFormProps) {
     const form = useForm<any>({
         resolver: zodResolver(ociSettingsSchema),
         defaultValues: value ? JSON.parse(value) as OciSettingsSchema : defaultOciSettings
@@ -58,7 +60,7 @@ export function OciSettingsForm({value, save}: ExtraFormProps) {
 
             <S3Form form={form}/>
 
-            <MirrorForm form={form} placeholder="https://registry-1.docker.io" />
+            <MirrorForm form={form} packageManager={PackageManager.Oci} repositoryId={repository.id} placeholder="https://registry-1.docker.io" />
 
             <section id="external" className="space-y-6">
                 <h2 className="text-xl font-semibold flex items-center gap-2"><Globe/> External Access</h2>

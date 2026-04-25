@@ -14,7 +14,9 @@ import {S3Form} from "@/pages/repository/settings/s3-form.tsx";
 import {MirrorForm} from "@/pages/repository/settings/mirror-form.tsx";
 import {ShieldAlert} from "lucide-react";
 
-export function MavenSettingsForm({ value, save }: ExtraFormProps) {
+import {PackageManager} from "@/generated";
+
+export function MavenSettingsForm({ repository, value, save }: ExtraFormProps) {
     const form = useForm<MavenSettingsSchema>({
         resolver: zodResolver(mavenSettingsSchema),
         defaultValues: value ? JSON.parse(value) as MavenSettingsSchema : defaultMavenSettings
@@ -59,7 +61,7 @@ export function MavenSettingsForm({ value, save }: ExtraFormProps) {
 
             <S3Form form={form} />
 
-            <MirrorForm form={form} placeholder="https://repo1.maven.org/maven2" />
+            <MirrorForm form={form} packageManager={PackageManager.Maven} repositoryId={repository.id} placeholder="https://repo1.maven.org/maven2" />
         </div>
     );
 }

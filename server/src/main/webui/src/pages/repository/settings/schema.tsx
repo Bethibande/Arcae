@@ -38,12 +38,23 @@ export const s3ConfigSchema = z.object({
     secretKey: z.string().nonempty(),
 })
 
-export const mirrorConnectionSchema = z.object({
-    url: z.url(),
-    authType: z.enum(["NONE", "BASIC", "BEARER"]),
-    username: z.string(),
-    password: z.string(),
-})
+export const mirrorConnectionSchema = z.discriminatedUnion("internal", [
+    z.object({
+        internal: z.literal(true),
+        repositoryId: z.number(),
+        authType: z.enum(["APPLY_USER_AUTH", "APPLY_SYSTEM_AUTH"]),
+        username: z.string(),
+        password: z.string(),
+    }),
+
+    z.object({
+        internal: z.literal(false),
+        url: z.url(),
+        authType: z.enum(["NONE", "BASIC", "BEARER"]),
+        username: z.string(),
+        password: z.string(),
+    })
+])
 
 export const mirrorConfigSchema = z.object({
     enabled: z.boolean(),

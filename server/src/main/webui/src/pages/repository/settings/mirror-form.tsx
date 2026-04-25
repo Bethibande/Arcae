@@ -4,20 +4,39 @@ import {Field, FieldDescription, FieldLabel} from "@/components/ui/field.tsx";
 import {Switch} from "@/components/ui/switch.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
+import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx";
 import {Plus, RefreshCcw, Trash2} from "lucide-react";
 import {Separator} from "@/components/ui/separator.tsx";
 import {FormField} from "@/components/form-field.tsx";
+import {useEffect, useState} from "react";
+import {type PackageManager, type RepositoryOverviewDTO} from "@/generated";
+import {repositoryApi} from "@/lib/api.ts";
+import {showError} from "@/lib/errors.ts";
 
 interface MirrorFormProps {
     form: UseFormReturn<any>;
+    packageManager?: PackageManager;
+    repositoryId?: number;
     path?: string;
     placeholder?: string;
 }
 
-export function MirrorForm({ form, path = "mirrorConfig", placeholder }: MirrorFormProps) {
+export function MirrorForm({form, packageManager, repositoryId, path = "mirrorConfig", placeholder}: MirrorFormProps) {
+    const [repositories, setRepositories] = useState<RepositoryOverviewDTO[]>([]);
+
+    useEffect(() => {
+        repositoryApi.apiV1RepositoryOverviewGet()
+            .then(setRepositories)
+            .catch(showError);
+    }, []);
+
+    const usableRepositories = repositories
+        .filter((repo) => !packageManager || repo.repository.packageManager === packageManager)
+        .filter((repo) => !repositoryId || repo.repository.id !== repositoryId);
+
     const getPath = (field: string) => path ? `${path}.${field}` : field;
-    
-    const { fields, append, remove } = useFieldArray({
+
+    const {fields, append, remove} = useFieldArray({
         control: form.control,
         name: getPath("connections")
     });
@@ -63,7 +82,8 @@ export function MirrorForm({ form, path = "mirrorConfig", placeholder }: MirrorF
                                     <div className="space-y-0.5">
                                         <FieldLabel>Authorized Users Only</FieldLabel>
                                         <FieldDescription>
-                                            Only use mirrors if the requestor is authorized to write to the local repository.
+                                            Only use mirrors if the requestor is authorized to write to the local
+                                            repository.
                                         </FieldDescription>
                                     </div>
                                     <Switch
@@ -80,16 +100,24 @@ export function MirrorForm({ form, path = "mirrorConfig", placeholder }: MirrorF
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => append({ url: "", authType: "NONE", username: "", password: "" })}
+                                        onClick={() => append({
+                                            internal: false,
+                                            url: "",
+                                            authType: "NONE",
+                                            username: "",
+                                            password: "",
+                                            repositoryId: 0
+                                        })}
                                         className="gap-2"
                                     >
-                                        <Plus className="size-4" />
+                                        <Plus className="size-4"/>
                                         Add Connection
                                     </Button>
                                 </div>
 
                                 {fields.length === 0 ? (
-                                    <div className="border border-dashed rounded-xl p-8 flex items-center justify-center">
+                                    <div
+                                        className="border border-dashed rounded-xl p-8 flex items-center justify-center">
                                         <span className="text-muted-foreground">No connections configured.</span>
                                     </div>
                                 ) : (
@@ -104,35 +132,94 @@ export function MirrorForm({ form, path = "mirrorConfig", placeholder }: MirrorF
                                                         className={"absolute right-4 -top-2"}
                                                         onClick={() => remove(index)}
                                                     >
-                                                        <Trash2 className="size-4" />
+                                                        <Trash2 className="size-4"/>
                                                     </Button>
-                                                    <div className="flex items-start justify-between gap-4">
-                                                        <FormField
-                                                            className="flex-1"
-                                                            control={form.control}
-                                                            fieldName={`${getPath("connections")}.${index}.url` as any}
-                                                            label="Mirror URL"
-                                                            placeholder={placeholder}
-                                                        />
-                                                    </div>
+                                                    <Tabs
+                                                        value={form.watch(`${getPath("connections")}.${index}.internal`) ? "internal" : "external"}
+                                                        onValueChange={(value) => {
+                                                            const isInternal = value === "internal";
+                                                            form.setValue(`${getPath("connections")}.${index}.internal`, isInternal);
+                                                            form.setValue(`${getPath("connections")}.${index}.authType`, isInternal ? "APPLY_USER_AUTH" : "NONE");
+                                                        }}
+                                                    >
+                                                        <TabsList className="grid grid-cols-2">
+                                                            <TabsTrigger value="external">External (URL)</TabsTrigger>
+                                                            <TabsTrigger value="internal">Internal</TabsTrigger>
+                                                        </TabsList>
+
+                                                        <TabsContent value="external" className="pt-4">
+                                                            <FormField
+                                                                className="flex-1"
+                                                                control={form.control}
+                                                                fieldName={`${getPath("connections")}.${index}.url` as any}
+                                                                label="Mirror URL"
+                                                                placeholder={placeholder}
+                                                            />
+                                                        </TabsContent>
+
+                                                        <TabsContent value="internal" className="pt-4">
+                                                            <Field className="flex-1">
+                                                                <FieldLabel>Repository</FieldLabel>
+                                                                <Controller
+                                                                    name={`${getPath("connections")}.${index}.repositoryId`}
+                                                                    control={form.control}
+                                                                    render={({field}) => (
+                                                                        <Select
+                                                                            value={field.value?.toString()}
+                                                                            onValueChange={(v) => field.onChange(parseInt(v))}
+                                                                            disabled={usableRepositories.length === 0}
+                                                                        >
+                                                                            <SelectTrigger>
+                                                                                {usableRepositories.length > 0
+                                                                                    ? (<SelectValue placeholder="Select a repository"/>)
+                                                                                    : (<span className={"text-xs"}>No repositories available</span>)}
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {usableRepositories.map((repo) => (
+                                                                                    <SelectItem key={repo.repository.id}
+                                                                                                value={repo.repository.id!.toString()}>
+                                                                                        {repo.repository.name}
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
+                                                                />
+                                                            </Field>
+                                                        </TabsContent>
+                                                    </Tabs>
 
                                                     <Field>
                                                         <FieldLabel>Authentication Type</FieldLabel>
                                                         <Controller
                                                             name={`${getPath("connections")}.${index}.authType`}
                                                             control={form.control}
-                                                            render={({ field }) => (
+                                                            render={({field}) => (
                                                                 <Select
                                                                     value={field.value}
                                                                     onValueChange={field.onChange}
                                                                 >
                                                                     <SelectTrigger>
-                                                                        <SelectValue />
+                                                                        <SelectValue/>
                                                                     </SelectTrigger>
                                                                     <SelectContent>
-                                                                        <SelectItem value="NONE">None</SelectItem>
-                                                                        <SelectItem value="BASIC">Basic</SelectItem>
-                                                                        <SelectItem value="BEARER">Bearer Token</SelectItem>
+                                                                        {form.watch(`${getPath("connections")}.${index}.internal`) ? (
+                                                                            <>
+                                                                                <SelectItem value="APPLY_USER_AUTH">Apply
+                                                                                    User Authentication</SelectItem>
+                                                                                <SelectItem value="APPLY_SYSTEM_AUTH">Skip
+                                                                                    authentication</SelectItem>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <SelectItem
+                                                                                    value="NONE">None</SelectItem>
+                                                                                <SelectItem
+                                                                                    value="BASIC">Basic</SelectItem>
+                                                                                <SelectItem value="BEARER">Bearer
+                                                                                    Token</SelectItem>
+                                                                            </>
+                                                                        )}
                                                                     </SelectContent>
                                                                 </Select>
                                                             )}

@@ -4,6 +4,9 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 import {Button} from "@/components/ui/button";
 import {Check, Copy, Terminal} from "lucide-react";
 import {type ArtifactDTO, type ArtifactVersionDTO, PackageManager, type RepositoryOverviewDTO} from "@/generated";
+import {Prism as SyntaxHighlighter} from "react-syntax-highlighter";
+import {vscDarkPlus, vs} from "react-syntax-highlighter/dist/esm/styles/prism";
+import {useTheme} from "@/components/theme-provider.tsx";
 
 interface DependencySnippet {
     name: string;
@@ -20,6 +23,7 @@ interface UsageDetailsProps {
 
 export function UsageDetails({ artifact, version, packageManager, repository }: UsageDetailsProps) {
     const [copied, setCopied] = useState<string | null>(null);
+    const { theme } = useTheme();
 
     const getSnippets = (): DependencySnippet[] => {
         if (packageManager === PackageManager.Maven) {
@@ -118,10 +122,29 @@ export function UsageDetails({ artifact, version, packageManager, repository }: 
 
                     {snippets.map(s => (
                         <TabsContent key={s.name} value={s.name}>
-                            <div className="relative group">
-                                <pre className="p-4 bg-muted/50 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre">
+                            <div className="relative group bg-muted/50 rounded-lg">
+                                <SyntaxHighlighter
+                                    key={theme}
+                                    language={s.language}
+                                    style={theme === "dark" ? vscDarkPlus : vs}
+                                    customStyle={{
+                                        margin: 0,
+                                        padding: '1rem',
+                                        fontSize: '0.75rem',
+                                        lineHeight: '1rem',
+                                        borderRadius: '0.5rem',
+                                        backgroundColor: 'transparent',
+                                        border: '1px solid hsl(var(--input))',
+                                    }}
+                                    codeTagProps={{
+                                        style: {
+                                            fontFamily: 'inherit',
+                                            backgroundColor: 'transparent',
+                                        }
+                                    }}
+                                >
                                     {s.content}
-                                </pre>
+                                </SyntaxHighlighter>
                                 <Button
                                     size="icon"
                                     variant="ghost"

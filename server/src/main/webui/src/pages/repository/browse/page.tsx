@@ -21,6 +21,9 @@ import {Button} from "@/components/ui/button.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card.tsx";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx";
+import {Prism as SyntaxHighlighter} from "react-syntax-highlighter";
+import {vscDarkPlus, vs} from "react-syntax-highlighter/dist/esm/styles/prism";
+import {useTheme} from "@/components/theme-provider.tsx";
 
 import {
     Pagination,
@@ -41,6 +44,7 @@ const PAGE_SIZE = 10;
 
 function RepositoryConfigDetails({ repository }: { repository: RepositoryOverviewDTO }) {
     const [copied, setCopied] = useState<string | null>(null);
+    const { theme } = useTheme();
 
     const getSnippets = (): RepositorySnippet[] => {
         const baseUrl = `${window.location.origin}/repositories/maven/${repository.repository.name}`;
@@ -96,10 +100,29 @@ function RepositoryConfigDetails({ repository }: { repository: RepositoryOvervie
 
                     {snippets.map(s => (
                         <TabsContent key={s.name} value={s.name}>
-                            <div className="relative group">
-                                <pre className="p-4 bg-muted/50 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre">
+                            <div className="relative group bg-muted/50 rounded-lg">
+                                <SyntaxHighlighter
+                                    key={theme}
+                                    language={s.language}
+                                    style={theme === "dark" ? vscDarkPlus : vs}
+                                    customStyle={{
+                                        margin: 0,
+                                        padding: '1rem',
+                                        fontSize: '0.75rem',
+                                        lineHeight: '1rem',
+                                        borderRadius: '0.5rem',
+                                        border: '1px solid hsl(var(--input))',
+                                        backgroundColor: 'transparent'
+                                    }}
+                                    codeTagProps={{
+                                        style: {
+                                            fontFamily: 'inherit',
+                                            backgroundColor: 'transparent',
+                                        }
+                                    }}
+                                >
                                     {s.content}
-                                </pre>
+                                </SyntaxHighlighter>
                                 <button
                                     className="absolute right-2 top-2 h-8 w-8 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
                                     onClick={() => copyToClipboard(s.content, s.name)}

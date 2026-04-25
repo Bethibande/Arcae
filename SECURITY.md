@@ -37,6 +37,8 @@ To prevent brute-force attacks and resource exhaustion, we enforce rate limits o
 > we recommend implementing sticky sessions at the load balancer or using an external rate-limiting provider.
 
 - **Authentication:** Login attempts are limited to **20 requests per hour, per IP address**.
+- **2FA Token Generation:**
+    - **IP Throttle:** 2FA token generation requests are limited to **1 request per minute** to prevent abuse.
 - **Password Resets:**
     - **IP Throttle:** Password reset requests and token verification share a combined limit of **6 requests per 15 minutes** or **15 requests per 24 hours per IP**.
     - **User Quota:** Each account is limited to **3 pending reset attempts per 24 hours**. After this quota is reached, no further emails will be dispatched until the daily cleanup job runs.

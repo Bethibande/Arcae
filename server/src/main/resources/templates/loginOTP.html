@@ -1,0 +1,16 @@
+{#include layout title = "One time password"}
+    {#body}
+        <p>
+            Hello {username},
+        </p>
+        <p>
+            You have requested to login using a one time password. Please use the following code to proceed:
+        </p>
+        <div style="background-color: #18181b; color: #fafafa; padding: 16px; text-align: center; border-radius: 8px; margin: 24px 0; font-family: monospace; font-size: 24px; letter-spacing: 4px; border: 1px solid #27272a;">
+            {token}
+        </div>
+        <p style="color: #a1a1aa; font-size: 14px;">
+            This code will expire in 10 minutes. If you did not request this code, you can safely ignore this email.
+        </p>
+    {/body}
+{/include}

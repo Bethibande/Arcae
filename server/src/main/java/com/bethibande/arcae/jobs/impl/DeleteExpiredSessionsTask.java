@@ -3,7 +3,9 @@ package com.bethibande.arcae.jobs.impl;
 import com.bethibande.arcae.jobs.JobType;
 import com.bethibande.arcae.jpa.security.RefreshToken;
 import com.bethibande.arcae.jpa.security.UserSession;
+import com.bethibande.arcae.jpa.user.OneTimePassword;
 import com.bethibande.arcae.jpa.user.PasswordResetToken;
+import com.bethibande.arcae.jpa.user.TwoFASession;
 import com.bethibande.arcae.security.UserSessionService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -33,6 +35,8 @@ public class DeleteExpiredSessionsTask implements JobTask<Object> {
             UserSession.delete("created < ?1", minSessionAge);
             RefreshToken.delete("created < ?1", minRefreshTokenAge);
             PasswordResetToken.delete("expiration < ?1", now);
+            OneTimePassword.delete("expiration < ?1", now);
+            TwoFASession.delete("expiration < ?1", now);
         });
     }
 }

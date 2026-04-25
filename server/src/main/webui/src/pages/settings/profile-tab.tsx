@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {Link2, Unlink, User} from "lucide-react";
+import {Link2, ShieldCheck, Unlink, User} from "lucide-react";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card.tsx";
 import {FieldDescription} from "@/components/ui/field.tsx";
 import {Separator} from "@/components/ui/separator.tsx";
@@ -7,12 +7,13 @@ import {Button} from "@/components/ui/button.tsx";
 import {toast} from "sonner";
 import {useAuth} from "@/components/auth-provider.tsx";
 import {authApi, oidcApi, userApi} from "@/lib/api.ts";
+import {Switch} from "@/components/ui/switch.tsx";
 import {PasswordConfirmDialog} from "./password-confirm-dialog.tsx";
 import {FormField} from "@/components/form-field.tsx";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {type OpenIDConnectionDTO} from "@/generated";
+import {type OpenIDConnectionDTO, TwoFAMethod} from "@/generated";
 import {showError} from "@/lib/errors.ts";
 import {
     AlertDialog,
@@ -39,6 +40,14 @@ export function ProfileTab() {
     const [oidcItems, setOidcItems] = useState<string[]>([]);
     const [connections, setConnections] = useState<OpenIDConnectionDTO[]>([]);
     const [unlinkId, setUnlinkId] = useState<number | null>(null);
+    const [email2fa, setEmail2fa] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            console.log(user.twoFAMethods)
+            setEmail2fa(user.twoFAMethods?.includes(TwoFAMethod.Email) ?? false);
+        }
+    }, [user]);
 
     const fetchOidcData = async () => {
         try {
@@ -124,6 +133,24 @@ export function ProfileTab() {
         }
     };
 
+    const handleToggleEmail2fa = async (checked: boolean) => {
+        try {
+            setLoading(true);
+            const methods = checked ? [TwoFAMethod.Email] : [];
+            await userApi.apiV1UserSelf2faPut({
+                update2FAMethodsUserDTO: {
+                    twoFAMethods: methods
+                }
+            });
+            await refresh();
+            toast.success(`Email 2FA ${checked ? "enabled" : "disabled"} successfully.`);
+        } catch (e) {
+            showError(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <section className="space-y-6">
             <div>
@@ -160,6 +187,32 @@ export function ProfileTab() {
                             </Button>
                         </div>
                     </form>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <ShieldCheck className="size-4"/> Two-Factor Authentication
+                    </CardTitle>
+                    <CardDescription>
+                        Require more than just a password to log in.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col space-y-0.5">
+                            <span className="font-medium text-sm">Email 2FA</span>
+                            <span className="text-xs text-muted-foreground">
+                                Receive a one-time password via email when logging in.
+                            </span>
+                        </div>
+                        <Switch
+                            checked={email2fa}
+                            onCheckedChange={handleToggleEmail2fa}
+                            disabled={loading}
+                        />
+                    </div>
                 </CardContent>
             </Card>
 

@@ -7,6 +7,7 @@ import {AuthProvider} from "@/components/auth-provider.tsx"
 import {ProtectedRoute} from "@/components/auth/protected-route.tsx"
 import MainLayout from "@/components/layout/main-layout.tsx"
 import LoginPage from "@/pages/login/page.tsx"
+import TwoFAMailPage from "@/pages/login/2fa-mail.tsx"
 import PasswordResetPage from "@/pages/login/password-reset.tsx"
 import DashboardPage from "@/pages/dashboard/page.tsx"
 import RepositoryBrowsePage from "@/pages/repository/browse/page.tsx"
@@ -69,6 +70,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/repository/:id/browse" element={<RepositoryBrowsePage />} />
                 <Route path="/artifact/:id" element={<ArtifactPage />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/login/2fa/mail" element={<TwoFAMailPage />} />
                 <Route path="/login/reset" element={<PasswordResetPage />} />
                 <Route path="/login/oidc/complete/:provider" element={<OidcCompletePage />} />
                 <Route path="/setup" element={<SetupPage />} />

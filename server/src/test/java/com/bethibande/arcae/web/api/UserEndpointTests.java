@@ -45,7 +45,8 @@ public class UserEndpointTests extends AbstractWebTests {
                 USERNAME,
                 "abc@bethibande.com",
                 PASSWORD,
-                List.of(UserRole.DEFAULT)
+                List.of(UserRole.DEFAULT),
+                List.of()
         ))
                 .post()
                 .then()
@@ -66,6 +67,7 @@ public class UserEndpointTests extends AbstractWebTests {
                 USERNAME,
                 "repository-test@bethibande.com",
                 List.of(UserRole.DEFAULT),
+                List.of(),
                 id
         ))
                 .put()
@@ -85,6 +87,7 @@ public class UserEndpointTests extends AbstractWebTests {
                 "test",
                 "",
                 List.of(UserRole.DEFAULT),
+                List.of(),
                 348573856734345L
         ))
                 .put()

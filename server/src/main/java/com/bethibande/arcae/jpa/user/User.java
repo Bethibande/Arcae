@@ -18,7 +18,9 @@ import java.util.stream.Collectors;
 @RegisterForReflection
 @Table(name = "Users")
 @EntityDTO(excludeProperties = "id")
-@EntityDTO(excludeProperties = {"id", "roles"})
+@EntityDTO(excludeProperties = {"id", "roles", "twoFAMethods"}, name = "UserDTOWithoutIdAndRoles")
+// TODO: Field whitelist instead
+@EntityDTO(excludeProperties = {"id", "roles", "password", "name", "email"}, name = "Update2FAMethodsUserDTO")
 @EntityDTO(excludeProperties = "password")
 public class User extends PanacheEntity implements Principal {
 
@@ -37,6 +39,11 @@ public class User extends PanacheEntity implements Principal {
     @ElementCollection(fetch = FetchType.EAGER)
     @Column(columnDefinition = "varchar(255)")
     public List<UserRole> roles;
+
+    @Enumerated(EnumType.STRING)
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Column(columnDefinition = "varchar(64)")
+    public List<TwoFAMethod> twoFAMethods;
 
     @Override
     public String getName() {

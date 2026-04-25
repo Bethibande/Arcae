@@ -25,6 +25,7 @@ import java.util.Optional;
 public class UserAuthenticationMechanism implements HttpAuthenticationMechanism {
 
     public static final String COOKIE_NAME = "Identity";
+    public static final String TWO_FA_COOKIE_NAME = "2FAIdentity";
 
     @ConfigProperty(name = ManagementServer.MANAGEMENT_PORT_PROPERTY)
     protected int managementPort;

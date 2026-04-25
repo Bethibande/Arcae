@@ -10,4 +10,6 @@ public class MailTemplates {
 
     public static native TemplateInstance passwordReset(final String token, final String username);
 
+    public static native TemplateInstance loginOTP(final String token, final String username);
+
 }

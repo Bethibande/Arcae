@@ -11,6 +11,7 @@ public enum JobType {
 
     // One-off jobs
     UPDATE_SEARCH_INDEX,
-    RESET_PASSWORD
+    RESET_PASSWORD,
+    SEND_OTP
 
 }

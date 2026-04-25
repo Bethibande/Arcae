@@ -189,4 +189,141 @@
     <changeSet id="1777046542794-1" author="bethibande">
         <addUniqueConstraint tableName="HelmMetadata" columnNames="version_id"/>
     </changeSet>
+
+    <changeSet id="1777105695630-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="OneTimePassword_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1777105695630-2"
+               author="bethibande">
+        <createTable tableName="OneTimePassword">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_onetimepassword"/>
+            </column>
+            <column name="user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code"
+                    type="VARCHAR(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1777105695630-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="user_id"
+                                 baseTableName="OneTimePassword"
+                                 constraintName="FK_ONETIMEPASSWORD_ON_USER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+    <changeSet id="1777105743901-1" author="bethibande">
+        <createIndex tableName="onetimepassword" indexName="idx_otp_code_user_id">
+            <column name="code"/>
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="1777106150540-1"
+               author="bethibande">
+        <createTable tableName="User_twoFAMethods">
+            <column name="User_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="twoFAMethods"
+                    type="varchar(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1777106150540-2"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="User_id"
+                                 baseTableName="User_twoFAMethods"
+                                 constraintName="fk_user_twofamethods_on_user"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+
+    <changeSet id="1777106529737-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="TwoFASession_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1777106529737-2"
+               author="bethibande">
+        <createTable tableName="TwoFASession">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_twofasession"/>
+            </column>
+            <column name="user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="token"
+                    type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration"
+                    type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ip"
+                    type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1777106529737-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="user_id"
+                                 baseTableName="TwoFASession"
+                                 constraintName="FK_TWOFASESSION_ON_USER"
+                                 referencedColumnNames="id"
+                                 referencedTableName="Users"/>
+    </changeSet>
+
+    <changeSet id="1777106625920-4"
+               author="bethibande">
+        <dropForeignKeyConstraint baseTableName="onetimepassword"
+                                  constraintName="fk_onetimepassword_on_user"/>
+    </changeSet>
+    <changeSet id="1777106625920-1"
+               author="bethibande">
+        <addColumn tableName="OneTimePassword">
+            <column name="session_id"
+                    type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1777106625920-2"
+               author="bethibande">
+        <addNotNullConstraint columnName="session_id"
+                              tableName="OneTimePassword"/>
+    </changeSet>
+    <changeSet id="1777106625920-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="session_id"
+                                 baseTableName="OneTimePassword"
+                                 constraintName="FK_ONETIMEPASSWORD_ON_SESSION"
+                                 referencedColumnNames="id"
+                                 referencedTableName="TwoFASession"/>
+    </changeSet>
+    <changeSet id="1777106625920-6"
+               author="bethibande">
+        <dropColumn columnName="user_id"
+                    tableName="onetimepassword"/>
+    </changeSet>
 </databaseChangeLog>

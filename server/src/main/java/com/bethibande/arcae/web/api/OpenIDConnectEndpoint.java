@@ -5,6 +5,7 @@ import com.bethibande.arcae.jpa.user.User;
 import com.bethibande.arcae.security.oidc.OpenIDConnectOptions;
 import com.bethibande.arcae.security.oidc.OpenIdConnectService;
 import com.bethibande.arcae.web.AuthenticatedUser;
+import com.bethibande.arcae.web.api.auth.AuthenticationEndpoint;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.security.Authenticated;

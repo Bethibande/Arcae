@@ -1,14 +1,12 @@
-package com.bethibande.arcae.web.api;
+package com.bethibande.arcae.web.api.auth;
 
 import com.bethibande.arcae.jobs.BuiltinJobScheduler;
 import com.bethibande.arcae.jobs.impl.PasswordResetTask;
+import com.bethibande.arcae.jobs.impl.SendOTPTask;
 import com.bethibande.arcae.jpa.security.OpenIDConnectProvider;
 import com.bethibande.arcae.jpa.security.RefreshToken;
 import com.bethibande.arcae.jpa.security.UserSession;
-import com.bethibande.arcae.jpa.user.PasswordResetToken;
-import com.bethibande.arcae.jpa.user.User;
-import com.bethibande.arcae.jpa.user.UserDTOWithoutPassword;
-import com.bethibande.arcae.jpa.user.UserRole;
+import com.bethibande.arcae.jpa.user.*;
 import com.bethibande.arcae.mail.MailerService;
 import com.bethibande.arcae.security.SecurityAttributes;
 import com.bethibande.arcae.security.UserAuthenticationMechanism;
@@ -17,6 +15,7 @@ import com.bethibande.arcae.web.AuthenticatedUser;
 import io.quarkiverse.bucket4j.runtime.RateLimited;
 import io.quarkiverse.bucket4j.runtime.resolver.IpResolver;
 import io.quarkus.elytron.security.common.BcryptUtil;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.panache.common.Sort;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -31,6 +30,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wildfly.security.util.PasswordUtil;
@@ -59,6 +59,9 @@ public class AuthenticationEndpoint {
 
     @Inject
     protected PasswordResetTask passwordResetTask;
+
+    @Inject
+    protected SendOTPTask sendOTPTask;
 
     @Inject
     protected AuthenticatedUser authenticatedUser;
@@ -186,6 +189,55 @@ public class AuthenticationEndpoint {
         this.userSessionService.invalidateSession(session);
     }
 
+    public record TwoFAToken(
+            String token
+    ) {
+    }
+
+    @GET
+    @PermitAll
+    @Transactional
+    @Path("/2fa/mail")
+    @RateLimited(bucket = "2fa-send", identityResolver = IpResolver.class)
+    public Response sendMail2FaToken(final @CookieParam(UserAuthenticationMechanism.TWO_FA_COOKIE_NAME) String sessionToken) {
+        final TwoFASession session = TwoFASession.find("token = ?1", sessionToken).firstResult();
+        if (session == null) throw new NotFoundException();
+
+        this.builtinJobScheduler.runOnce(
+                this.sendOTPTask,
+                new SendOTPTask.Config(session.id)
+        );
+
+        return Response.ok().build();
+    }
+
+    @POST
+    @PermitAll
+    @Transactional
+    @Path("/2fa/mail")
+    @RateLimited(bucket = "auth", identityResolver = IpResolver.class)
+    public Response submitMail2FaToken(final TwoFAToken token,
+                                       final @CookieParam(UserAuthenticationMechanism.TWO_FA_COOKIE_NAME) String twoFaSessionToken,
+                                       final @Context HttpServerRequest request) {
+        final TwoFASession session = TwoFASession.find("token = ?1", twoFaSessionToken).firstResult();
+        if (session == null) return Response.status(Response.Status.NOT_FOUND).build();
+
+        final OneTimePassword otp = OneTimePassword.find("code = ?1", token.token).firstResult();
+        if (otp == null) return Response.status(Response.Status.NOT_FOUND).build();
+
+        final String ip = request.remoteAddress().host();
+
+        if (otp.isExpired()
+                || !session.isValid()
+                || !Objects.equals(session.ip, ip)
+                || !Objects.equals(otp.session, session)) return Response.status(Response.Status.UNAUTHORIZED).build();
+
+        OneTimePassword.delete("session = ?1", session);
+        TwoFASession.delete("token = ?1", twoFaSessionToken);
+
+        return doLogin(session.user, ip);
+    }
+
     @POST
     @PermitAll
     @Path("/login")
@@ -217,16 +269,43 @@ public class AuthenticationEndpoint {
                 && passwordMatches
                 && !hashToCompare.isBlank()
                 && !user.roles.contains(UserRole.SYSTEM)) {
-            return doLogin(user, request.remoteAddress().hostAddress());
+            final String remoteAddress = request.remoteAddress().hostAddress();
+
+            if (!user.twoFAMethods.isEmpty()) {
+                return doSend2FARequiredResponse(user, remoteAddress);
+            }
+            return doLogin(user, remoteAddress);
         } else {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
+    }
+
+    protected Response doSend2FARequiredResponse(final User user, final String remoteAddress) {
+        final TwoFASession session = QuarkusTransaction.requiringNew().call(() -> TwoFASession.create(user, remoteAddress));
+        final int age = (int) Duration.between(Instant.now(), session.expiration).toSeconds();
+
+        return Response.ok()
+                .cookie(
+                        new NewCookie.Builder(UserAuthenticationMechanism.TWO_FA_COOKIE_NAME)
+                                .value(session.token)
+                                .path("/api/v1/auth/2fa")
+                                .maxAge(age)
+                                .httpOnly(true)
+                                .secure(true)
+                                .build()
+                )
+                .entity(new LoginResponse(
+                        LoginResult.REQUIRES_2FA,
+                        null
+                ))
+                .build();
     }
 
     @GET
     @PermitAll
     @Transactional
     @Path("/refresh")
+    @APIResponseSchema(LoginResponse.class)
     @RateLimited(bucket = "auth-refresh", identityResolver = IpResolver.class)
     public Response refresh(final @CookieParam(REFRESH_TOKEN_COOKIE_NAME) String refreshToken, final @Context HttpServerRequest request) {
         final RefreshToken token = RefreshToken.find("token = ?1", refreshToken).firstResult();
@@ -267,6 +346,10 @@ public class AuthenticationEndpoint {
                                 .maxAge((int) maxRefreshTokenAge.toSeconds())
                                 .build()
                 )
+                .entity(new LoginResponse(
+                        LoginResult.LOGGED_IN,
+                        session.expiresAfter()
+                ))
                 .build();
     }
 

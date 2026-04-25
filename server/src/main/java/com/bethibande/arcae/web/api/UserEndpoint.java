@@ -51,6 +51,7 @@ public class UserEndpoint {
         user.name = dto.name();
         user.email = dto.email();
         user.roles = dto.roles();
+        user.twoFAMethods = dto.twoFAMethods();
         user.password = BcryptUtil.bcryptHash(dto.password());
         user.persist();
 
@@ -67,6 +68,7 @@ public class UserEndpoint {
         user.name = dto.name();
         user.email = dto.email();
         user.roles = dto.roles();
+        user.twoFAMethods = dto.twoFAMethods();
         user.persist();
 
         return dto;
@@ -175,6 +177,21 @@ public class UserEndpoint {
         user.persist();
 
         this.userSessionService.updateSession(this.authenticatedUser.getSession());
+    }
+
+    @PUT
+    @Transactional
+    @Authenticated
+    @Path("/self/2fa")
+    public void updateSelf2FAMethods(final Update2FAMethodsUserDTO dto) {
+        final User self = this.authenticatedUser.getSelf();
+
+        final User entity = User.findById(self.id); // 'self' USer is detached from the session
+        entity.twoFAMethods = dto.twoFAMethods();
+
+        if (this.authenticatedUser.getSession() != null) {
+            this.userSessionService.updateSession(this.authenticatedUser.getSession());
+        }
     }
 
     public record PasswordResetForm(

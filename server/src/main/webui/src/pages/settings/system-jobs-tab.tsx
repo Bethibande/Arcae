@@ -50,6 +50,10 @@ const JOB_TRANSLATIONS: Record<JobType, { title: string; description: string }> 
     [JobType.CleanUpDatabase]: {
         title: "Cleanup Database",
         description: "Removes expired data from the database",
+    },
+    [JobType.SendOtp]: {
+        title: "Send OTP",
+        description: "Sends One-Time Password to a user for authentication",
     }
 };
 

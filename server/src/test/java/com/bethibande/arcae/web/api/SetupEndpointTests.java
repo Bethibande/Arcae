@@ -39,7 +39,8 @@ public class SetupEndpointTests {
                         "admin",
                         "",
                         "password",
-                        List.of(UserRole.ADMIN)
+                        List.of(UserRole.ADMIN),
+                        List.of()
                 ))
                 .header("Content-Type", "application/json");
     }

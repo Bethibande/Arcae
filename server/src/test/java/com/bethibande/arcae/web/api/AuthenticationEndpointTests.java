@@ -2,6 +2,7 @@ package com.bethibande.arcae.web.api;
 
 import com.bethibande.arcae.security.UserAuthenticationMechanism;
 import com.bethibande.arcae.web.AbstractWebTests;
+import com.bethibande.arcae.web.api.auth.AuthenticationEndpoint;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.response.ExtractableResponse;

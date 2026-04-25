@@ -14,12 +14,14 @@ import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Sort;
 import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
 import org.apache.http.HttpStatus;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
 import org.hibernate.search.engine.search.predicate.dsl.PredicateFinalStep;
 import org.hibernate.search.engine.search.query.SearchResult;
@@ -34,13 +36,16 @@ import java.util.List;
 public class UserEndpoint {
 
     @Inject
-    protected SearchSession searchSession;
+    protected Instance<SearchSession> searchSession;
 
     @Inject
     protected AuthenticatedUser authenticatedUser;
 
     @Inject
     protected UserSessionService userSessionService;
+
+    @ConfigProperty(name = "arcae.search.enabled")
+    protected boolean useSearchORM;
 
     @POST
     @Transactional
@@ -83,13 +88,10 @@ public class UserEndpoint {
         return UserDTOWithoutPassword.from(user);
     }
 
-    @GET
-    @Transactional
-    @Path("/search")
-    public PagedResponse<UserDTOWithoutPassword> search(final @QueryParam("q") String query,
-                                                        final @QueryParam("p") @Min(0) int page,
-                                                        final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
-        final SearchResult<User> result = this.searchSession.search(User.class)
+    protected PagedResponse<UserDTOWithoutPassword> searchORM(final String query,
+                                                              final int page,
+                                                              final int pageSize) {
+        final SearchResult<User> result = this.searchSession.get().search(User.class)
                 .where(q -> {
                     final List<PredicateFinalStep> predicates = new ArrayList<>();
                     predicates.add(q.match()
@@ -120,6 +122,31 @@ public class UserEndpoint {
                 page,
                 totalPages,
                 (int) hits
+        );
+    }
+
+    @GET
+    @Transactional
+    @Path("/search")
+    public PagedResponse<UserDTOWithoutPassword> search(final @QueryParam("q") String query,
+                                                        final @QueryParam("p") @Min(0) int page,
+                                                        final @QueryParam("s") @Max(100) @DefaultValue("20") int pageSize) {
+        if (this.useSearchORM) {
+            return searchORM(query, page, pageSize);
+        }
+
+        final PanacheQuery<User> q = User.find("name LIKE ?1 OR email LIKE ?1 ORDER BY name", "%" + query + "%");
+        final long total = q.count();
+
+        return new PagedResponse<>(
+                q.page(page, pageSize)
+                        .list()
+                        .stream()
+                        .map(UserDTOWithoutPassword::from)
+                        .toList(),
+                page,
+                (int) Math.ceil(total / (double) pageSize),
+                (int) total
         );
     }
 

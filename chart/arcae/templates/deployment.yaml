@@ -49,6 +49,8 @@ spec:
               path: /q/health/ready
               port: management
           env:
+            - name: ARCAE_SEARCH_ENABLED
+              value: {{ .Values.externalConfig.search.enabled | quote }}
             - name: DATABASE_URL
               value: {{ .Values.externalConfig.database.url | quote }}
             - name: DATABASE_USERNAME

@@ -10,12 +10,15 @@ import com.bethibande.arcae.jpa.user.User;
 import com.bethibande.arcae.repository.ManagedRepository;
 import com.bethibande.arcae.repository.security.AuthContext;
 import com.bethibande.arcae.web.AuthenticatedUser;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Sort;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
 import org.hibernate.search.engine.search.predicate.dsl.PredicateFinalStep;
 import org.hibernate.search.engine.search.query.SearchResult;
@@ -27,11 +30,6 @@ import java.util.List;
 
 @Path("/api/v1/artifact")
 public class ArtifactEndpoint {
-
-    @Inject
-    RepositoryManager repositoryManager;
-    @Inject
-    AuthenticatedUser authenticatedUser;
 
     public enum ArtifactSortOrder {
         BEST_MATCH,
@@ -56,17 +54,20 @@ public class ArtifactEndpoint {
     }
 
     @Inject
-    protected SearchSession searchSession;
+    protected RepositoryManager repositoryManager;
 
-    @GET
-    @Transactional
-    public PagedResponse<ArtifactDTO> searchByGroupAndName(final @BeanParam ArtifactQuery query) {
-        final User self = authenticatedUser.getSelf();
-        final Repository repository = Repository.findById(query.repositoryId());
-        if (repository == null) throw new NotFoundException("Unknown repository");
-        if (!repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
+    @Inject
+    protected AuthenticatedUser authenticatedUser;
 
-        final SearchResult<Artifact> result = searchSession.search(Artifact.class)
+    @Inject
+    protected Instance<SearchSession> searchSession;
+
+    @ConfigProperty(name = "arcae.search.enabled")
+    protected boolean useSearchORM;
+
+    protected PagedResponse<ArtifactDTO> searchByGroupAndNameUsingSearchORM(final ArtifactQuery query) {
+        final SearchResult<Artifact> result = searchSession.get()
+                .search(Artifact.class)
                 .where(q -> {
                     final List<PredicateFinalStep> predicates = new ArrayList<>();
                     predicates.add(q.match().field("repository.id").matching(query.repositoryId()));
@@ -100,18 +101,47 @@ public class ArtifactEndpoint {
         );
     }
 
+    protected PagedResponse<ArtifactDTO> searchByGroupAndNameUsingDatabase(final ArtifactQuery query) {
+        final Sort sort = switch (query.sortOrder()) {
+            case LAST_UPDATED -> Sort.descending("lastUpdated");
+            case BEST_MATCH -> Sort.ascending("groupId", "artifactId");
+        };
+
+        final PanacheQuery<Artifact> q = query.text() != null
+                ? Artifact.find("repository.id = ?1 AND (groupId LIKE ?2 OR artifactId LIKE ?2)", sort, query.repositoryId(), "%" + query.text + "%")
+                : Artifact.find("repository.id = ?1", sort, query.repositoryId());
+
+        final long total = q.count();
+        final int totalPages = (int) Math.ceil((double) total / query.pageSize());
+
+        return new PagedResponse<>(
+                q.page(query.page(), query.pageSize())
+                        .stream()
+                        .map(ArtifactDTO::from)
+                        .toList(),
+                query.page(),
+                totalPages,
+                (int) total
+        );
+    }
+
     @GET
     @Transactional
-    @Path("/{id}/versions/search")
-    public PagedResponse<ArtifactVersionDTO> searchVersions(final @PathParam("id") long id, final @BeanParam VersionQuery query) {
-        final Artifact artifact = Artifact.findById(id);
-        if (artifact == null) throw new NotFoundException();
-
+    public PagedResponse<ArtifactDTO> searchByGroupAndName(final @BeanParam ArtifactQuery query) {
         final User self = authenticatedUser.getSelf();
-        final Repository repository = artifact.repository;
+        final Repository repository = Repository.findById(query.repositoryId());
+        if (repository == null) throw new NotFoundException("Unknown repository");
         if (!repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
 
-        final SearchResult<ArtifactVersion> result = searchSession.search(ArtifactVersion.class)
+        if (this.useSearchORM) {
+            return searchByGroupAndNameUsingSearchORM(query);
+        }
+        return searchByGroupAndNameUsingDatabase(query);
+    }
+
+    protected PagedResponse<ArtifactVersionDTO> searchVersionsUsingSearchORM(final long id,
+                                                                             final VersionQuery query) {
+        final SearchResult<ArtifactVersion> result = this.searchSession.get().search(ArtifactVersion.class)
                 .where(q -> {
                     final List<PredicateFinalStep> predicates = new ArrayList<>();
                     predicates.add(q.match().field("artifact.id").matching(id));
@@ -139,6 +169,45 @@ public class ArtifactEndpoint {
                 totalPages,
                 (int) total
         );
+    }
+
+    protected PagedResponse<ArtifactVersionDTO> searchVersionsUsingDatabase(final long id,
+                                                                            final VersionQuery query) {
+        final Sort sort = Sort.descending("updated");
+        final PanacheQuery<ArtifactVersion> q = query.text() != null
+                ? ArtifactVersion.find("artifact.id = ?1 AND version LIKE ?2", id, "%" + query.text() + "%")
+                : ArtifactVersion.find("artifact.id = ?1", id);
+
+        final long total = q.count();
+        final int totalPages = (int) Math.ceil(total / (double) query.pageSize());
+
+        return new PagedResponse<>(
+                q.page(query.page(), query.pageSize())
+                        .list()
+                        .stream()
+                        .map(ArtifactVersionDTO::from)
+                        .toList(),
+                query.page(),
+                totalPages,
+                (int) total
+        );
+    }
+
+    @GET
+    @Transactional
+    @Path("/{id}/versions/search")
+    public PagedResponse<ArtifactVersionDTO> searchVersions(final @PathParam("id") long id, final @BeanParam VersionQuery query) {
+        final Artifact artifact = Artifact.findById(id);
+        if (artifact == null) throw new NotFoundException();
+
+        final User self = authenticatedUser.getSelf();
+        final Repository repository = artifact.repository;
+        if (!repository.canView(AuthContext.ofUser(self))) throw new ForbiddenException("Unauthorized");
+
+        if (this.useSearchORM) {
+            return searchVersionsUsingSearchORM(id, query);
+        }
+        return searchVersionsUsingDatabase(id, query);
     }
 
     @GET

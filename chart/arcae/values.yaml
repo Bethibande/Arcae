@@ -109,6 +109,7 @@ externalConfig:
     username: "arcae"
     password: "password"
   search:
+    enabled: true
     hosts: "elastic:9200"
 
 networkPolicy:

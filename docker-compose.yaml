@@ -42,6 +42,7 @@ services:
       DATABASE_USERNAME: arcae
       DATABASE_PASSWORD: 12345
       SEARCH_HOSTS: elastic:9200
+      ARCAE_SEARCH_ENABLED: "true" # Set value to false to safely remove the elasticsearch container
       EXTERNAL_HOST: http://localhost:8080
       JAVA_OPTIONS: "-Xmx100m"
 volumes:

@@ -3,6 +3,7 @@ package com.bethibande.arcae.jobs.impl;
 import com.bethibande.arcae.jobs.JobType;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.hibernate.CacheMode;
 import org.hibernate.search.mapper.orm.session.SearchSession;
@@ -15,7 +16,7 @@ public class UpdateSearchIndexTask implements JobTask<Object> {
     private static final Logger LOGGER = LoggerFactory.getLogger(UpdateSearchIndexTask.class);
 
     @Inject
-    protected SearchSession searchSession;
+    protected Instance<SearchSession> searchSession;
 
     @Override
     public Class<Object> getConfigType() {
@@ -31,7 +32,13 @@ public class UpdateSearchIndexTask implements JobTask<Object> {
     public void run(final Object config) {
         QuarkusTransaction.requiringNew().run(() -> {
             try {
-                this.searchSession.massIndexer()
+                if (!this.searchSession.isResolvable()) {
+                    LOGGER.warn("Search is disabled, why is this job running?");
+                    return;
+                }
+
+                this.searchSession.get()
+                        .massIndexer()
                         .dropAndCreateSchemaOnStart(true)
                         .idFetchSize(10_000)
                         .batchSizeToLoadObjects(25)

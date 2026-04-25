@@ -7,6 +7,7 @@ import com.bethibande.arcae.jpa.files.StoredFile;
 import com.bethibande.arcae.jpa.repository.Repository;
 import com.bethibande.arcae.repository.oci.OCIRepository;
 import com.bethibande.arcae.repository.security.AuthContext;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
@@ -45,6 +46,12 @@ public interface ManagedRepository {
 
     void delete(final AuthContext auth, final Artifact artifact);
 
+    default boolean isSearchORMEnabled() {
+        return ConfigProvider.getConfig()
+                .getOptionalValue("arcae.search.enabled", Boolean.class)
+                .orElse(false);
+    }
+
     default Artifact getOrCreateArtifact(final String groupId, final String artifactId, final Instant now) {
         final long id = (Long) Artifact.getEntityManager()
                 .createNativeQuery(
@@ -60,10 +67,12 @@ public interface ManagedRepository {
                 .setParameter(4, Timestamp.from(now))
                 .getSingleResult();
 
-        final SearchSession searchSession = Search.session(Artifact.getEntityManager());
         final Artifact artifact = Artifact.findById(id);
 
-        searchSession.indexingPlan().addOrUpdate(artifact);
+        if (this.isSearchORMEnabled()) {
+            final SearchSession searchSession = Search.session(Artifact.getEntityManager());
+            searchSession.indexingPlan().addOrUpdate(artifact);
+        }
 
         return artifact;
     }
@@ -86,7 +95,9 @@ public interface ManagedRepository {
         final SearchSession searchSession = Search.session(ArtifactVersion.getEntityManager());
         final ArtifactVersion artifactVersion = ArtifactVersion.findById(id);
 
-        searchSession.indexingPlan().addOrUpdate(artifactVersion);
+        if (this.isSearchORMEnabled()) {
+            searchSession.indexingPlan().addOrUpdate(artifactVersion);
+        }
 
         return artifactVersion;
     }

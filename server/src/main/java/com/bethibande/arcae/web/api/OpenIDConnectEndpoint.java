@@ -6,6 +6,7 @@ import com.bethibande.arcae.security.oidc.OpenIDConnectOptions;
 import com.bethibande.arcae.security.oidc.OpenIdConnectService;
 import com.bethibande.arcae.web.AuthenticatedUser;
 import com.bethibande.arcae.web.api.auth.AuthenticationEndpoint;
+import com.bethibande.arcae.web.api.auth.LoginResponse;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.security.Authenticated;
@@ -221,6 +222,14 @@ public class OpenIDConnectEndpoint {
 
     @POST
     @Path("/login/complete/{provider}")
+    @APIResponse(
+            responseCode = "200",
+            description = "Successful login",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LoginResponse.class)
+            )
+    )
     public Uni<Response> completeLogin(final @PathParam("provider") String provider,
                                        final @CookieParam(OIDC_STATE_COOKIE_NAME) String state,
                                        final @QueryParam("code") String code,

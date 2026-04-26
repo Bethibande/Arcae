@@ -45,7 +45,6 @@ export function ProfileTab() {
 
     useEffect(() => {
         if (user) {
-            console.log(user.twoFAMethods)
             setEmail2fa(user.twoFAMethods?.includes(TwoFAMethod.Email) ?? false);
         }
     }, [user]);

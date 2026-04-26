@@ -78,7 +78,7 @@ public class MavenRepository implements ManagedRepository {
 
     @Override
     public void delete(final StoredFile file) {
-        this.backend.getValue().delete("%s/%s".formatted(info.name, file.key));
+        this.backend.getValue().delete(file.key);
         StoredFile.deleteById(file.id);
     }
 
@@ -94,7 +94,7 @@ public class MavenRepository implements ManagedRepository {
 
         this.executor.execute(() -> this.put(
                 AuthContext.ofSystem(auth),
-                path,
+                "%s/%s".formatted(this.info.name, path),
                 new StreamHandle(source, handle.contentType(), handle.contentLength())
         ));
 
@@ -108,7 +108,8 @@ public class MavenRepository implements ManagedRepository {
     protected StreamHandle fetchHash(final String path) {
         return QuarkusTransaction.runner(TransactionSemantics.JOIN_EXISTING).call(() -> {
             final String filePath = path.substring(0, path.lastIndexOf('.'));
-            final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", filePath, info.id).firstResult();
+            final String fullFilePath = "%s/%s".formatted(this.info.name, filePath);
+            final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", fullFilePath, info.id).firstResult();
             if (file == null) return null;
 
             final String hashType = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
@@ -193,8 +194,7 @@ public class MavenRepository implements ManagedRepository {
         for (int i = 0; i < files.size(); i++) {
             final StoredFile file = files.get(i);
 
-            final String namespacedPath = "%s/%s".formatted(info.name, file.key);
-            this.backend.getValue().delete(namespacedPath);
+            this.backend.getValue().delete(file.key);
             file.delete();
         }
 
@@ -216,7 +216,7 @@ public class MavenRepository implements ManagedRepository {
     public void delete(final AuthContext auth,
                        final ArtifactVersion version,
                        final boolean updateMavenMetadata) {
-        deleteFilesFromStorage(auth, version.files);
+        deleteFilesFromStorage(auth, version.files); // Also enforces write permissions
         version.delete();
 
         if (version.artifact.countVersions() <= 0) {
@@ -225,18 +225,19 @@ public class MavenRepository implements ManagedRepository {
             final StoredFile metadataFile = fileIndexer.getGAMetadataFile(version.artifact);
             if (metadataFile == null) return;
 
-            final StreamHandle metadataHandle = get(auth, metadataFile.key);
+            final String path = metadataFile.key.substring(this.info.name.length() + 1);
+            final StreamHandle metadataHandle = get(auth, path);
             final String fileContent = new String(metadataHandle.readAllBytes());
 
             final String result = this.fileIndexer.removeVersionFromMetadata(fileContent, version);
 
             final StreamHandle newMetadataHandle = stringToStreamHandle(result, metadataHandle.contentType());
-            put(AuthContext.ofSystem(auth), metadataFile.key, newMetadataHandle);
+            put(AuthContext.ofSystem(auth), path, newMetadataHandle);
         }
     }
 
     public void delete(final AuthContext auth, final Artifact artifact) {
-        deleteFilesFromStorage(auth, artifact.files);
+        deleteFilesFromStorage(auth, artifact.files); // Also enforces write permissions
 
         ArtifactVersion.<ArtifactVersion>find("artifact = ?1", artifact)
                 .stream()

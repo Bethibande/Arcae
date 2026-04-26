@@ -114,11 +114,12 @@ public class MavenFileIndexer {
             if (isHash(path)) {
                 return updateHash(path, handle);
             } else {
-                final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", path, info.id).firstResult();
+                final String fullKey = "%s/%s".formatted(info.name, path);
+                final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", fullKey, info.id).firstResult();
                 final Instant now = Instant.now();
                 if (file == null) {
                     final StoredFile newFile = new StoredFile();
-                    newFile.key = path;
+                    newFile.key = fullKey;
                     newFile.repository = info;
                     newFile.created = now;
                     newFile.updated = now;
@@ -214,9 +215,10 @@ public class MavenFileIndexer {
 
     protected boolean updateHash(final String path, final StreamHandle handle) {
         final String sourcePath = path.substring(0, path.lastIndexOf('.'));
+        final String fullSourcePath = "%s/%s".formatted(info.name, sourcePath);
         final String hashType = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
 
-        final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", sourcePath, info.id).firstResult();
+        final StoredFile file = StoredFile.find("key = ?1 and repository.id = ?2", fullSourcePath, info.id).firstResult();
         if (file == null) return false;
 
         if (handle.contentLength() > MAX_HASH_FILE_SIZE)

@@ -394,4 +394,14 @@
         <addNotNullConstraint columnName="backend_id"
                               tableName="Repository"/>
     </changeSet>
+
+    <changeSet id="1777222852468-1" author="bethibande">
+        <sql>
+            UPDATE storedfile
+            SET key = r.name || '/' || storedfile.key
+            FROM repository r
+            WHERE storedfile.repository_id = r.id
+              AND r.packagemanager = 'MAVEN';
+        </sql>
+    </changeSet>
 </databaseChangeLog>

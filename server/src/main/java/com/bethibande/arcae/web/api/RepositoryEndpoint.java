@@ -2,8 +2,6 @@ package com.bethibande.arcae.web.api;
 
 import com.bethibande.arcae.jpa.artifact.Artifact;
 import com.bethibande.arcae.jpa.artifact.ArtifactVersion;
-import com.bethibande.arcae.jpa.repository.Repository;
-import com.bethibande.arcae.jpa.repository.RepositoryManager;
 import com.bethibande.arcae.jpa.repository.*;
 import com.bethibande.arcae.jpa.repository.permissions.PermissionScope;
 import com.bethibande.arcae.jpa.repository.permissions.UserSelectionType;
@@ -57,6 +55,9 @@ public class RepositoryEndpoint {
         repository.packageManager = dto.packageManager();
         repository.settings = dto.settings();
         repository.cleanupPolicies = dto.cleanupPolicies();
+        repository.backend = S3RepositoryBackend.findById(dto.backendId());
+
+        if (repository.backend == null) throw new NotFoundException("Backend not found");
 
         repository.persist();
 
@@ -74,7 +75,11 @@ public class RepositoryEndpoint {
         repository.name = dto.name();
         repository.settings = dto.settings();
         repository.cleanupPolicies = dto.cleanupPolicies();
-        repository.persist();
+        repository.backend = S3RepositoryBackend.findById(dto.backendId());
+
+        if (repository.backend == null) throw new NotFoundException("Backend not found");
+
+        repository.persistAndFlush();
 
         processUpdate(repository, UpdateType.UPDATE);
 

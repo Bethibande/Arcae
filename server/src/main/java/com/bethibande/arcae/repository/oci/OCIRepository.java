@@ -9,7 +9,6 @@ import com.bethibande.arcae.jpa.repository.Repository;
 import com.bethibande.arcae.jpa.repository.RepositoryManager;
 import com.bethibande.arcae.k8s.KubernetesSupport;
 import com.bethibande.arcae.repository.*;
-import com.bethibande.arcae.repository.*;
 import com.bethibande.arcae.repository.backend.MultipartUploadStatus;
 import com.bethibande.arcae.repository.backend.ObjectInfo;
 import com.bethibande.arcae.repository.backend.S3Backend;
@@ -80,7 +79,7 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         this.kubernetesSupport = kubernetesSupport;
         this.executor = executor;
 
-        this.backend = new Lazy<>(() -> new S3Backend(config.s3Config()));
+        this.backend = new Lazy<>(() -> new S3Backend(info.backend));
         this.mirrorSupport = new OCIMirrorSupport(config, info, repositoryManager);
         this.index = new OCIImageIndex(this);
     }
@@ -160,7 +159,8 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     }
 
     public List<Artifact> getArtifacts(final AuthContext auth, final String groupId) {
-        checkViewAccess(auth);;
+        checkViewAccess(auth);
+        ;
         return Artifact.find(
                 "groupId = ?1 and repository.id = ?2",
                 groupId,

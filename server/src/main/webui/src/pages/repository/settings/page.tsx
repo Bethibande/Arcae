@@ -1,19 +1,20 @@
 import {useNavigate, useParams} from "react-router";
 import {useEffect, useRef, useState} from "react";
-import {ChronoUnit, PackageManager, type RepositoryDTO} from "@/generated";
-import {repositoryApi, repositoryPermissionApi} from "@/lib/api.ts";
+import {ChronoUnit, PackageManager, type RepositoryDTO, type S3RepositoryBackendDTO} from "@/generated";
+import {repositoryApi, repositoryPermissionApi, s3BackendApi} from "@/lib/api.ts";
 import {showError} from "@/lib/errors.ts";
 import {FormProvider, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {type RepositorySchema, repositorySchema} from "@/pages/repository/settings/schema.tsx";
 import {toast} from "sonner";
 import {type ExtraForm, ExtraForms, type SidebarItem} from "@/pages/repository/settings/extra-form.tsx";
-import {ChevronRight, Lock, Save, Settings, Trash2} from "lucide-react";
+import {ChevronRight, Database, ExternalLink, Lock, Save, Settings, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/button.tsx";
 import {Field, FieldDescription, FieldLabel} from "@/components/ui/field.tsx";
 import {FormField} from "@/components/form-field.tsx";
 import {Input} from "@/components/ui/input.tsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
+import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip.tsx";
 import {cn} from "@/lib/utils.ts";
 import {Card, CardContent} from "@/components/ui/card.tsx";
 import {Switch} from "@/components/ui/switch.tsx";
@@ -34,7 +35,8 @@ const defaultValues = {
             maxVersions: 1
         }
     },
-    permissions: []
+    permissions: [],
+    backendId: 0
 }
 
 
@@ -50,6 +52,13 @@ export default function RepositorySettingsPage() {
     const [activeSection, setActiveSection] = useState("general");
 
     const [repository, setRepository] = useState<RepositoryDTO | undefined>(undefined)
+    const [backends, setBackends] = useState<S3RepositoryBackendDTO[]>([])
+
+    useEffect(() => {
+        s3BackendApi.apiV1S3backendGet({ p: 0, s: 100 })
+            .then(res => setBackends(res.data ?? []))
+            .catch(showError);
+    }, []);
 
     useEffect(() => {
         if (id && id !== "new") {
@@ -73,6 +82,7 @@ export default function RepositorySettingsPage() {
 
     const sidebarItems: SidebarItem[] = [
         { id: "general", label: "General", icon: Settings },
+        { id: "s3", label: "S3 Storage", icon: Database },
         ...(extraForm?.sidebarItems ?? []),
         { id: "cleanup", label: "Cleanup Policies", icon: Trash2 },
         { id: "permissions", label: "Permissions", icon: Lock },
@@ -254,6 +264,62 @@ export default function RepositorySettingsPage() {
                                                     <p className="text-xs text-muted-foreground mt-1">Package manager cannot be changed after creation.</p>
                                                 )}
                                             </Field>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </section>
+
+                            {/* S3 Storage Section */}
+                            <section id="s3" className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-semibold flex items-center gap-2"><Database/> S3 Storage</h2>
+                                </div>
+                                <Card>
+                                    <CardContent className="p-6">
+                                        <div className="space-y-4">
+                                            <div className="flex items-end gap-4">
+                                                <div className="flex-1">
+                                                    <Field>
+                                                        <FieldLabel>S3 Connection</FieldLabel>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div>
+                                                                    <Select
+                                                                        value={mainForm.watch("backendId")?.toString()}
+                                                                        onValueChange={(value) => mainForm.setValue("backendId", parseInt(value))}
+                                                                        disabled={!!id && id !== "new"}
+                                                                    >
+                                                                        <SelectTrigger className="w-full">
+                                                                            <SelectValue placeholder="Select a storage backend" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {backends.map((backend) => (
+                                                                                <SelectItem key={backend.id} value={backend.id!.toString()}>
+                                                                                    {backend.name} ({backend.uri})
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            {id && id !== "new" && (
+                                                                <TooltipContent>
+                                                                    You cannot change this value after creating a repository.
+                                                                    Changing it would cause all files stored in it to become inaccessible.
+                                                                </TooltipContent>
+                                                            )}
+                                                        </Tooltip>
+                                                    </Field>
+                                                </div>
+                                                <Button
+                                                    variant="link"
+                                                    className="gap-2 text-primary"
+                                                    onClick={() => navigate("/settings/s3-backends")}
+                                                >
+                                                    <ExternalLink className="size-4" />
+                                                    Manage S3 Connections
+                                                </Button>
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>

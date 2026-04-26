@@ -55,7 +55,6 @@ public class OCIRepositoryTests extends AbstractRepositoryTests {
                 REPOSITORY_NAME,
                 PackageManager.OCI,
                 new OCIRepositoryConfig(
-                        getS3Config(),
                         new OCIRoutingConfig(
                                 false,
                                 null,

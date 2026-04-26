@@ -35,7 +35,6 @@ public class RepositoryEndpointTests extends AbstractWebTests {
                 PackageManager.MAVEN,
                 toJson(new MavenRepositoryConfig(
                         false,
-                        getS3Config(),
                         new StandardMirrorConfig(
                                 List.of(),
                                 false,
@@ -44,7 +43,8 @@ public class RepositoryEndpointTests extends AbstractWebTests {
                         )
                 )),
                 null,
-                CleanupPolicies.standard()
+                CleanupPolicies.standard(),
+                getS3Config().id
         ))
                 .post()
                 .then()
@@ -65,7 +65,6 @@ public class RepositoryEndpointTests extends AbstractWebTests {
                 PackageManager.MAVEN,
                 toJson(new MavenRepositoryConfig(
                         false,
-                        getS3Config(),
                         new StandardMirrorConfig(
                                 List.of(),
                                 false,
@@ -74,7 +73,8 @@ public class RepositoryEndpointTests extends AbstractWebTests {
                         )
                 )),
                 null,
-                CleanupPolicies.standard()
+                CleanupPolicies.standard(),
+                getS3Config().id
         ))
                 .put()
                 .then()
@@ -92,7 +92,8 @@ public class RepositoryEndpointTests extends AbstractWebTests {
                 null,
                 null,
                 null,
-                null
+                null,
+                getS3Config().id
         ))
                 .put()
                 .then()

@@ -69,7 +69,6 @@ public class HelmRepositoryTests extends AbstractRepositoryTests {
                 REPOSITORY_NAME,
                 PackageManager.HELM,
                 new OCIRepositoryConfig(
-                        getS3Config(),
                         new OCIRoutingConfig(
                                 false,
                                 null,

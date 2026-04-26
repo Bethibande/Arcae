@@ -6,7 +6,6 @@ import {type ExtraFormProps} from "@/pages/repository/settings/extra-form.tsx";
 import {Card, CardContent} from "@/components/ui/card.tsx";
 import {Field, FieldDescription, FieldLabel} from "@/components/ui/field.tsx";
 import {Switch} from "@/components/ui/switch.tsx";
-import {S3Form} from "@/pages/repository/settings/s3-form.tsx";
 import {MirrorForm} from "@/pages/repository/settings/mirror-form.tsx";
 import {Separator} from "@/components/ui/separator.tsx";
 import {Globe, ShieldAlert} from "lucide-react";
@@ -57,8 +56,6 @@ export function OciSettingsForm({repository, value, save}: ExtraFormProps) {
                     </CardContent>
                 </Card>
             </section>
-
-            <S3Form form={form}/>
 
             <MirrorForm form={form} packageManager={PackageManager.Oci} repositoryId={repository.id} placeholder="https://registry-1.docker.io" />
 

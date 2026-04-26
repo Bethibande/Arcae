@@ -1,6 +1,6 @@
 package com.bethibande.arcae.repository.backend;
 
-import com.bethibande.arcae.repository.S3Config;
+import com.bethibande.arcae.jpa.repository.S3RepositoryBackend;
 import com.bethibande.arcae.repository.StreamHandle;
 import com.bethibande.arcae.web.repositories.oci.OCIRepositoryEndpoint;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -20,22 +20,22 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
 
     public static final long MAX_UPLOAD_SIZE = 5_000_000_000L;
 
-    private final S3Config config;
+    private final S3RepositoryBackend config;
     private final S3Client client;
 
-    public S3Backend(final S3Config config) {
+    public S3Backend(final S3RepositoryBackend config) {
         this.config = config;
         this.client = S3Client.builder()
                 .httpClientBuilder(ApacheHttpClient.builder())
-                .endpointOverride(URI.create(config.url()))
-                .region(Region.of(config.region()))
-                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(config.accessKey(), config.secretKey())))
+                .endpointOverride(URI.create(config.uri))
+                .region(Region.of(config.region))
+                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(config.accessKey, config.secretKey)))
                 .forcePathStyle(true)
                 .build();
     }
 
     public String createMultipartUpload(final String path) {
-        return this.client.createMultipartUpload(b -> b.bucket(this.config.bucket())
+        return this.client.createMultipartUpload(b -> b.bucket(this.config.bucket)
                         .key(path)
                         .contentType("application/octet-stream"))
                 .uploadId();
@@ -44,7 +44,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
     public void uploadPart(final String uploadId, final String path, final int partNumber, final StreamHandle handle) {
         final RequestBody body = RequestBody.fromInputStream(handle.stream(), handle.contentLength());
         this.client.uploadPart(
-                b -> b.bucket(this.config.bucket())
+                b -> b.bucket(this.config.bucket)
                         .key(path)
                         .contentLength(handle.contentLength())
                         .uploadId(uploadId)
@@ -54,7 +54,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
     }
 
     public void completeMultipartUpload(final String uploadId, final String path) {
-        final List<CompletedPart> parts = this.client.listParts(b -> b.bucket(this.config.bucket()).key(path).uploadId(uploadId))
+        final List<CompletedPart> parts = this.client.listParts(b -> b.bucket(this.config.bucket).key(path).uploadId(uploadId))
                 .parts()
                 .stream()
                 .map(part -> CompletedPart.builder()
@@ -63,7 +63,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
                         .build())
                 .toList();
 
-        this.client.completeMultipartUpload(b -> b.bucket(this.config.bucket())
+        this.client.completeMultipartUpload(b -> b.bucket(this.config.bucket)
                 .key(path)
                 .uploadId(uploadId)
                 .multipartUpload(u -> u.parts(parts)));
@@ -71,7 +71,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
 
     public MultipartUploadStatus headUpload(final String uploadId, final String path) {
         // TODO: Handle truncated responses
-        final ListPartsResponse response = this.client.listParts(b -> b.bucket(this.config.bucket())
+        final ListPartsResponse response = this.client.listParts(b -> b.bucket(this.config.bucket)
                 .key(path)
                 .uploadId(uploadId));
 
@@ -86,17 +86,17 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
     }
 
     public void abortMultipartUpload(final String uploadId, final String path) {
-        this.client.abortMultipartUpload(b -> b.bucket(this.config.bucket()).key(path).uploadId(uploadId));
+        this.client.abortMultipartUpload(b -> b.bucket(this.config.bucket).key(path).uploadId(uploadId));
     }
 
     public void move(final String source, final String destination) {
-        final long contentLength = this.client.headObject(b -> b.bucket(this.config.bucket()).key(source))
+        final long contentLength = this.client.headObject(b -> b.bucket(this.config.bucket).key(source))
                 .contentLength();
 
         if (contentLength < 5_000_000_000L) {
-            this.client.copyObject(b -> b.destinationBucket(this.config.bucket())
+            this.client.copyObject(b -> b.destinationBucket(this.config.bucket)
                     .destinationKey(destination)
-                    .sourceBucket(this.config.bucket())
+                    .sourceBucket(this.config.bucket)
                     .sourceKey(source));
         } else {
             final String uploadId = this.createMultipartUpload(destination);
@@ -108,8 +108,8 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
                 final int currentPart = part++;
 
                 final long partSize = Math.min(OCIRepositoryEndpoint.MIN_CHUNK_LENGTH, contentLength - offset);
-                this.client.uploadPartCopy(b -> b.sourceBucket(this.config.bucket())
-                        .destinationBucket(this.config.bucket())
+                this.client.uploadPartCopy(b -> b.sourceBucket(this.config.bucket)
+                        .destinationBucket(this.config.bucket)
                         .sourceKey(source)
                         .destinationKey(destination)
                         .uploadId(uploadId)
@@ -136,7 +136,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
                 final RequestBody body = RequestBody.fromInputStream(new NoCloseInputStream(handle.stream()), partSize);
                 final int partNumberFinal = partNumber;
                 this.client.uploadPart(
-                        b -> b.bucket(this.config.bucket())
+                        b -> b.bucket(this.config.bucket)
                                 .key(path)
                                 .uploadId(uploadId)
                                 .partNumber(partNumberFinal),
@@ -155,7 +155,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
         } else {
             final RequestBody body = RequestBody.fromInputStream(handle.stream(), handle.contentLength());
             this.client.putObject(
-                    b -> b.bucket(this.config.bucket())
+                    b -> b.bucket(this.config.bucket)
                             .key(path)
                             .contentType(handle.contentType())
                             .contentLength(handle.contentLength()),
@@ -167,7 +167,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
     @Override
     public ObjectInfo headObject(final String path) {
         try {
-            final HeadObjectResponse response = this.client.headObject(b -> b.bucket(this.config.bucket()).key(path));
+            final HeadObjectResponse response = this.client.headObject(b -> b.bucket(this.config.bucket).key(path));
             return new ObjectInfo(response.contentLength(), response.contentType());
         } catch (final NoSuchKeyException ex) {
             return null;
@@ -178,7 +178,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
     public boolean head(final String path) {
         try {
             final HeadObjectRequest request = HeadObjectRequest.builder()
-                    .bucket(this.config.bucket())
+                    .bucket(this.config.bucket)
                     .key(path)
                     .build();
             this.client.headObject(request);
@@ -191,7 +191,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
     @Override
     public StreamHandle get(final String path) {
         final GetObjectRequest request = GetObjectRequest.builder()
-                .bucket(this.config.bucket())
+                .bucket(this.config.bucket)
                 .key(path)
                 .build();
 
@@ -214,7 +214,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
         final String range = "bytes=%d-%d".formatted(offset, end - 1);
 
         try {
-            final ResponseBytes<GetObjectResponse> response = this.client.getObjectAsBytes(b -> b.bucket(this.config.bucket())
+            final ResponseBytes<GetObjectResponse> response = this.client.getObjectAsBytes(b -> b.bucket(this.config.bucket)
                     .key(path)
                     .range(range));
 
@@ -230,7 +230,7 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
 
     @Override
     public void delete(final String path) {
-        this.client.deleteObject(b -> b.bucket(this.config.bucket()).key(path));
+        this.client.deleteObject(b -> b.bucket(this.config.bucket).key(path));
     }
 
     public void close() {

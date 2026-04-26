@@ -60,7 +60,7 @@ public class MavenRepository implements ManagedRepository {
                            final RepositoryManager repositoryManager) {
         this.info = info;
         this.config = config;
-        this.backend = new Lazy<>(() -> new S3Backend(config.s3Config()));
+        this.backend = new Lazy<>(() -> new S3Backend(info.backend));
         this.fileIndexer = new MavenFileIndexer(info, this);
         this.mirrorSupport = new MavenMirrorSupport(this, config.mirrorConfig(), repositoryManager);
         this.executor = executor;

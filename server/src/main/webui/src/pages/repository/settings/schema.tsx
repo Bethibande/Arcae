@@ -26,17 +26,10 @@ export const repositorySchema = z.object({
     packageManager: z.enum(PackageManager),
     cleanupPolicies: cleanupPolicySchema,
     permissions: z.array(permissionSchema).default([]),
+    backendId: z.number().min(1, "Please select a storage backend."),
 })
 
 export type RepositorySchema = z.input<typeof repositorySchema>;
-
-export const s3ConfigSchema = z.object({
-    url: z.url(),
-    region: z.string().nonempty(),
-    bucket: z.string().nonempty(),
-    accessKey: z.string().nonempty(),
-    secretKey: z.string().nonempty(),
-})
 
 export const mirrorConnectionSchema = z.discriminatedUnion("internal", [
     z.object({
@@ -65,7 +58,6 @@ export const mirrorConfigSchema = z.object({
 
 export const mavenSettingsSchema = z.object({
     allowRedeployments: z.boolean(),
-    s3Config: s3ConfigSchema,
     mirrorConfig: mirrorConfigSchema,
 })
 
@@ -79,7 +71,6 @@ export const ociRoutingConfig = z.object({
 
 export const ociSettingsSchema = z.object({
     allowRedeployments: z.boolean(),
-    s3Config: s3ConfigSchema,
     mirrorConfig: mirrorConfigSchema,
     routingConfig: ociRoutingConfig,
     externalHostname: z.string().nonempty(),
@@ -87,14 +78,6 @@ export const ociSettingsSchema = z.object({
 
 export type MavenSettingsSchema = z.infer<typeof mavenSettingsSchema>;
 export type OciSettingsSchema = z.infer<typeof ociSettingsSchema>;
-
-export const defaultS3Config = {
-    url: "",
-    region: "",
-    bucket: "",
-    accessKey: "",
-    secretKey: "",
-}
 
 export const defaultMirrorConfig = {
     enabled: false,
@@ -105,13 +88,11 @@ export const defaultMirrorConfig = {
 
 export const defaultMavenSettings: MavenSettingsSchema = {
     allowRedeployments: false,
-    s3Config: defaultS3Config,
     mirrorConfig: defaultMirrorConfig,
 }
 
 export const defaultOciSettings: OciSettingsSchema = {
     allowRedeployments: true,
-    s3Config: defaultS3Config,
     mirrorConfig: defaultMirrorConfig,
     externalHostname: "",
     routingConfig: {

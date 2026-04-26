@@ -326,4 +326,72 @@
         <dropColumn columnName="user_id"
                     tableName="onetimepassword"/>
     </changeSet>
+
+    <changeSet id="1777133071387-1"
+               author="bethibande">
+        <createSequence incrementBy="50"
+                        sequenceName="S3RepositoryBackend_seq"
+                        startValue="1"/>
+    </changeSet>
+    <changeSet id="1777133071387-2"
+               author="bethibande">
+        <createTable tableName="S3RepositoryBackend">
+            <column name="id"
+                    type="BIGINT">
+                <constraints nullable="false"
+                             primaryKey="true"
+                             primaryKeyName="pk_s3repositorybackend"/>
+            </column>
+            <column name="name"
+                    type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uri"
+                    type="VARCHAR(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bucket"
+                    type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="region"
+                    type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="accessKey"
+                    type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="secretKey"
+                    type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1777133144199-1"
+               author="bethibande">
+        <addColumn tableName="Repository">
+            <column name="backend_id"
+                    type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1777133144199-3"
+               author="bethibande">
+        <addForeignKeyConstraint baseColumnNames="backend_id"
+                                 baseTableName="Repository"
+                                 constraintName="FK_REPOSITORY_ON_BACKEND"
+                                 referencedColumnNames="id"
+                                 referencedTableName="S3RepositoryBackend"/>
+    </changeSet>
+
+    <changeSet id="1777133167304-1" author="bethibande">
+        <customChange class="com.bethibande.arcae.jpa.migration.S3BackendMigration"/>
+    </changeSet>
+
+    <changeSet id="1777133144199-2"
+               author="bethibande">
+        <addNotNullConstraint columnName="backend_id"
+                              tableName="Repository"/>
+    </changeSet>
 </databaseChangeLog>

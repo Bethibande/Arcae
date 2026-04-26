@@ -1,10 +1,9 @@
 package com.bethibande.arcae.test;
 
-import com.bethibande.arcae.repository.S3Config;
+import com.bethibande.arcae.jpa.repository.S3RepositoryBackend;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -30,15 +29,18 @@ public class MinioResource implements QuarkusTestResourceLifecycleManager {
             .withCommand("server /data")
             .waitingFor(Wait.forHttp("/minio/health/live").forPort(9000));
 
-    public static S3Config getConfig() {
+    public static S3RepositoryBackend getConfig() {
         final Config config = ConfigProvider.getConfig();
-        return new S3Config(
-                config.getValue(KEY_HOST, String.class),
-                config.getValue(KEY_REGION, String.class),
-                config.getValue(KEY_BUCKET, String.class),
-                config.getValue(KEY_ACCESS_KEY, String.class),
-                config.getValue(KEY_SECRET_KEY, String.class)
-        );
+
+        final S3RepositoryBackend backend = new S3RepositoryBackend();
+        backend.name = "default";
+        backend.uri = config.getValue(KEY_HOST, String.class);
+        backend.region = config.getValue(KEY_REGION, String.class);
+        backend.bucket = config.getValue(KEY_BUCKET, String.class);
+        backend.accessKey = config.getValue(KEY_ACCESS_KEY, String.class);
+        backend.secretKey = config.getValue(KEY_SECRET_KEY, String.class);
+
+        return backend;
     }
 
     @Override

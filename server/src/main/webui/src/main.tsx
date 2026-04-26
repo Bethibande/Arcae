@@ -24,6 +24,7 @@ import {SystemJobsTab} from "@/pages/settings/system-jobs-tab.tsx";
 import {MailTab} from "@/pages/settings/mail-tab.tsx";
 import {ReferencesTab} from "@/pages/settings/references-tab.tsx";
 import {OidcProvidersTab} from "@/pages/settings/oidc-providers-tab.tsx";
+import {S3BackendsTab} from "@/pages/settings/s3-backends-tab.tsx";
 import {SessionsTab} from "@/pages/settings/sessions-tab.tsx";
 import SetupPage from "@/pages/setup/page.tsx";
 import ReferencePage from "@/pages/reference-page.tsx";
@@ -52,6 +53,8 @@ function SettingsTabWrapper() {
             return <ReferencesTab />;
         case "oidc":
             return <OidcProvidersTab />;
+        case "s3-backends":
+            return <S3BackendsTab />;
         default:
             return <Navigate to="/settings/profile" replace />;
     }

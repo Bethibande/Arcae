@@ -7,12 +7,13 @@ import {
     MailEndpointApi,
     MavenRepositoryEndpointApi,
     OCIRepositoryEndpointApi,
+    OpenIDConnectEndpointApi,
     RepositoryEndpointApi,
     RepositoryPermissionEndpointApi,
+    S3RepositoryBackendEndpointApi,
     SetupEndpointApi,
     SystemEndpointApi,
     UserEndpointApi,
-    OpenIDConnectEndpointApi,
 } from "@/generated"
 import {RefreshMiddleware} from "@/lib/middleware"
 
@@ -34,3 +35,4 @@ export const setupApi = new SetupEndpointApi(configuration)
 export const systemApi = new SystemEndpointApi(configuration)
 export const userApi = new UserEndpointApi(configuration)
 export const oidcApi = new OpenIDConnectEndpointApi(configuration)
+export const s3BackendApi = new S3RepositoryBackendEndpointApi(configuration)

@@ -33,9 +33,9 @@ public class AbstractRepositoryTests extends AbstractWebTests {
     }
 
     public Repository createRepository(final String name,
-                                 final PackageManager packageManager,
-                                 final Object settings,
-                                 final List<PermissionScope> permissions) {
+                                       final PackageManager packageManager,
+                                       final Object settings,
+                                       final List<PermissionScope> permissions) {
         return QuarkusTransaction.requiringNew().call(() -> {
             final Repository repository = new Repository();
             repository.name = name;
@@ -57,6 +57,7 @@ public class AbstractRepositoryTests extends AbstractWebTests {
                     )
             );
             repository.permissions = permissions;
+            repository.backend = getS3Config();
 
             repository.persist();
             return repository;

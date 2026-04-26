@@ -2,6 +2,7 @@ import {Link, Outlet, useNavigate, useParams} from "react-router";
 import {cn} from "@/lib/utils.ts";
 import {
     ChevronRight,
+    Database,
     ExternalLink,
     Globe,
     KeyRound,
@@ -16,7 +17,7 @@ import {useAuth} from "@/components/auth-provider.tsx";
 import {UserRole} from "@/generated";
 import {Separator} from "@/components/ui/separator.tsx";
 
-type Tab = "profile" | "password" | "sessions" | "tokens" | "users" | "jobs" | "mail" | "references" | "oidc";
+type Tab = "profile" | "password" | "sessions" | "tokens" | "users" | "jobs" | "mail" | "references" | "oidc" | "s3-backends";
 
 export default function UserSettingsLayout() {
     const navigate = useNavigate();
@@ -34,6 +35,7 @@ export default function UserSettingsLayout() {
 
     const adminTabs: { id: Tab; label: string; description: string; icon: React.ElementType }[] = [
         { id: "users", label: "User Management", description: "Manage system users and roles", icon: Shield },
+        { id: "s3-backends", label: "S3 Backends", description: "Configure S3 storage backends", icon: Database },
         { id: "oidc", label: "OIDC Providers", description: "Manage external auth providers", icon: Globe },
         { id: "mail", label: "Mail Settings", description: "Configure SMTP settings", icon: Mail },
         { id: "references", label: "Header References", description: "Manage links and text in header", icon: ExternalLink },

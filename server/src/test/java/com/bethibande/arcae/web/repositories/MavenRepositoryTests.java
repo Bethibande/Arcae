@@ -32,7 +32,6 @@ public class MavenRepositoryTests extends AbstractRepositoryTests {
                 PackageManager.MAVEN,
                 new MavenRepositoryConfig(
                         false,
-                        getS3Config(),
                         new StandardMirrorConfig(
                                 List.of(),
                                 false,

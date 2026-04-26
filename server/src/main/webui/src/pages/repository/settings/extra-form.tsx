@@ -1,5 +1,5 @@
 import type {FunctionComponent, Ref} from "react";
-import {Database, Globe, type LucideIcon, RefreshCcw, ShieldAlert} from "lucide-react";
+import {Globe, type LucideIcon, RefreshCcw, ShieldAlert} from "lucide-react";
 import {PackageManager, type RepositoryDTO} from "@/generated";
 import {MavenSettingsForm} from "@/pages/repository/settings/maven-form.tsx";
 import {OciSettingsForm} from "@/pages/repository/settings/oci-form.tsx";
@@ -26,7 +26,6 @@ export const ExtraForms: Record<PackageManager, ExtraForm> = {
         component: MavenSettingsForm,
         sidebarItems: [
             { id: "behavioral", label: "Behavioral Policies", icon: ShieldAlert },
-            { id: "storage", label: "Storage (S3)", icon: Database },
             { id: "replication", label: "Mirroring", icon: RefreshCcw },
         ]
     },
@@ -34,7 +33,6 @@ export const ExtraForms: Record<PackageManager, ExtraForm> = {
         component: OciSettingsForm,
         sidebarItems: [
             { id: "behavioral", label: "Behavioral Policies", icon: ShieldAlert },
-            { id: "storage", label: "Storage (S3)", icon: Database },
             { id: "replication", label: "Mirroring", icon: RefreshCcw },
             { id: "external", label: "External Access", icon: Globe },
         ]
@@ -43,7 +41,6 @@ export const ExtraForms: Record<PackageManager, ExtraForm> = {
         component: OciSettingsForm,
         sidebarItems: [
             { id: "behavioral", label: "Behavioral Policies", icon: ShieldAlert },
-            { id: "storage", label: "Storage (S3)", icon: Database },
             { id: "replication", label: "Mirroring", icon: RefreshCcw },
             { id: "external", label: "External Access", icon: Globe },
         ]

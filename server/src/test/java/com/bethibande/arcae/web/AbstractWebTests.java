@@ -1,9 +1,9 @@
 package com.bethibande.arcae.web;
 
+import com.bethibande.arcae.jpa.repository.S3RepositoryBackend;
 import com.bethibande.arcae.jpa.security.UserSession;
 import com.bethibande.arcae.jpa.user.User;
 import com.bethibande.arcae.jpa.user.UserRole;
-import com.bethibande.arcae.repository.S3Config;
 import com.bethibande.arcae.security.UserAuthenticationMechanism;
 import com.bethibande.arcae.security.UserSessionService;
 import com.bethibande.arcae.test.MinioResource;
@@ -27,8 +27,19 @@ public abstract class AbstractWebTests {
 
     protected static final Map<String, UserSession> sessions = new HashMap<>();
 
-    public static S3Config getS3Config() {
-        return MinioResource.getConfig();
+    protected static S3RepositoryBackend backend;
+
+    public static S3RepositoryBackend getS3Config() {
+        if (backend == null) {
+            QuarkusTransaction.requiringNew().run(() -> {
+                final S3RepositoryBackend config = MinioResource.getConfig();
+                config.persist();
+
+                backend = config;
+            });
+        }
+
+        return backend;
     }
 
     @BeforeAll

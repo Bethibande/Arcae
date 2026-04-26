@@ -1,13 +1,13 @@
 package com.bethibande.arcae.jpa.repository;
 
-import com.bethibande.process.annotation.EntityDTO;
-import com.bethibande.process.annotation.VirtualDTOField;
 import com.bethibande.arcae.jpa.repository.permissions.PermissionScope;
 import com.bethibande.arcae.jpa.user.UserRole;
 import com.bethibande.arcae.repository.ManagedRepository;
 import com.bethibande.arcae.repository.cleanup.CleanupPolicies;
 import com.bethibande.arcae.repository.security.AuthContext;
 import com.bethibande.arcae.repository.security.UserAuthContext;
+import com.bethibande.process.annotation.EntityDTO;
+import com.bethibande.process.annotation.VirtualDTOField;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
@@ -56,6 +56,9 @@ public class Repository extends PanacheEntityBase {
 
     @OneToMany(mappedBy = "repository", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<PermissionScope> permissions;
+
+    @ManyToOne(optional = false)
+    public S3RepositoryBackend backend;
 
     @PreUpdate
     @PrePersist

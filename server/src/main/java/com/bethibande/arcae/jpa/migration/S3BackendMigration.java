@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import liquibase.change.custom.CustomTaskChange;
 import liquibase.database.Database;
 import liquibase.exception.CustomChangeException;
@@ -18,10 +19,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
+@RegisterForReflection
 public class S3BackendMigration implements CustomTaskChange {
 
     private final ObjectMapper mapper = new JsonMapper();
 
+    @RegisterForReflection
     public record S3Config(
             String url,
             String region,

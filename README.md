@@ -72,7 +72,7 @@ You can find the values.yaml file [here](/chart/arcae/values.yaml).
 helm repo add arcae https://helm.bethibande.com/repo/bethibande/arcae/
 
 # Pull the chart
-helm pull arcae/arcae --version 1.1.0
+helm pull arcae/arcae --version 1.2.0
 ```
 
 ## Screenshots

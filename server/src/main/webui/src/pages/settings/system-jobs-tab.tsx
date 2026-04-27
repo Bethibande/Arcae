@@ -61,6 +61,7 @@ export function SystemJobsTab() {
     const [data, setData] = useState<ScheduledJobDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [distributedEnabled, setDistributedEnabled] = useState(false);
+    const [searchEnabled, setSearchEnabled] = useState(false);
     const [now, setNow] = useState(new Date());
 
     useEffect(() => {
@@ -78,8 +79,9 @@ export function SystemJobsTab() {
             });
             setData(response.data || []);
 
-            const caps = await systemApi.apiV1SystemK8sCapabilitiesGet();
+            const caps = await systemApi.apiV1SystemCapabilitiesGet();
             setDistributedEnabled(caps.distributedScheduler);
+            setSearchEnabled(caps.elasticSearchEnabled);
         } catch (error) {
             console.error("Failed to fetch jobs", error);
             toast.error("Failed to fetch jobs");
@@ -336,7 +338,7 @@ export function SystemJobsTab() {
                 emptyMessage="No system jobs found."
             />
 
-            <div className="space-y-4">
+            <div className={cn("space-y-4", !searchEnabled && "hidden")}>
                 <h3 className="text-lg font-medium flex items-center gap-2">
                     <Play className="size-4" /> One-off Jobs
                 </h3>

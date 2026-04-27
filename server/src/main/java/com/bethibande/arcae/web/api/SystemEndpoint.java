@@ -20,6 +20,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -46,6 +47,9 @@ public class SystemEndpoint {
     @Inject
     protected ObjectMapper objectMapper;
 
+    @ConfigProperty(name = "arcae.search.enabled")
+    protected boolean elasticSearchEnabled;
+
     @RegisterForReflection
     public record AppStatus(
             Instant startupTime
@@ -60,24 +64,26 @@ public class SystemEndpoint {
         );
     }
 
-    public record KubernetesCapabilities(
+    public record SystemCapabilities(
             @NotNull boolean enabled,
             @NotNull boolean routing,
             @NotNull boolean leaderElection,
             @NotNull boolean distributedScheduler,
-            @NotNull boolean serviceDiscovery
+            @NotNull boolean serviceDiscovery,
+            @NotNull boolean elasticSearchEnabled
     ) {
     }
 
     @GET
-    @Path("/k8s/capabilities")
-    public @NotNull KubernetesCapabilities hasKubernetesRoutingSupport() {
-        return new KubernetesCapabilities(
+    @Path("/capabilities")
+    public @NotNull SystemCapabilities getSystemCapabilities() {
+        return new SystemCapabilities(
                 kubernetesSupport.isEnabled(),
                 kubernetesSupport.hasHttpRouteSupport(),
                 kubernetesSupport.hasLeaderElectionSupport(),
                 jobScheduler instanceof DistributedJobScheduler,
-                kubernetesServiceDiscovery.isEnabled()
+                kubernetesServiceDiscovery.isEnabled(),
+                elasticSearchEnabled
         );
     }
 

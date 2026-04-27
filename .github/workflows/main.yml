@@ -10,7 +10,7 @@ on:
       latest:
         description: 'Mark the image as the latest release'
         required: true
-        default: true
+        default: false
         type: boolean
 
 jobs:

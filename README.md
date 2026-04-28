@@ -24,7 +24,7 @@ This section lists all requirements that need to be met in order to run the repo
 Additional software (such as PostgreSQL, Elasticsearch and more) is required and will impose its own set of requirements that need to be met.
 
 ### Hardware
-**Two CPU cores** and **150 MB of Memory** is recommended for small scale deployments.
+**Two CPU cores** and **150 MB of Memory** are recommended for small scale deployments.
 For reference, the containers of the live deployment each consume around 58 MB to 101 MB of memory total.
 
 > [!NOTE]

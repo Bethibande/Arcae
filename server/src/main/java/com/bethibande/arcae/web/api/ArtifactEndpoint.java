@@ -175,8 +175,8 @@ public class ArtifactEndpoint {
                                                                             final VersionQuery query) {
         final Sort sort = Sort.descending("updated");
         final PanacheQuery<ArtifactVersion> q = query.text() != null
-                ? ArtifactVersion.find("artifact.id = ?1 AND version LIKE ?2", id, "%" + query.text() + "%")
-                : ArtifactVersion.find("artifact.id = ?1", id);
+                ? ArtifactVersion.find("artifact.id = ?1 AND version LIKE ?2", sort, id, "%" + query.text() + "%")
+                : ArtifactVersion.find("artifact.id = ?1", sort, id);
 
         final long total = q.count();
         final int totalPages = (int) Math.ceil(total / (double) query.pageSize());

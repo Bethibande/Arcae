@@ -10,6 +10,7 @@ import com.bethibande.arcae.k8s.KubernetesServiceDiscovery;
 import com.bethibande.arcae.k8s.KubernetesSupport;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.arc.ClientProxy;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
@@ -81,7 +82,7 @@ public class SystemEndpoint {
                 kubernetesSupport.isEnabled(),
                 kubernetesSupport.hasHttpRouteSupport(),
                 kubernetesSupport.hasLeaderElectionSupport(),
-                jobScheduler instanceof DistributedJobScheduler,
+                ClientProxy.unwrap(jobScheduler) instanceof DistributedJobScheduler,
                 kubernetesServiceDiscovery.isEnabled(),
                 elasticSearchEnabled
         );

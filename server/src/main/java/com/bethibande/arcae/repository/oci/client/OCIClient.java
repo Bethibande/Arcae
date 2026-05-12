@@ -21,10 +21,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,13 +46,18 @@ public class OCIClient {
 
     private static final Pattern AUTHENTICATE_HEADER_PATTERN = Pattern.compile("(\\w+)=\"([^\"]*)\"");
 
+    private final Set<String> manifestMimeTypes;
+
     private final HttpClient client;
 
     private final MirrorConnectionSettings connection;
 
-    public OCIClient(final HttpClient client, final MirrorConnectionSettings connection) {
+    public OCIClient(final HttpClient client,
+                     final MirrorConnectionSettings connection,
+                     final Set<String> manifestMimeTypes) {
         this.client = client;
         this.connection = connection;
+        this.manifestMimeTypes = manifestMimeTypes;
     }
 
     private HttpRequest buildRequest(final OCIRequest<?> request) {
@@ -180,13 +182,15 @@ public class OCIClient {
         return new OCIContentInfo(contentDigest, contentLength, contentType);
     }
 
-    private OCIContentInfo head(final String namespace, final String subpath) throws IOException {
+    private OCIContentInfo head(final String namespace,
+                                final String subpath,
+                                final Map<String, List<String>> additionalHeaders) throws IOException {
         final HttpResponse<Void> response = send(new OCIRequest<>(
                 namespace,
                 subpath,
                 "HEAD",
                 HttpResponse.BodyHandlers.discarding(),
-                null
+                additionalHeaders
         ));
 
         if (response.statusCode() == 404) return null;
@@ -222,11 +226,12 @@ public class OCIClient {
     }
 
     public OCIContentInfo headBlob(final String namespace, final String digest) throws IOException {
-        return head(namespace, "/blobs/" + digest);
+        return head(namespace, "/blobs/" + digest, null);
     }
 
     public OCIContentInfo headManifest(final String namespace, final String reference) throws IOException {
-        return head(namespace, "/manifests/" + reference);
+        final Map<String, List<String>> headers = Map.of("Accept", List.of(String.join(",", manifestMimeTypes)));
+        return head(namespace, "/manifests/" + reference, headers);
     }
 
     public OCIStreamHandle getBlob(final String namespace, final String digest) throws IOException {
@@ -241,6 +246,7 @@ public class OCIClient {
     }
 
     public OCIStreamHandle getManifest(final String namespace, final String reference) throws IOException {
-        return get(namespace, "/manifests/" + reference, null);
+        final Map<String, List<String>> headers = Map.of("Accept", List.of(String.join(",", manifestMimeTypes)));
+        return get(namespace, "/manifests/" + reference, headers);
     }
 }

@@ -20,6 +20,7 @@ import java.net.http.HttpClient;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 public class OCIMirrorSupport implements AutoCloseable {
@@ -35,17 +36,21 @@ public class OCIMirrorSupport implements AutoCloseable {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
+    private final Set<String> manifestMimeTypes;
+
     public OCIMirrorSupport(final OCIRepositoryConfig config,
                             final Repository repository,
-                            final RepositoryManager repositoryManager) {
+                            final RepositoryManager repositoryManager,
+                            final Set<String> manifestMimeTypes) {
         this.config = config;
         this.repository = repository;
         this.repositoryManager = repositoryManager;
+        this.manifestMimeTypes = manifestMimeTypes;
     }
 
     private <T> T accessMirrorExternal(final MirrorConnectionSettings settings,
                                        final CallableFunction<OCIClient, T, IOException> func) {
-        final OCIClient client = new OCIClient(this.httpClient, settings);
+        final OCIClient client = new OCIClient(this.httpClient, settings, this.manifestMimeTypes);
 
         try {
             return func.call(client);

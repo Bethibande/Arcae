@@ -50,11 +50,11 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
     private static final Logger LOGGER = LoggerFactory.getLogger(OCIRepository.class);
 
     private final Repository info;
-    private final OCIRepositoryConfig config;
+    protected final OCIRepositoryConfig config;
     private final KubernetesSupport kubernetesSupport;
 
     private final Lazy<S3Backend> backend;
-    private final OCIMirrorSupport mirrorSupport;
+    protected OCIMirrorSupport mirrorSupport;
     protected OCIImageIndex index;
 
     private final Executor executor;
@@ -80,7 +80,19 @@ public class OCIRepository implements RepositoryUpdatedNotifier, HasUploadSessio
         this.executor = executor;
 
         this.backend = new Lazy<>(() -> new S3Backend(info.backend));
-        this.mirrorSupport = new OCIMirrorSupport(config, info, repositoryManager);
+        this.mirrorSupport = new OCIMirrorSupport(
+                config,
+                info,
+                repositoryManager,
+                Set.of(
+                        "application/vnd.oci.image.config.v1+json",
+                        "application/vnd.oci.image.layer.v1.tar+gzip",
+                        "application/vnd.docker.container.image.v1+json",
+                        "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "application/vnd.docker.distribution.manifest.v2+json",
+                        "application/vnd.docker.distribution.manifest.list.v2+json"
+                )
+        );
         this.index = new OCIImageIndex(this);
     }
 

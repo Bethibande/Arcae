@@ -6,14 +6,12 @@ import com.bethibande.arcae.jpa.files.HelmMetadata;
 import com.bethibande.arcae.jpa.repository.Repository;
 import com.bethibande.arcae.repository.RepositoryApplicationContext;
 import com.bethibande.arcae.repository.oci.OCIRepository;
+import com.bethibande.arcae.repository.oci.client.OCIMirrorSupport;
 import com.bethibande.arcae.repository.security.AuthContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.quarkus.security.UnauthorizedException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class HelmRepository extends OCIRepository {
 
@@ -21,6 +19,17 @@ public class HelmRepository extends OCIRepository {
                           final RepositoryApplicationContext ctx) throws JsonProcessingException {
         super(info, ctx);
         super.index = new HelmChartIndex(this, ctx.objectMapper());
+        super.mirrorSupport = new OCIMirrorSupport(
+                super.config,
+                info,
+                ctx.repositoryManager(),
+                Set.of(
+                        "application/vnd.oci.image.manifest.v1+json",
+                        "application/vnd.oci.image.index.v1+json",
+                        "application/vnd.cncf.helm.config.v1+json",
+                        "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+                )
+        );
     }
 
     @Override

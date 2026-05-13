@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       source_tag:
-        description: 'The existing tag to promote (e.g. 1.2.2-PRE1)'
+        description: 'The existing tag to promote (e.g. staging-v1.0.4)'
         required: true
         type: string
       new_version:
-        description: 'The new version tag to create (e.g. 1.2.2)'
+        description: 'The new version tag to create (e.g. v1.1.0)'
         required: true
         type: string
       promote_to_latest:
@@ -16,6 +16,10 @@ on:
         required: true
         type: boolean
         default: true
+
+env:
+  DOCKERHUB_REPO: "bethibande/arcae"
+  PERSONAL_REPO: "docker.bethibande.com/bethibande/arcae"
 
 jobs:
   promote:
@@ -26,38 +30,42 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y skopeo
 
-      # --- PROMOTE WITHIN DOCKER HUB ---
+      - name: Login to Docker Hub
+        run: |
+          skopeo login --username "${{ secrets.DOCKERHUB_USERNAME }}" \
+                       --password "${{ secrets.DOCKERHUB_TOKEN }}" \
+                       docker.io
+
+      - name: Login to Personal Registry
+        run: |
+          skopeo login --username "${{ secrets.REPOSITORY_USERNAME }}" \
+                       --password "${{ secrets.REPOSITORY_TOKEN }}" \
+                       docker.bethibande.com
+
+      # --- PROMOTE TO DOCKER HUB ---
       - name: Promote to Docker Hub (Versioned)
         run: |
           skopeo copy --multi-arch all \
-            --src-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
-            --dest-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.io/bethibande/arcae:${{ inputs.new_version }}
+            docker://${{ env.DOCKERHUB_REPO }}:${{ inputs.source_tag }} \
+            docker://${{ env.DOCKERHUB_REPO }}:${{ inputs.new_version }}
 
       - name: Promote to Docker Hub (Latest)
         if: ${{ inputs.promote_to_latest == 'true' }}
         run: |
           skopeo copy --multi-arch all \
-            --src-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
-            --dest-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.io/bethibande/arcae:latest
+            docker://${{ env.DOCKERHUB_REPO }}:${{ inputs.source_tag }} \
+            docker://${{ env.DOCKERHUB_REPO }}:latest
 
-      # --- PROMOTE FROM DOCKER HUB TO PERSONAL REGISTRY ---
+      # --- PROMOTE TO PERSONAL REGISTRY ---
       - name: Promote to Personal Registry (Versioned)
         run: |
           skopeo copy --multi-arch all \
-            --src-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
-            --dest-creds "${{ secrets.REPOSITORY_USERNAME }}:${{ secrets.REPOSITORY_TOKEN }}" \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.bethibande.com/bethibande/arcae:${{ inputs.new_version }}
+            docker://${{ env.DOCKERHUB_REPO }}:${{ inputs.source_tag }} \
+            docker://${{ env.PERSONAL_REPO }}:${{ inputs.new_version }}
 
       - name: Promote to Personal Registry (Latest)
         if: ${{ inputs.promote_to_latest == 'true' }}
         run: |
           skopeo copy --multi-arch all \
-            --src-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
-            --dest-creds "${{ secrets.REPOSITORY_USERNAME }}:${{ secrets.REPOSITORY_TOKEN }}" \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.bethibande.com/bethibande/arcae:latest
+            docker://${{ env.DOCKERHUB_REPO }}:${{ inputs.source_tag }} \
+            docker://${{ env.PERSONAL_REPO }}:latest

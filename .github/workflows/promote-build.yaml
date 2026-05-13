@@ -1,0 +1,70 @@
+name: Promote Multi-Arch Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: 'The existing tag to promote (e.g. staging-v1.0.4)'
+        required: true
+        type: string
+      new_version:
+        description: 'The new version tag to create (e.g. v1.1.0)'
+        required: true
+        type: string
+      promote_to_latest:
+        description: 'Also update the "latest" tag?'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
+      - name: Login to Docker Hub
+        run: |
+          skopeo login --username "${{ secrets.DOCKERHUB_USERNAME }}" \
+                       --password "${{ secrets.DOCKERHUB_TOKEN }}" \
+                       docker.io
+
+      - name: Login to Personal Registry
+        run: |
+          skopeo login --username "${{ secrets.REPOSITORY_USERNAME }}" \
+                       --password "${{ secrets.REPOSITORY_TOKEN }}" \
+                       docker.bethibande.com
+
+      # --- PROMOTE TO DOCKER HUB ---
+      # Source: Docker Hub -> Destination: Docker Hub
+      - name: Promote to Docker Hub (Versioned)
+        run: |
+          skopeo copy --multi-arch all \
+            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
+            docker://docker.io/bethibande/arcae:${{ inputs.new_version }}
+
+      - name: Promote to Docker Hub (Latest)
+        if: ${{ inputs.promote_to_latest == 'true' }}
+        run: |
+          skopeo copy --multi-arch all \
+            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
+            docker://docker.io/bethibande/arcae:latest
+
+      # --- PROMOTE TO PERSONAL REGISTRY ---
+      # Source: Docker Hub -> Destination: Personal Registry
+      # (This ensures the personal registry is synced with the exact same image from Hub)
+      - name: Promote to Personal Registry (Versioned)
+        run: |
+          skopeo copy --multi-arch all \
+            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
+            docker://docker.bethibande.com/bethibande/arcae:${{ inputs.new_version }}
+
+      - name: Promote to Personal Registry (Latest)
+        if: ${{ inputs.promote_to_latest == 'true' }}
+        run: |
+          skopeo copy --multi-arch all \
+            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
+            docker://docker.bethibande.com/bethibande/arcae:latest

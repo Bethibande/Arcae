@@ -21,10 +21,10 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Skopeo
+      - name: Install Crane
         run: |
-          sudo apt-get update
-          sudo apt-get install -y skopeo
+          curl -sL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | tar xz crane
+          sudo mv crane /usr/local/bin/
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -42,31 +42,23 @@ jobs:
       # --- PROMOTE TO DOCKER HUB ---
       - name: Promote to Docker Hub (Versioned)
         run: |
-          skopeo copy --multi-arch all \
-            --authfile /home/runner/.docker/config.json \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.io/bethibande/arcae:${{ inputs.new_version }}
+          crane copy bethibande/arcae:${{ inputs.source_tag }} \
+                     bethibande/arcae:${{ inputs.new_version }}
 
       - name: Promote to Docker Hub (Latest)
         if: ${{ inputs.promote_to_latest == 'true' }}
         run: |
-          skopeo copy --multi-arch all \
-            --authfile /home/runner/.docker/config.json \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.io/bethibande/arcae:latest
+          crane copy bethibande/arcae:${{ inputs.source_tag }} \
+                     bethibande/arcae:latest
 
       # --- PROMOTE TO PERSONAL REGISTRY ---
       - name: Promote to Personal Registry (Versioned)
         run: |
-          skopeo copy --multi-arch all \
-            --authfile /home/runner/.docker/config.json \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.bethibande.com/bethibande/arcae:${{ inputs.new_version }}
+          crane copy bethibande/arcae:${{ inputs.source_tag }} \
+                     docker.bethibande.com/bethibande/arcae:${{ inputs.new_version }}
 
       - name: Promote to Personal Registry (Latest)
         if: ${{ inputs.promote_to_latest == 'true' }}
         run: |
-          skopeo copy --multi-arch all \
-            --authfile /home/runner/.docker/config.json \
-            docker://docker.io/bethibande/arcae:${{ inputs.source_tag }} \
-            docker://docker.bethibande.com/bethibande/arcae:latest
+          crane copy bethibande/arcae:${{ inputs.source_tag }} \
+                     docker.bethibande.com/bethibande/arcae:latest

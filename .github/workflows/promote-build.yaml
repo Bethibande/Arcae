@@ -46,19 +46,19 @@ jobs:
                      bethibande/arcae:${{ inputs.new_version }}
 
       - name: Promote to Docker Hub (Latest)
-        if: ${{ inputs.promote_to_latest == 'true' }}
+        if: ${{ inputs.promote_to_latest }}
         run: |
-          crane copy bethibande/arcae:${{ inputs.source_tag }} \
+          crane copy bethibande/arcae:${{ inputs.new_version }} \
                      bethibande/arcae:latest
 
       # --- PROMOTE TO PERSONAL REGISTRY ---
       - name: Promote to Personal Registry (Versioned)
         run: |
-          crane copy bethibande/arcae:${{ inputs.source_tag }} \
+          crane copy bethibande/arcae:${{ inputs.new_version }} \
                      docker.bethibande.com/bethibande/arcae:${{ inputs.new_version }}
 
       - name: Promote to Personal Registry (Latest)
-        if: ${{ inputs.promote_to_latest == 'true' }}
+        if: ${{ inputs.promote_to_latest }}
         run: |
-          crane copy bethibande/arcae:${{ inputs.source_tag }} \
+          crane copy bethibande/arcae:${{ inputs.new_version }} \
                      docker.bethibande.com/bethibande/arcae:latest

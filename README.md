@@ -32,8 +32,8 @@ For reference, the containers of the live deployment each consume around 58 MB t
 > A value of ``-Xmx100m`` will limit the heap to 100 MB. At least 30 to 60 MB of additional memory is recommended
 > to avoid out-of-memory errors. This memory is needed to store the binary and additional data such as network buffers.
 
-A fully self-hosted setup including PostgreSQl, Elasticsearch and Minio (S3) will require at least 1.5 GB of memory.
-Most of this memory (over 1 GB) is used by Elasticsearch, in the future Elasticsearch may become optional.
+A minimal self-hosted deployment using PostgreSQL and Minio (S3) will use around 200-300 MB of memory.
+When using Elasticsearch you will need at least 1.5 GB of memory in total.
 
 ### Software
 - **Linux**<br>
@@ -42,7 +42,7 @@ Most of this memory (over 1 GB) is used by Elasticsearch, in the future Elastics
   Kubernetes should be reasonably up to date in order for cloud-native features, such as service discovery and the Gateway API support, to work.
 - **PostgreSQL**<br>
   Tested on version 16.3
-- **Elasticsearch**<br>
+- **Elasticsearch** (optional)<br>
   Version 8.13.4, this is a hard constraint due to the way that the Elasticsearch client and the native-image builds work.
   As such you will most likely need to self-host this. A basic instance will require at least 1 GB of memory. 
 - **S3 compatible storage**<br>
@@ -72,7 +72,7 @@ You can find the values.yaml file [here](/chart/arcae/values.yaml).
 helm repo add arcae https://helm.bethibande.com/repo/bethibande/arcae/
 
 # Pull the chart
-helm pull arcae/arcae --version 1.2.2
+helm pull arcae/arcae --version 1.2.3
 ```
 
 ## Screenshots

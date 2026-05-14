@@ -11,16 +11,16 @@ services:
       - "5432:5432"
     volumes:
       - postgres:/var/lib/postgresql/data
-  elastic:
-    image: elasticsearch:8.13.4
-    environment:
-      discovery.type: "single-node"
-      xpack.security.enabled: false
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-    volumes:
-      - elastic:/usr/share/elasticsearch/data
+#  elastic:
+#    image: elasticsearch:8.13.4
+#    environment:
+#      discovery.type: "single-node"
+#      xpack.security.enabled: false
+#      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+#    ports:
+#      - "9200:9200"
+#    volumes:
+#      - elastic:/usr/share/elasticsearch/data
   minio:
     image: quay.io/minio/minio
     command: ["server", "/data", "--console-address", ":9001"]
@@ -42,10 +42,10 @@ services:
       DATABASE_USERNAME: arcae
       DATABASE_PASSWORD: 12345
       SEARCH_HOSTS: elastic:9200
-      ARCAE_SEARCH_ENABLED: "true" # Set value to false to safely remove the elasticsearch container
+      ARCAE_SEARCH_ENABLED: "false" # Set to true to use elasticsearch
       EXTERNAL_HOST: http://localhost:8080
       JAVA_OPTIONS: "-Xmx100m"
 volumes:
   postgres: {}
-  elastic: {}
+#  elastic: {}
   minio: {}

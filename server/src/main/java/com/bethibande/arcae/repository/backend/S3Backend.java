@@ -6,6 +6,7 @@ import com.bethibande.arcae.web.repositories.oci.OCIRepositoryEndpoint;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
@@ -196,10 +197,10 @@ public class S3Backend implements RepositoryBackend, AutoCloseable {
                 .build();
 
         try {
-            final ResponseBytes<GetObjectResponse> response = this.client.getObjectAsBytes(request);
+            final ResponseInputStream<GetObjectResponse> response = this.client.getObject(request);
 
             return new StreamHandle(
-                    response.asInputStream(),
+                    response,
                     response.response().contentType(),
                     response.response().contentLength()
             );

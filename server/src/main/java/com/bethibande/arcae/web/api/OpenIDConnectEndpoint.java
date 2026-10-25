@@ -1,6 +1,11 @@
 package com.bethibande.arcae.web.api;
 
-import com.bethibande.arcae.jpa.security.*;
+import com.bethibande.arcae.jpa.security.OpenIDConnectLogo;
+import com.bethibande.arcae.jpa.security.OpenIDConnectProvider;
+import com.bethibande.arcae.jpa.security.OpenIDConnectProviderDTO;
+import com.bethibande.arcae.jpa.security.OpenIDConnectProviderDTOWithoutId;
+import com.bethibande.arcae.jpa.security.OpenIDConnection;
+import com.bethibande.arcae.jpa.security.OpenIDConnectionDTO;
 import com.bethibande.arcae.jpa.user.User;
 import com.bethibande.arcae.security.oidc.OpenIDConnectOptions;
 import com.bethibande.arcae.security.oidc.OpenIdConnectService;
@@ -20,7 +25,16 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.CookieParam;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.CacheControl;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.NewCookie;
@@ -33,7 +47,9 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -42,6 +58,9 @@ import java.util.UUID;
 public class OpenIDConnectEndpoint {
 
     public static final String OIDC_STATE_COOKIE_NAME = "oidc_state";
+    public static final String OIDC_NONCE_COOKIE_NAME = "oidc_nonce";
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Inject
     protected OpenIdConnectService service;
@@ -71,6 +90,8 @@ public class OpenIDConnectEndpoint {
         entity.authorizationEndpoint = dto.authorizationEndpoint();
         entity.tokenEndpoint = dto.tokenEndpoint();
         entity.userInfoEndpoint = dto.userInfoEndpoint();
+        entity.issuer = blankToNull(dto.issuer());
+        entity.jwksUri = blankToNull(dto.jwksUri());
         entity.persist();
 
         return OpenIDConnectProviderDTO.from(entity);
@@ -91,9 +112,15 @@ public class OpenIDConnectEndpoint {
         entity.authorizationEndpoint = dto.authorizationEndpoint();
         entity.tokenEndpoint = dto.tokenEndpoint();
         entity.userInfoEndpoint = dto.userInfoEndpoint();
+        entity.issuer = blankToNull(dto.issuer());
+        entity.jwksUri = blankToNull(dto.jwksUri());
         entity.persist();
 
         return OpenIDConnectProviderDTO.from(entity);
+    }
+
+    private static String blankToNull(final String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     @GET
@@ -189,26 +216,42 @@ public class OpenIDConnectEndpoint {
         if (entity == null) throw new NotFoundException("Unknown provider");
 
         final String state = UUID.randomUUID().toString();
+        final String nonce = generateNonce();
         final String redirectUri = this.host.replaceAll("/$", "") + callbackPath;
 
-        final String url = "%s?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s".formatted(
+        final String url = "%s?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s&nonce=%s".formatted(
                 entity.authorizationEndpoint,
-                entity.clientId,
+                URLEncoder.encode(entity.clientId, StandardCharsets.UTF_8),
                 URLEncoder.encode(redirectUri, StandardCharsets.UTF_8),
                 "openid",
-                state
+                state,
+                nonce
         );
 
         return Response.ok(url)
-                .cookie(new NewCookie.Builder(OIDC_STATE_COOKIE_NAME)
-                        .value(state)
-                        .maxAge((int) Duration.ofMinutes(10).toSeconds())
-                        .secure(this.host.startsWith("https://"))
-                        .sameSite(NewCookie.SameSite.LAX)
-                        .path(statePath)
-                        .httpOnly(true)
-                        .build())
+                .cookie(
+                        createFlowCookie(OIDC_STATE_COOKIE_NAME, state, statePath),
+                        createFlowCookie(OIDC_NONCE_COOKIE_NAME, nonce, statePath)
+                )
                 .build();
+    }
+
+    private NewCookie createFlowCookie(final String name, final String value, final String path) {
+        return new NewCookie.Builder(name)
+                .value(value)
+                .maxAge((int) Duration.ofMinutes(10).toSeconds())
+                .secure(this.host.startsWith("https://"))
+                .sameSite(NewCookie.SameSite.LAX)
+                .path(path)
+                .httpOnly(true)
+                .build();
+    }
+
+    private static String generateNonce() {
+        final byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     protected Uni<OpenIDConnectProvider> withProvider(final String provider) {
@@ -232,6 +275,7 @@ public class OpenIDConnectEndpoint {
     )
     public Uni<Response> completeLogin(final @PathParam("provider") String provider,
                                        final @CookieParam(OIDC_STATE_COOKIE_NAME) String state,
+                                       final @CookieParam(OIDC_NONCE_COOKIE_NAME) String nonce,
                                        final @QueryParam("code") String code,
                                        final @QueryParam("state") String stateFromQuery,
                                        final @Context HttpServerRequest request) {
@@ -242,7 +286,7 @@ public class OpenIDConnectEndpoint {
                     final String redirectUri = this.host.replaceAll("/$", "") + "/login/oidc/complete/" + provider;
 
                     return Uni.createFrom()
-                            .completionStage(this.service.getSubjectFromCode(code, entity, redirectUri).toCompletionStage())
+                            .completionStage(this.service.getSubjectFromCode(code, entity, redirectUri, nonce).toCompletionStage())
                             .flatMap(subj -> VertxContextSupport.executeBlocking(() -> QuarkusTransaction.requiringNew().call(() -> {
                                 final OpenIDConnection connection = OpenIDConnection.find("provider = ?1 AND subject = ?2", entity, subj).firstResult();
                                 if (connection == null) return Response.status(Response.Status.NOT_FOUND).build();
@@ -257,6 +301,7 @@ public class OpenIDConnectEndpoint {
     @Path("/link/complete/{provider}")
     public Uni<Response> completeLink(final @PathParam("provider") String provider,
                                       final @CookieParam(OIDC_STATE_COOKIE_NAME) String state,
+                                      final @CookieParam(OIDC_NONCE_COOKIE_NAME) String nonce,
                                       final @QueryParam("code") String code,
                                       final @QueryParam("state") String stateFromQuery) {
         if (!Objects.equals(state, stateFromQuery)) throw new BadRequestException("Invalid state");
@@ -266,7 +311,7 @@ public class OpenIDConnectEndpoint {
                     final String redirectUri = this.host.replaceAll("/$", "") + "/login/oidc/complete/" + provider;
 
                     return Uni.createFrom()
-                            .completionStage(this.service.getSubjectFromCode(code, entity, redirectUri).toCompletionStage())
+                            .completionStage(this.service.getSubjectFromCode(code, entity, redirectUri, nonce).toCompletionStage())
                             .flatMap(subj -> VertxContextSupport.executeBlocking(() -> QuarkusTransaction.requiringNew().call(() -> {
                                 final OpenIDConnection connection = OpenIDConnection.find("provider = ?1 AND subject = ?2", entity, subj).firstResult();
                                 if (connection != null) return Response.status(Response.Status.CONFLICT).build();

@@ -65,6 +65,7 @@ dependencies {
     implementation("io.quarkus:quarkus-security-jpa")
     implementation("io.quarkus:quarkus-security")
     implementation("org.bouncycastle:bcpkix-jdk18on:1.84")
+    implementation("org.bitbucket.b_c:jose4j:0.9.6") // OIDC ID token validation
     implementation("io.quarkiverse.bucket4j:quarkus-bucket4j:1.0.7") // Rate limiting
 
     // Web

@@ -31,4 +31,13 @@ public class OpenIDConnectProvider extends PanacheEntity {
     @Column(nullable = false, columnDefinition = "varchar(512)")
     public String userInfoEndpoint;
 
+    /**
+     * Expected issuer of ID tokens. ID tokens are only validated if both the issuer and {@link #jwksUri} are set.
+     */
+    @Column(columnDefinition = "varchar(512)")
+    public String issuer;
+
+    @Column(columnDefinition = "varchar(512)")
+    public String jwksUri;
+
 }

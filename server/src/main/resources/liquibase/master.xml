@@ -7,4 +7,5 @@
     <include file="liquibase/26-02-changelog.xml"/>
     <include file="liquibase/26-03-changelog.xml"/>
     <include file="liquibase/26-04-changelog.xml"/>
+    <include file="liquibase/26-10-changelog.xml"/>
 </databaseChangeLog>

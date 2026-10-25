@@ -10,6 +10,12 @@ public record OpenIDConnectOptions(
         String tokenEndpoint,
 
         @JsonProperty("userinfo_endpoint")
-        String userInfoEndpoint
+        String userInfoEndpoint,
+
+        @JsonProperty("issuer")
+        String issuer,
+
+        @JsonProperty("jwks_uri")
+        String jwksUri
 ) {
 }

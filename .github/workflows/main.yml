@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      skip_tests:
+        description: 'Skip running the tests'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -69,7 +74,7 @@ jobs:
 
       - name: Build and Push Arch-Specific Image
         run: |
-          ./gradlew :server:build \
+          ./gradlew :server:build ${{ github.event.inputs.skip_tests == 'true' && '-x test' || '' }} \
             "-Pversion=${{ github.event.inputs.version }}" \
             "-Dquarkus.native.container-build=true" \
             "-Dquarkus.container-image.builder=docker" \

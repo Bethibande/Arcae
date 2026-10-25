@@ -44,12 +44,11 @@ import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.wildfly.security.util.PasswordUtil;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -59,8 +58,6 @@ public class OpenIDConnectEndpoint {
 
     public static final String OIDC_STATE_COOKIE_NAME = "oidc_state";
     public static final String OIDC_NONCE_COOKIE_NAME = "oidc_nonce";
-
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Inject
     protected OpenIdConnectService service;
@@ -216,7 +213,7 @@ public class OpenIDConnectEndpoint {
         if (entity == null) throw new NotFoundException("Unknown provider");
 
         final String state = UUID.randomUUID().toString();
-        final String nonce = generateNonce();
+        final String nonce = PasswordUtil.generateSecureRandomString(64);
         final String redirectUri = this.host.replaceAll("/$", "") + callbackPath;
 
         final String url = "%s?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s&nonce=%s".formatted(
@@ -225,7 +222,7 @@ public class OpenIDConnectEndpoint {
                 URLEncoder.encode(redirectUri, StandardCharsets.UTF_8),
                 "openid",
                 state,
-                nonce
+                URLEncoder.encode(nonce, StandardCharsets.UTF_8)
         );
 
         return Response.ok(url)
@@ -245,13 +242,6 @@ public class OpenIDConnectEndpoint {
                 .path(path)
                 .httpOnly(true)
                 .build();
-    }
-
-    private static String generateNonce() {
-        final byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     protected Uni<OpenIDConnectProvider> withProvider(final String provider) {
